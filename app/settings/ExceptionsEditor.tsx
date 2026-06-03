@@ -50,13 +50,15 @@ export function ExceptionsEditor({ exceptions, onChange }: ExceptionsEditorProps
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CalendarX2 className="size-5 text-primary-600" aria-hidden="true" />
+    <Card className="overflow-hidden">
+      <CardHeader variant="gradient">
+        <CardTitle className="flex items-center gap-2.5">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary-600 shadow-soft">
+            <CalendarX2 className="size-5" aria-hidden="true" />
+          </span>
           חריגים ותאריכים חסומים
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="ps-[46px]">
           חופשות וימי מחלה (חסום) או ימים עם שעות מיוחדות (מותאם). חריג גובר על
           התבנית השבועית באותו תאריך.
         </CardDescription>
@@ -84,7 +86,11 @@ export function ExceptionsEditor({ exceptions, onChange }: ExceptionsEditorProps
                 return (
                   <li
                     key={i}
-                    className="flex flex-wrap items-end gap-3 rounded-xl border border-line bg-cream/40 p-3"
+                    className={
+                      customInvalid
+                        ? 'flex flex-wrap items-end gap-3 rounded-xl border border-danger/60 bg-danger-soft/40 p-3'
+                        : 'flex flex-wrap items-end gap-3 rounded-xl border border-line bg-surface p-3 shadow-soft'
+                    }
                   >
                     <label className="flex flex-col gap-1">
                       <span className="text-xs font-medium text-muted">תאריך</span>
@@ -92,7 +98,7 @@ export function ExceptionsEditor({ exceptions, onChange }: ExceptionsEditorProps
                         type="date"
                         value={e.date}
                         onChange={(ev) => updateException(i, { date: ev.target.value })}
-                        className="w-44"
+                        className="w-44 tabular-nums"
                         aria-label="תאריך חריג"
                       />
                     </label>
@@ -169,7 +175,7 @@ export function ExceptionsEditor({ exceptions, onChange }: ExceptionsEditorProps
                     </div>
 
                     {customInvalid && (
-                      <p className="w-full text-xs font-medium text-danger">
+                      <p className="w-full text-xs font-medium text-danger" role="alert">
                         חלון מותאם דורש שעת התחלה וסיום, כשהסיום אחרי ההתחלה.
                       </p>
                     )}

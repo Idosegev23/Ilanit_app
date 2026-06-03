@@ -40,6 +40,7 @@ export default async function SettingsPage() {
     reminderTime: toHHmm(settingsRow.reminderTime),
     groupBillingDay: settingsRow.groupBillingDay,
     morningDocType: settingsRow.morningDocType,
+    defaultPrivatePrice: settingsRow.defaultPrivatePrice ?? null,
   };
 
   const initialAvailability: AvailabilityWindow[] = availabilityRows.map((r) => ({
@@ -59,10 +60,11 @@ export default async function SettingsPage() {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
+        eyebrow="ניהול העסק"
         title="הגדרות"
-        subtitle="זמינות שבועית, חריגים ופרטי העסק — אלה קובעים את הזמנים שתלמידים רואים בלינק התיאום."
+        subtitle="זמינות שבועית, חריגים, תמחור ופרטי העסק — אלה קובעים את הזמנים והמחירים בלינק התיאום."
       />
       <SettingsView
         initialSettings={initialSettings}

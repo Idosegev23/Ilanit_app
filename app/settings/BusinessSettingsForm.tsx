@@ -1,11 +1,24 @@
 'use client';
 
 import * as React from 'react';
-import { Building2 } from 'lucide-react';
-import { Card, CardBody, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Building2,
+  Timer,
+  Receipt,
+  Wallet,
+  type LucideIcon,
+} from 'lucide-react';
+import {
+  Card,
+  CardBody,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import type { SettingsValues } from './types';
 
 interface BusinessSettingsFormProps {
@@ -19,6 +32,36 @@ const MORNING_DOC_TYPES = [
   { value: '400', label: 'קבלה (400)' },
   { value: '320', label: 'חשבונית מס-קבלה (320)' },
 ] as const;
+
+/** A labelled subsection inside the business card — groups related fields with
+ * a small icon chip + heading so the form reads as distinct concerns rather
+ * than one long list (visual-hierarchy / field-grouping). */
+function Section({
+  icon: Icon,
+  title,
+  description,
+  children,
+}: {
+  icon: LucideIcon;
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <fieldset className="rounded-2xl border border-line/70 bg-cream/40 p-5">
+      <legend className="mb-1 flex w-full items-center gap-2.5">
+        <span className="flex size-8 items-center justify-center rounded-xl bg-primary-soft text-primary-600 shadow-soft">
+          <Icon className="size-4" aria-hidden="true" />
+        </span>
+        <span className="text-sm font-semibold text-ink">{title}</span>
+      </legend>
+      {description && (
+        <p className="mb-4 ps-[42px] text-xs text-muted">{description}</p>
+      )}
+      {children}
+    </fieldset>
+  );
+}
 
 /** Reusable labelled number field that clamps to an integer on change. */
 function NumberField({
@@ -61,128 +104,209 @@ function NumberField({
 }
 
 // Business + scheduling settings. These feed the availability/booking engine
-// (duration, buffer, lead-time, horizon) and the group-billing / reminder cron.
+// (duration, buffer, lead-time, horizon), the group-billing / reminder cron,
+// and the default private-lesson price fallback.
 export function BusinessSettingsForm({ values, onChange }: BusinessSettingsFormProps) {
   const set = <K extends keyof SettingsValues>(key: K, val: SettingsValues[K]) =>
     onChange({ ...values, [key]: val });
 
+  const priceHasValue =
+    values.defaultPrivatePrice !== null &&
+    Number.isFinite(values.defaultPrivatePrice);
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Building2 className="size-5 text-primary-600" aria-hidden="true" />
-          פרטי העסק והזמנה
+    <Card className="overflow-hidden">
+      <CardHeader variant="gradient">
+        <CardTitle className="flex items-center gap-2.5">
+          <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary-600 shadow-soft">
+            <Building2 className="size-5" aria-hidden="true" />
+          </span>
+          פרטי העסק, תמחור והזמנה
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="ps-[46px]">
           הכתובת נכנסת אוטומטית להזמנת היומן. משך השיעור וה־buffer קובעים את חלוקת
-          הסלוטים בלינק התיאום.
+          הסלוטים בלינק התיאום, והמחיר משמש כברירת-מחדל לתלמידים ללא מחיר משלהם.
         </CardDescription>
       </CardHeader>
+
       <CardBody className="space-y-5">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <Label htmlFor="businessName" required>
-              שם העסק
+        {/* ── זהות העסק ── */}
+        <Section icon={Building2} title="זהות העסק">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="businessName" required>
+                שם העסק
+              </Label>
+              <Input
+                id="businessName"
+                value={values.businessName}
+                onChange={(e) => set('businessName', e.target.value)}
+                error={values.businessName.trim().length === 0}
+                autoComplete="organization"
+              />
+              {values.businessName.trim().length === 0 && (
+                <p className="text-xs font-medium text-danger" role="alert">
+                  יש להזין שם עסק.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="locationAddress">כתובת העסק</Label>
+              <Input
+                id="locationAddress"
+                value={values.locationAddress}
+                onChange={(e) => set('locationAddress', e.target.value)}
+                placeholder="רחוב, עיר"
+                autoComplete="street-address"
+              />
+              <p className="text-xs text-muted">נכנסת להזמנת היומן של התלמיד.</p>
+            </div>
+          </div>
+        </Section>
+
+        {/* ── תמחור — the new functional field ── */}
+        <Section
+          icon={Wallet}
+          title="תמחור"
+          description="מחיר זה משמש כברירת-מחדל כאשר לתלמיד אין מחיר אישי לשיעור פרטי. מספר שלם בשקלים, ללא אגורות."
+        >
+          <div className="sm:max-w-xs">
+            <Label htmlFor="defaultPrivatePrice">
+              מחיר ברירת-מחדל לשיעור פרטי (₪)
             </Label>
-            <Input
-              id="businessName"
-              value={values.businessName}
-              onChange={(e) => set('businessName', e.target.value)}
-              error={values.businessName.trim().length === 0}
-            />
-            {values.businessName.trim().length === 0 && (
-              <p className="text-xs font-medium text-danger">יש להזין שם עסק.</p>
-            )}
+            <div className="relative mt-1.5">
+              {/* Inline ₪ adornment at the inline-start (RTL aware). */}
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3.5 text-sm font-medium text-muted"
+              >
+                ₪
+              </span>
+              <Input
+                id="defaultPrivatePrice"
+                type="number"
+                inputMode="numeric"
+                min={0}
+                max={100000}
+                step={1}
+                placeholder="לא הוגדר"
+                value={priceHasValue ? String(values.defaultPrivatePrice) : ''}
+                onChange={(e) => {
+                  const raw = e.target.value.trim();
+                  if (raw === '') {
+                    set('defaultPrivatePrice', null);
+                    return;
+                  }
+                  const n = Math.trunc(Number(raw));
+                  set(
+                    'defaultPrivatePrice',
+                    Number.isFinite(n) && n >= 0 ? n : null,
+                  );
+                }}
+                className={cn('ps-9 tabular-nums')}
+                aria-describedby="defaultPrivatePrice-help"
+              />
+            </div>
+            <p id="defaultPrivatePrice-help" className="mt-1.5 text-xs text-muted">
+              {priceHasValue
+                ? 'תלמידים ללא מחיר אישי יחויבו בסכום זה.'
+                : 'השאירי ריק כדי לחייב לפי מחיר אישי בלבד.'}
+            </p>
           </div>
+        </Section>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="locationAddress">כתובת העסק</Label>
-            <Input
-              id="locationAddress"
-              value={values.locationAddress}
-              onChange={(e) => set('locationAddress', e.target.value)}
-              placeholder="רחוב, עיר"
+        {/* ── מנוע הזמנה ── */}
+        <Section
+          icon={Timer}
+          title="מנוע ההזמנה"
+          description="פרמטרים אלה קובעים אילו סלוטים יוצגו בלינק התיאום הציבורי."
+        >
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <NumberField
+              id="defaultDurationMin"
+              label="משך שיעור (דק׳)"
+              value={values.defaultDurationMin}
+              min={1}
+              max={600}
+              onValue={(n) => set('defaultDurationMin', n)}
             />
-            <p className="text-xs text-muted">נכנסת להזמנת היומן של התלמיד.</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <NumberField
-            id="defaultDurationMin"
-            label="משך שיעור (דק׳)"
-            value={values.defaultDurationMin}
-            min={1}
-            max={600}
-            onValue={(n) => set('defaultDurationMin', n)}
-          />
-          <NumberField
-            id="bufferMin"
-            label="מרווח בין שיעורים (דק׳)"
-            value={values.bufferMin}
-            min={0}
-            max={240}
-            onValue={(n) => set('bufferMin', n)}
-          />
-          <NumberField
-            id="leadTimeMin"
-            label="זמן מינימלי מראש (דק׳)"
-            helper="כמה זמן לפני השיעור עוד אפשר לקבוע."
-            value={values.leadTimeMin}
-            min={0}
-            max={20160}
-            onValue={(n) => set('leadTimeMin', n)}
-          />
-          <NumberField
-            id="bookingHorizonDays"
-            label="אופק הזמנה (ימים)"
-            helper="עד כמה ימים קדימה תלמידים יכולים לקבוע."
-            value={values.bookingHorizonDays}
-            min={1}
-            max={365}
-            onValue={(n) => set('bookingHorizonDays', n)}
-          />
-          <NumberField
-            id="groupBillingDay"
-            label="יום חיוב קבוצות"
-            helper="היום בחודש שבו נוצרים חיובי הקבוצות (1–28)."
-            value={values.groupBillingDay}
-            min={1}
-            max={28}
-            onValue={(n) => set('groupBillingDay', n)}
-          />
-
-          <div className="space-y-1.5">
-            <Label htmlFor="reminderTime">שעת תזכורת יום-לפני</Label>
-            <Input
-              id="reminderTime"
-              type="time"
-              value={values.reminderTime}
-              onChange={(e) => set('reminderTime', e.target.value)}
-              className="tabular-nums"
-              dir="ltr"
+            <NumberField
+              id="bufferMin"
+              label="מרווח בין שיעורים (דק׳)"
+              value={values.bufferMin}
+              min={0}
+              max={240}
+              onValue={(n) => set('bufferMin', n)}
             />
-            <p className="text-xs text-muted">השעה שבה נשלחות תזכורות לשיעורי מחר.</p>
+            <NumberField
+              id="leadTimeMin"
+              label="זמן מינימלי מראש (דק׳)"
+              helper="כמה זמן לפני השיעור עוד אפשר לקבוע."
+              value={values.leadTimeMin}
+              min={0}
+              max={20160}
+              onValue={(n) => set('leadTimeMin', n)}
+            />
+            <NumberField
+              id="bookingHorizonDays"
+              label="אופק הזמנה (ימים)"
+              helper="עד כמה ימים קדימה תלמידים יכולים לקבוע."
+              value={values.bookingHorizonDays}
+              min={1}
+              max={365}
+              onValue={(n) => set('bookingHorizonDays', n)}
+            />
+            <div className="space-y-1.5">
+              <Label htmlFor="reminderTime">שעת תזכורת יום-לפני</Label>
+              <Input
+                id="reminderTime"
+                type="time"
+                value={values.reminderTime}
+                onChange={(e) => set('reminderTime', e.target.value)}
+                className="tabular-nums"
+                dir="ltr"
+              />
+              <p className="text-xs text-muted">השעה שבה נשלחות תזכורות לשיעורי מחר.</p>
+            </div>
           </div>
-        </div>
+        </Section>
 
-        <div className="space-y-1.5 sm:max-w-xs">
-          <Label htmlFor="morningDocType">סוג מסמך Morning</Label>
-          <Select
-            id="morningDocType"
-            value={values.morningDocType ?? ''}
-            onChange={(e) =>
-              set('morningDocType', e.target.value === '' ? null : e.target.value)
-            }
-          >
-            {MORNING_DOC_TYPES.map((d) => (
-              <option key={d.value} value={d.value}>
-                {d.label}
-              </option>
-            ))}
-          </Select>
-          <p className="text-xs text-muted">סוג המסמך שיופק בעת הפקת קבלה.</p>
-        </div>
+        {/* ── חיוב ומסמכים ── */}
+        <Section
+          icon={Receipt}
+          title="חיוב ומסמכים"
+          description="חיובי קבוצות מתבצעים אוטומטית, וקבלות מופקות בסוג המסמך שנבחר."
+        >
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <NumberField
+              id="groupBillingDay"
+              label="יום חיוב קבוצות"
+              helper="היום בחודש שבו נוצרים חיובי הקבוצות (1–28)."
+              value={values.groupBillingDay}
+              min={1}
+              max={28}
+              onValue={(n) => set('groupBillingDay', n)}
+            />
+            <div className="space-y-1.5">
+              <Label htmlFor="morningDocType">סוג מסמך Morning</Label>
+              <Select
+                id="morningDocType"
+                value={values.morningDocType ?? ''}
+                onChange={(e) =>
+                  set('morningDocType', e.target.value === '' ? null : e.target.value)
+                }
+              >
+                {MORNING_DOC_TYPES.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </Select>
+              <p className="text-xs text-muted">סוג המסמך שיופק בעת הפקת קבלה.</p>
+            </div>
+          </div>
+        </Section>
       </CardBody>
     </Card>
   );

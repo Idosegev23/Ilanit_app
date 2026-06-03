@@ -65,6 +65,14 @@ const putSchema = z.object({
     reminderTime: z.string().regex(HHMM, 'שעת תזכורת לא תקינה'),
     groupBillingDay: z.number().int().min(1).max(28),
     morningDocType: z.string().trim().nullable(),
+    // Fallback private-lesson price in whole shekels; null clears it. Used when
+    // a student has no own defaultPrice.
+    defaultPrivatePrice: z
+      .number()
+      .int('המחיר חייב להיות מספר שלם')
+      .min(0, 'המחיר לא יכול להיות שלילי')
+      .max(100000)
+      .nullable(),
   }),
   availability: z.array(windowSchema).max(200),
   exceptions: z.array(exceptionSchema).max(365),
@@ -122,6 +130,7 @@ export async function PUT(request: Request) {
     reminderTime: s.reminderTime,
     groupBillingDay: s.groupBillingDay,
     morningDocType: s.morningDocType,
+    defaultPrivatePrice: s.defaultPrivatePrice,
   });
 
   // Replace the weekly availability template wholesale. The page always sends

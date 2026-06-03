@@ -12,6 +12,8 @@ export interface SettingsValues {
   reminderTime: string; // HH:mm
   groupBillingDay: number; // 1–28
   morningDocType: string | null;
+  /** Fallback price (integer shekels) for a private lesson when a student has no own price. `null` = not set. */
+  defaultPrivatePrice: number | null;
 }
 
 export interface AvailabilityWindow {
