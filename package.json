@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "vercel-build": "drizzle-kit migrate && (tsx scripts/seed.ts || echo 'seed skipped') && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
