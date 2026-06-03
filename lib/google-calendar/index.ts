@@ -1,7 +1,27 @@
-// Typed STUB — implemented by feature agent B1 (Calendar).
-// OAuth client via getGoogleAccessToken(); freeBusy / insertEvent /
-// insertRecurringEvent / cancelEvent / listEndedSince. Group markers via
-// extendedProperties.
+import { google } from 'googleapis';
+import type { calendar_v3 } from 'googleapis';
+import { getGoogleAccessToken } from '@/lib/google-tokens';
+import { env } from '@/lib/env';
+
+// Google Calendar wrapper (module B1). Every operation runs against Ilanit's
+// single connected calendar, authorised via the stored OAuth refresh token
+// (exchanged for a fresh access token by `getGoogleAccessToken`). External SDK
+// (`googleapis`) is mocked in tests; this module is the only place that touches
+// it. Times are passed through as ISO strings produced in Asia/Jerusalem by the
+// callers (booking / recurrence); event bodies pin the timeZone explicitly so
+// Google renders them correctly regardless of the offset notation.
+
+const TIMEZONE = 'Asia/Jerusalem';
+
+// 24h and 1h reminders — covers Ilanit's "day before" expectation and a final
+// nudge. Google caps overrides at a few entries; these two are safe.
+const DEFAULT_REMINDERS: calendar_v3.Schema$Event['reminders'] = {
+  useDefault: false,
+  overrides: [
+    { method: 'popup', minutes: 24 * 60 },
+    { method: 'popup', minutes: 60 },
+  ],
+};
 
 export interface FreeBusySlot {
   start: string;
@@ -28,33 +48,196 @@ export interface EndedEvent {
   groupId?: string;
 }
 
+/** Builds an authenticated Calendar v3 client using the current access token. */
+async function getCalendar(): Promise<calendar_v3.Calendar> {
+  const e = env();
+  const accessToken = await getGoogleAccessToken();
+  const oauth2 = new google.auth.OAuth2(e.AUTH_GOOGLE_ID, e.AUTH_GOOGLE_SECRET);
+  oauth2.setCredentials({ access_token: accessToken });
+  return google.calendar({ version: 'v3', auth: oauth2 });
+}
+
+function calendarId(): string {
+  return env().GOOGLE_CALENDAR_ID;
+}
+
+/** Returns busy time-ranges on Ilanit's calendar within [timeMin, timeMax). */
 export async function freeBusy(
-  _timeMin: string,
-  _timeMax: string,
+  timeMin: string,
+  timeMax: string,
 ): Promise<FreeBusySlot[]> {
-  throw new Error('NOT_IMPLEMENTED: freeBusy');
+  const calendar = await getCalendar();
+  const id = calendarId();
+  const res = await calendar.freebusy.query({
+    requestBody: {
+      timeMin,
+      timeMax,
+      timeZone: TIMEZONE,
+      items: [{ id }],
+    },
+  });
+
+  const busy = res.data.calendars?.[id]?.busy ?? [];
+  return busy
+    .filter((b): b is { start: string; end: string } => Boolean(b.start && b.end))
+    .map((b) => ({ start: b.start, end: b.end }));
 }
 
+/** Shared body builder for both one-off and recurring inserts. */
+function buildEventBody(e: EventInput): calendar_v3.Schema$Event {
+  const body: calendar_v3.Schema$Event = {
+    summary: e.summary,
+    start: { dateTime: e.startISO, timeZone: TIMEZONE },
+    end: { dateTime: e.endISO, timeZone: TIMEZONE },
+    reminders: DEFAULT_REMINDERS,
+  };
+  if (e.location) body.location = e.location;
+  if (e.description) body.description = e.description;
+  if (e.attendeeEmail) body.attendees = [{ email: e.attendeeEmail }];
+  if (e.extendedPrivate && Object.keys(e.extendedPrivate).length > 0) {
+    body.extendedProperties = { private: e.extendedPrivate };
+  }
+  return body;
+}
+
+/**
+ * Creates a single confirmed lesson event. Notifies attendees + Ilanit's
+ * devices via `sendUpdates:'all'` so a student with an email receives the
+ * Google invite automatically.
+ */
 export async function insertEvent(
-  _e: EventInput,
+  e: EventInput,
 ): Promise<{ id: string; htmlLink?: string }> {
-  throw new Error('NOT_IMPLEMENTED: insertEvent');
+  const calendar = await getCalendar();
+  const res = await calendar.events.insert({
+    calendarId: calendarId(),
+    sendUpdates: 'all',
+    requestBody: buildEventBody(e),
+  });
+
+  const id = res.data.id;
+  if (!id) {
+    throw new Error('Google Calendar insertEvent returned no event id');
+  }
+  return { id, htmlLink: res.data.htmlLink ?? undefined };
 }
 
+/**
+ * Creates a recurring event (weekly lesson / group session) by attaching the
+ * supplied RRULE. Group markers travel in `extendedPrivate`.
+ */
 export async function insertRecurringEvent(
-  _e: EventInput,
-  _rrule: string,
+  e: EventInput,
+  rrule: string,
 ): Promise<{ id: string }> {
-  throw new Error('NOT_IMPLEMENTED: insertRecurringEvent');
+  const calendar = await getCalendar();
+  const body = buildEventBody(e);
+  body.recurrence = [rrule];
+  const res = await calendar.events.insert({
+    calendarId: calendarId(),
+    sendUpdates: 'all',
+    requestBody: body,
+  });
+
+  const id = res.data.id;
+  if (!id) {
+    throw new Error('Google Calendar insertRecurringEvent returned no event id');
+  }
+  return { id };
 }
 
-export async function cancelEvent(_eventId: string): Promise<void> {
-  throw new Error('NOT_IMPLEMENTED: cancelEvent');
+function isNotFoundError(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false;
+  const code = (err as { code?: unknown }).code;
+  const status = (err as { status?: unknown }).status;
+  return code === 404 || code === 410 || status === 404 || status === 410;
 }
 
+/**
+ * Deletes (cancels) an event, notifying participants. An event that is already
+ * gone (404/410) is treated as success so the caller's flow stays idempotent.
+ */
+export async function cancelEvent(eventId: string): Promise<void> {
+  const calendar = await getCalendar();
+  try {
+    await calendar.events.delete({
+      calendarId: calendarId(),
+      eventId,
+      sendUpdates: 'all',
+    });
+  } catch (err) {
+    if (isNotFoundError(err)) return;
+    throw err;
+  }
+}
+
+function readPrivate(
+  event: calendar_v3.Schema$Event,
+  key: string,
+): string | undefined {
+  const value = event.extendedProperties?.private?.[key];
+  return value ?? undefined;
+}
+
+function endISOOf(event: calendar_v3.Schema$Event): string | undefined {
+  return event.end?.dateTime ?? event.end?.date ?? undefined;
+}
+
+/**
+ * Lists events that ENDED within [sinceISO, untilISO]. Source of truth for the
+ * payment-check cron: includes events Ilanit created manually. Reads the lesson
+ * `type` / `student_id` / `group_id` from `extendedProperties.private`.
+ *
+ * Google's `timeMin/timeMax` filter on events that *overlap* the window, so we
+ * additionally keep only events whose end falls inside it; cancelled events and
+ * events without an end are skipped.
+ */
 export async function listEndedSince(
-  _sinceISO: string,
-  _untilISO: string,
+  sinceISO: string,
+  untilISO: string,
 ): Promise<EndedEvent[]> {
-  throw new Error('NOT_IMPLEMENTED: listEndedSince');
+  const calendar = await getCalendar();
+  const res = await calendar.events.list({
+    calendarId: calendarId(),
+    timeMin: sinceISO,
+    timeMax: untilISO,
+    singleEvents: true,
+    orderBy: 'startTime',
+    showDeleted: false,
+    maxResults: 2500,
+  });
+
+  const items = res.data.items ?? [];
+  const sinceMs = Date.parse(sinceISO);
+  const untilMs = Date.parse(untilISO);
+
+  const out: EndedEvent[] = [];
+  for (const event of items) {
+    if (event.status === 'cancelled') continue;
+    if (!event.id) continue;
+
+    const endISO = endISOOf(event);
+    if (!endISO) continue;
+
+    const endMs = Date.parse(endISO);
+    if (!Number.isNaN(endMs)) {
+      if (endMs < sinceMs || endMs > untilMs) continue;
+    }
+
+    const rawType = readPrivate(event, 'type');
+    const type =
+      rawType === 'individual' || rawType === 'group' ? rawType : undefined;
+
+    out.push({
+      id: event.id,
+      summary: event.summary ?? '',
+      endISO,
+      attendeeEmail: event.attendees?.[0]?.email ?? undefined,
+      type,
+      studentId: readPrivate(event, 'student_id'),
+      groupId: readPrivate(event, 'group_id'),
+    });
+  }
+
+  return out;
 }
