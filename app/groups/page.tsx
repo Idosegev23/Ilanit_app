@@ -1,11 +1,21 @@
 import Link from 'next/link';
-import { Users, MapPin, Plus, UsersRound } from 'lucide-react';
+import {
+  Users,
+  MapPin,
+  Plus,
+  UsersRound,
+  Banknote,
+  Layers,
+  ArrowLeft,
+  Wallet,
+} from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { StatCard } from '@/components/ui/stat-card';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { listGroups } from '@/lib/groups';
@@ -18,21 +28,73 @@ export const dynamic = 'force-dynamic';
 export default async function GroupsPage() {
   const groups = await listGroups(true);
 
+  const activeGroups = groups.filter((g) => g.active);
+  const totalMembers = groups.reduce((sum, g) => sum + g.memberCount, 0);
+  // Projected monthly recurring revenue: active members × their group price.
+  const projectedMonthly = activeGroups.reduce(
+    (sum, g) => sum + g.memberCount * g.monthlyPrice,
+    0,
+  );
+
   return (
-    <main className="mx-auto max-w-6xl p-6">
+    <div className="space-y-8">
       <PageHeader
+        eyebrow="חיוב חודשי"
         title="קבוצות למידה"
-        subtitle="ניהול קבוצות, חברוֹת והחיוב החודשי"
-        className="mb-8"
+        subtitle="ניהול קבוצות, חברוֹת והחיוב החודשי החוזר — במקום אחד."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
-        <section>
+      {/* Overview hero — aggregate KPIs so the page never opens on a void. */}
+      {groups.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <StatCard
+            label="קבוצות פעילות"
+            value={activeGroups.length}
+            hint={
+              groups.length > activeGroups.length
+                ? `${groups.length - activeGroups.length} לא פעילות`
+                : 'כל הקבוצות פעילות'
+            }
+            icon={Layers}
+            tone="primary"
+          />
+          <StatCard
+            label="חברוֹת רשומות"
+            value={totalMembers}
+            hint="סך החברוֹת הפעילות בכל הקבוצות"
+            icon={Users}
+            tone="accent"
+          />
+          <StatCard
+            label="הכנסה חודשית צפויה"
+            value={formatShekels(projectedMonthly)}
+            hint="חברוֹת פעילות × מחיר הקבוצה"
+            icon={Wallet}
+            tone="success"
+            className="col-span-2 lg:col-span-1"
+          />
+        </div>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+        {/* Group list */}
+        <section className="space-y-4">
+          <div className="flex items-end justify-between gap-3">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+              כל הקבוצות
+              {groups.length > 0 && (
+                <span className="ms-2 tabular-nums text-muted/70">
+                  ({groups.length})
+                </span>
+              )}
+            </h2>
+          </div>
+
           {groups.length === 0 ? (
             <EmptyState
               icon={UsersRound}
               title="עדיין אין קבוצות"
-              description="צרי את הקבוצה הראשונה בטופס שבצד."
+              description="צרי את הקבוצה הראשונה בטופס שלצד — תגדירי שם, מחיר חודשי לחבר ומיקום מפגשים."
             />
           ) : (
             <ul className="grid gap-4 sm:grid-cols-2">
@@ -40,35 +102,59 @@ export default async function GroupsPage() {
                 <li key={g.id}>
                   <Link
                     href={`/groups/${g.id}`}
-                    className="group block rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+                    className="group block h-full rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
                   >
-                    <Card className="h-full transition-[box-shadow,transform] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:shadow-pop motion-reduce:transform-none motion-reduce:transition-none">
-                      <CardContent className="flex h-full flex-col gap-4 p-5">
+                    <Card
+                      className={`relative h-full overflow-hidden transition-[box-shadow,transform] duration-200 ease-out group-hover:-translate-y-0.5 group-hover:shadow-pop motion-reduce:transform-none motion-reduce:transition-none ${
+                        g.active ? '' : 'opacity-80'
+                      }`}
+                    >
+                      {/* warm accent rail at the inline-start edge */}
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-y-0 start-0 w-1 bg-gradient-warm"
+                      />
+                      <CardContent className="flex h-full flex-col gap-4 p-5 ps-6">
                         <div className="flex items-start justify-between gap-3">
-                          <h2 className="text-base font-semibold text-ink">{g.name}</h2>
-                          {!g.active && (
-                            <Badge tone="muted">לא פעילה</Badge>
-                          )}
+                          <div className="flex min-w-0 items-start gap-3">
+                            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary-600 shadow-soft">
+                              <UsersRound className="size-6" aria-hidden="true" />
+                            </span>
+                            <div className="min-w-0">
+                              <h3 className="truncate text-base font-semibold text-ink">
+                                {g.name}
+                              </h3>
+                              {g.location && (
+                                <p className="mt-1 flex items-center gap-1.5 text-sm text-muted">
+                                  <MapPin
+                                    className="size-3.5 shrink-0"
+                                    aria-hidden="true"
+                                  />
+                                  <span className="truncate">{g.location}</span>
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                          {!g.active && <Badge tone="muted">לא פעילה</Badge>}
                         </div>
 
-                        {g.location && (
-                          <p className="flex items-center gap-1.5 text-sm text-muted">
-                            <MapPin className="size-4 shrink-0" aria-hidden="true" />
-                            <span>{g.location}</span>
-                          </p>
-                        )}
-
-                        <div className="mt-auto flex items-end justify-between gap-3 border-t border-line pt-4">
-                          <span className="inline-flex items-center gap-1.5 text-sm text-muted">
-                            <Users className="size-4 shrink-0" aria-hidden="true" />
-                            <span className="tabular-nums">{g.memberCount}</span> חברוֹת
-                          </span>
-                          <span className="text-end">
-                            <span className="text-base font-semibold tabular-nums text-ink">
+                        <div className="mt-auto grid grid-cols-2 gap-3 border-t border-line pt-4">
+                          <div>
+                            <p className="text-xs text-muted">חברוֹת</p>
+                            <p className="mt-0.5 flex items-center gap-1.5 text-lg font-semibold text-ink">
+                              <Users
+                                className="size-4 shrink-0 text-primary-600"
+                                aria-hidden="true"
+                              />
+                              <span className="tabular-nums">{g.memberCount}</span>
+                            </p>
+                          </div>
+                          <div className="text-end">
+                            <p className="text-xs text-muted">מחיר לחבר / חודש</p>
+                            <p className="mt-0.5 text-lg font-bold tabular-nums text-primary-600">
                               {formatShekels(g.monthlyPrice)}
-                            </span>
-                            <span className="text-xs text-muted"> / חודש</span>
-                          </span>
+                            </p>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -79,57 +165,103 @@ export default async function GroupsPage() {
           )}
         </section>
 
+        {/* Create group */}
         <aside>
-          <Card className="lg:sticky lg:top-6">
-            <CardContent className="p-6">
-              <div className="mb-4 flex items-center gap-2">
-                <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary-600">
+          <Card className="overflow-hidden lg:sticky lg:top-24">
+            {/* gradient header band so the form never reads as a bare void */}
+            <div className="bg-gradient-warm px-6 py-5 text-primary-fg">
+              <div className="flex items-center gap-3">
+                <span className="flex size-10 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
                   <Plus className="size-5" aria-hidden="true" />
                 </span>
-                <h2 className="text-lg font-semibold text-ink">קבוצה חדשה</h2>
+                <div>
+                  <h2 className="text-lg font-semibold leading-tight">קבוצה חדשה</h2>
+                  <p className="text-sm text-white/85">הגדירי קבוצה וחיוב חודשי</p>
+                </div>
               </div>
+            </div>
 
-              <form action={createGroupAction} className="space-y-4">
+            <CardContent className="p-6">
+              <form action={createGroupAction} className="space-y-5">
                 <div className="space-y-1.5">
                   <Label htmlFor="name" required>
                     שם הקבוצה
                   </Label>
-                  <Input id="name" name="name" required placeholder="למשל: מתמטיקה כיתה ח׳" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="monthlyPrice" required>
-                    מחיר חודשי (₪)
-                  </Label>
                   <Input
-                    id="monthlyPrice"
-                    name="monthlyPrice"
-                    type="number"
-                    min="0"
-                    step="1"
+                    id="name"
+                    name="name"
                     required
-                    placeholder="300"
-                    className="tabular-nums"
+                    placeholder="למשל: מתמטיקה כיתה ח׳"
                   />
                 </div>
+
+                {/* Prominent pricing field — money per member, integer shekels. */}
+                <div className="space-y-1.5 rounded-2xl border border-primary-100 bg-primary-soft/40 p-4">
+                  <Label
+                    htmlFor="monthlyPrice"
+                    required
+                    className="flex items-center gap-1.5"
+                  >
+                    <Banknote
+                      className="size-4 text-primary-600"
+                      aria-hidden="true"
+                    />
+                    מחיר חודשי לחבר (₪)
+                  </Label>
+                  <div className="relative">
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-y-0 end-3.5 flex items-center text-base font-medium text-muted"
+                    >
+                      ₪
+                    </span>
+                    <Input
+                      id="monthlyPrice"
+                      name="monthlyPrice"
+                      type="number"
+                      inputMode="numeric"
+                      min="0"
+                      step="1"
+                      required
+                      placeholder="300"
+                      className="pe-9 text-lg font-semibold tabular-nums"
+                    />
+                  </div>
+                  <p className="text-xs text-muted">
+                    כל חברה תחויב בסכום זה ב-1 לחודש. שקלים שלמים בלבד.
+                  </p>
+                </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="location" required>
                     מיקום
                   </Label>
-                  <Input id="location" name="location" required placeholder="כתובת המפגשים" />
+                  <Input
+                    id="location"
+                    name="location"
+                    required
+                    placeholder="כתובת המפגשים"
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="description">תיאור (אופציונלי)</Label>
-                  <Textarea id="description" name="description" rows={3} placeholder="פרטים נוספים" />
+                  <Textarea
+                    id="description"
+                    name="description"
+                    rows={3}
+                    placeholder="פרטים נוספים"
+                  />
                 </div>
-                <Button type="submit" className="w-full">
+                <Button type="submit" variant="gradient" className="w-full">
                   <Plus className="size-4" aria-hidden="true" />
                   צרי קבוצה
+                  <ArrowLeft className="size-4" aria-hidden="true" />
                 </Button>
               </form>
             </CardContent>
           </Card>
         </aside>
       </div>
-    </main>
+    </div>
   );
 }
