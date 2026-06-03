@@ -94,7 +94,15 @@ export default async function GroupsPage() {
             <EmptyState
               icon={UsersRound}
               title="עדיין אין קבוצות"
-              description="צרי את הקבוצה הראשונה בטופס שלצד — תגדירי שם, מחיר חודשי לחבר ומיקום מפגשים."
+              description="צרי את הקבוצה הראשונה — תגדירי שם, מחיר חודשי לחבר ומיקום מפגשים."
+              action={
+                <Link href="#new-group">
+                  <Button size="lg">
+                    <Plus className="size-4" aria-hidden="true" />
+                    צרי קבוצה ראשונה
+                  </Button>
+                </Link>
+              }
             />
           ) : (
             <ul className="grid gap-4 sm:grid-cols-2">
@@ -166,17 +174,29 @@ export default async function GroupsPage() {
         </section>
 
         {/* Create group */}
-        <aside>
+        <aside id="new-group" className="scroll-mt-24">
           <Card className="overflow-hidden lg:sticky lg:top-24">
-            {/* gradient header band so the form never reads as a bare void */}
-            <div className="bg-gradient-warm px-6 py-5 text-primary-fg">
-              <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-2xl bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
+            {/* Gradient header band so the form never reads as a bare void.
+               The warm gradient runs honey→peach where white text would drop
+               below AA, so a darkening scrim (deep terracotta→transparent,
+               anchored to the text's inline-start) sits over the gradient and
+               under the content — keeping white text ≥4.5:1 across the band. */}
+            <div className="relative isolate overflow-hidden bg-gradient-warm px-6 py-5 text-primary-fg">
+              <span
+                aria-hidden="true"
+                className="absolute inset-0 -z-10 bg-[linear-gradient(to_left,rgba(35,16,6,0.34)_0%,rgba(35,16,6,0.46)_45%,rgba(35,16,6,0.52)_100%)]"
+              />
+              <span
+                aria-hidden="true"
+                className="texture-dots absolute inset-0 -z-10 opacity-60"
+              />
+              <div className="relative flex items-center gap-3">
+                <span className="flex size-10 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30 backdrop-blur-sm">
                   <Plus className="size-5" aria-hidden="true" />
                 </span>
                 <div>
                   <h2 className="text-lg font-semibold leading-tight">קבוצה חדשה</h2>
-                  <p className="text-sm text-white/85">הגדירי קבוצה וחיוב חודשי</p>
+                  <p className="text-sm text-white/90">הגדירי קבוצה וחיוב חודשי</p>
                 </div>
               </div>
             </div>
@@ -252,7 +272,10 @@ export default async function GroupsPage() {
                     placeholder="פרטים נוספים"
                   />
                 </div>
-                <Button type="submit" variant="gradient" className="w-full">
+                {/* Solid terracotta (white-on-#b5471f = 5.4:1, AA) rather than
+                   the warm-gradient variant, whose honey/peach midpoint drops
+                   white text below AA on a wide button. */}
+                <Button type="submit" size="lg" className="w-full">
                   <Plus className="size-4" aria-hidden="true" />
                   צרי קבוצה
                   <ArrowLeft className="size-4" aria-hidden="true" />

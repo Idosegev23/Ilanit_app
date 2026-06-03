@@ -215,7 +215,7 @@ export default async function GroupBillingRosterPage({
                           <input type="hidden" name="billingId" value={r.billingId} />
                           <input type="hidden" name="groupId" value={id} />
                           <input type="hidden" name="month" value={month} />
-                          <Button type="submit" variant="ghost" size="sm">
+                          <Button type="submit" variant="ghost" size="md">
                             <Undo2 className="size-4" aria-hidden="true" />
                             ביטול סימון
                           </Button>
@@ -235,7 +235,7 @@ export default async function GroupBillingRosterPage({
                             id={`method-${r.billingId}`}
                             name="method"
                             defaultValue="bit"
-                            className="h-9 w-auto py-1.5 text-sm"
+                            className="w-auto text-sm"
                           >
                             {METHODS.map((m) => (
                               <option key={m.value} value={m.value}>
@@ -243,7 +243,7 @@ export default async function GroupBillingRosterPage({
                               </option>
                             ))}
                           </Select>
-                          <Button type="submit" size="sm">
+                          <Button type="submit" size="md">
                             <Receipt className="size-4" aria-hidden="true" />
                             סמני כשולם + קבלה
                           </Button>

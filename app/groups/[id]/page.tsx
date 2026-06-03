@@ -265,7 +265,7 @@ export default async function GroupDetailPage({
                       <Button
                         type="submit"
                         variant="ghost"
-                        size="sm"
+                        size="md"
                         aria-label={`הסרת ${m.name} מהקבוצה`}
                       >
                         <UserMinus className="size-4" aria-hidden="true" />
