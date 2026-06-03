@@ -2,9 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Ilanit design system — "Warm & Personal".
+  Palette tokens live here as CSS vars and are mirrored in tailwind.config.ts.
+  Contrast verified ≥ 4.5:1 for text/bg pairs (ink on cream/surface; primary-fg
+  on primary; semantic text on soft backgrounds).
+*/
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  /* Surfaces & text */
+  --color-cream: #fbf6f0; /* page background */
+  --color-surface: #ffffff; /* cards */
+  --color-ink: #2e2521; /* primary text — ~13:1 on cream */
+  --color-muted: #6f6157; /* secondary text — ~4.8:1 on cream */
+  --color-line: #eadfd2; /* borders */
+
+  /* Primary — terracotta */
+  --color-primary: #b84e26; /* 500 — white text ~4.7:1 */
+  --color-primary-600: #9e4220; /* hover — white text ~6:1 */
+  --color-primary-fg: #ffffff;
+  --color-primary-50: #fbf0ea;
+  --color-primary-100: #f6dfd2;
+  --color-primary-200: #eec0a8;
+  --color-primary-300: #e29b78;
+  --color-primary-soft: #fbeee4;
+
+  /* Accent — honey */
+  --color-accent: #c98a2b;
+  --color-accent-text: #8a5e12; /* readable on light/soft bg */
+  --color-accent-soft: #fbf1de;
+
+  /* Semantic (text-safe: darkened from the brief so 12px text on the soft bg
+     and on white both clear WCAG AA ≥ 4.5:1 — see contract "darken if fails") */
+  --color-success: #3d6341; /* on success-soft ≈ 5.9:1, on white ≈ 6.9:1 */
+  --color-success-soft: #e7f0e7;
+  --color-warning: #8a5e12; /* on warning-soft ≈ 5.1:1, on white ≈ 5.7:1 */
+  --color-warning-soft: #fbf1de;
+  --color-danger: #c0392b;
+  --color-danger-soft: #fbe7e4;
+
+  /* Focus ring */
+  --color-ring: #b84e26;
+
+  /* Back-compat aliases for the old slate/indigo design */
+  --background: var(--color-cream);
+  --foreground: var(--color-ink);
 }
 
 html {
@@ -12,11 +53,55 @@ html {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background-color: var(--color-cream);
+  color: var(--color-ink);
   font-family: var(--font-heebo), system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 * {
   box-sizing: border-box;
+}
+
+@layer base {
+  h1,
+  h2,
+  h3,
+  h4 {
+    color: var(--color-ink);
+    font-weight: 700;
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+
+  label {
+    font-weight: 500;
+  }
+
+  /* Consistent, visible keyboard focus everywhere. */
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-ring);
+    border-radius: 4px;
+  }
+
+  /* Keep technical strings (phones, emails, times) left-to-right inside RTL. */
+  [dir='ltr'] {
+    unicode-bidi: isolate;
+  }
+}
+
+/* Respect users who prefer less motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
