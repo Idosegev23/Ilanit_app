@@ -1,27 +1,38 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Nav } from '@/components/ui/nav';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  ChevronRight,
+  Phone,
+  Mail,
+  CircleDollarSign,
+  Clock,
+  StickyNote,
+  CalendarDays,
+  ReceiptText,
+  Download,
+  Users,
+  Archive,
+} from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card, CardHeader, CardTitle, CardBody } from '@/components/ui/card';
+import { Badge, StatusPill, type StatusKind } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  TableNumCell,
+} from '@/components/ui/table';
 import { studentFileData } from '@/lib/students';
 import { formatShekels } from '@/lib/utils';
 import { formatILDateTime } from '@/lib/time';
 import type { Lesson, Payment, Receipt, GroupBilling } from '@/db/schema';
 
 export const dynamic = 'force-dynamic';
-
-const LESSON_STATUS_LABEL: Record<Lesson['status'], string> = {
-  pending: 'ממתין',
-  confirmed: 'מאושר',
-  completed: 'הושלם',
-  rejected: 'נדחה',
-  cancelled: 'בוטל',
-};
-
-const PAYMENT_STATUS_LABEL: Record<Payment['status'], string> = {
-  due: 'חוב',
-  paid: 'שולם',
-  waived: 'בוטל חיוב',
-};
 
 const METHOD_LABEL: Record<string, string> = {
   bit: 'ביט',
@@ -32,8 +43,7 @@ const METHOD_LABEL: Record<string, string> = {
 
 function monthLabel(month: GroupBilling['month']): string {
   // month is a date string (yyyy-MM-dd, first of month).
-  const str = String(month);
-  return str.slice(0, 7); // yyyy-MM
+  return String(month).slice(0, 7); // yyyy-MM
 }
 
 // Full client file: details + default price, lesson history (all statuses),
@@ -52,186 +62,317 @@ export default async function StudentFilePage({
   const paymentByLesson = new Map<string, Payment>(payments.map((p) => [p.lessonId, p]));
 
   return (
-    <div>
-      <Nav />
-      <main className="mx-auto max-w-4xl space-y-6 p-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">{student.name}</h1>
-            <p className="text-sm text-slate-500" dir="ltr">
-              {student.phone}
-              {student.email ? ` · ${student.email}` : ''}
-            </p>
-          </div>
-          <Link href="/students" className="text-sm text-brand hover:underline">
-            ← לרשימת התלמידים
+    <div className="space-y-6">
+      <PageHeader
+        title={student.name}
+        subtitle="תיק לקוח"
+        actions={
+          <Link href="/students">
+            <Button variant="secondary" size="sm">
+              {/* RTL back: chevron points to the end (left edge of content flow) */}
+              <ChevronRight className="size-4" aria-hidden="true" />
+              לרשימת התלמידים
+            </Button>
           </Link>
-        </div>
+        }
+      />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>פרטים</CardTitle>
-          </CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3 text-sm text-slate-700">
-            <div>
-              מחיר ברירת מחדל:{' '}
-              <span className="font-medium">
-                {student.defaultPrice != null ? formatShekels(student.defaultPrice) : '—'}
-              </span>
-            </div>
-            <div>
-              משך שיעור: <span className="font-medium">{student.defaultDurationMin} דק׳</span>
-            </div>
-            {student.notes ? <div className="col-span-2">הערות: {student.notes}</div> : null}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>היסטוריית שיעורים</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {lessons.length === 0 ? (
-              <p className="text-sm text-slate-500">אין שיעורים עדיין.</p>
+      {/* ── פרטים ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>פרטים</CardTitle>
+        </CardHeader>
+        <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <DetailRow icon={Phone} label="טלפון">
+            <span dir="ltr" className="tabular-nums">
+              {student.phone}
+            </span>
+          </DetailRow>
+          <DetailRow icon={Mail} label="דוא״ל">
+            {student.email ? (
+              <a
+                href={`mailto:${student.email}`}
+                dir="ltr"
+                className="rounded text-primary-600 underline-offset-2 transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                {student.email}
+              </a>
             ) : (
-              <ul className="divide-y divide-slate-100">
+              <span className="text-muted">—</span>
+            )}
+          </DetailRow>
+          <DetailRow icon={CircleDollarSign} label="מחיר ברירת מחדל">
+            <span className="tabular-nums font-medium text-ink">
+              {student.defaultPrice != null ? formatShekels(student.defaultPrice) : '—'}
+            </span>
+          </DetailRow>
+          <DetailRow icon={Clock} label="משך שיעור">
+            <span className="tabular-nums">{student.defaultDurationMin} דק׳</span>
+          </DetailRow>
+          {student.notes ? (
+            <div className="sm:col-span-2">
+              <DetailRow icon={StickyNote} label="הערות">
+                <span className="whitespace-pre-wrap">{student.notes}</span>
+              </DetailRow>
+            </div>
+          ) : null}
+          {student.archived ? (
+            <div className="sm:col-span-2">
+              <Badge tone="muted">
+                <Archive className="size-3.5" aria-hidden="true" />
+                התלמיד בארכיון
+              </Badge>
+            </div>
+          ) : null}
+        </CardBody>
+      </Card>
+
+      {/* ── שיעורים ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>שיעורים</CardTitle>
+        </CardHeader>
+        <CardBody>
+          {lessons.length === 0 ? (
+            <EmptyState
+              icon={CalendarDays}
+              title="אין שיעורים עדיין"
+              description="שיעורים יופיעו כאן לאחר תיאום או יצירה ידנית."
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>מועד</TableHead>
+                  <TableHead>סטטוס שיעור</TableHead>
+                  <TableHead className="text-end">מחיר</TableHead>
+                  <TableHead>תשלום</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {lessons.map((l: Lesson) => {
                   const pay = paymentByLesson.get(l.id);
                   return (
-                    <li key={l.id} className="flex items-center justify-between py-2 text-sm">
-                      <span className="text-slate-700">{formatILDateTime(l.startsAt)}</span>
-                      <span className="flex items-center gap-3">
-                        <span className="text-slate-500">{LESSON_STATUS_LABEL[l.status]}</span>
+                    <TableRow key={l.id}>
+                      <TableCell>{formatILDateTime(l.startsAt)}</TableCell>
+                      <TableCell>
+                        <StatusPill status={l.status as StatusKind} />
+                      </TableCell>
+                      <TableNumCell>
                         {l.price != null ? (
-                          <span className="text-slate-600">{formatShekels(l.price)}</span>
-                        ) : null}
+                          <span className="font-medium">{formatShekels(l.price)}</span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </TableNumCell>
+                      <TableCell>
                         {pay ? (
-                          <span
-                            className={
-                              pay.status === 'paid'
-                                ? 'text-green-600'
-                                : pay.status === 'due'
-                                  ? 'text-red-600'
-                                  : 'text-slate-500'
-                            }
-                          >
-                            {PAYMENT_STATUS_LABEL[pay.status]}
-                          </span>
-                        ) : null}
-                      </span>
-                    </li>
+                          <StatusPill status={pay.status as StatusKind} />
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+              </TableBody>
+            </Table>
+          )}
+        </CardBody>
+      </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>היסטוריית תשלומים</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {payments.length === 0 ? (
-              <p className="text-sm text-slate-500">אין תשלומים עדיין.</p>
-            ) : (
-              <ul className="divide-y divide-slate-100">
+      {/* ── תשלומים ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>תשלומים</CardTitle>
+        </CardHeader>
+        <CardBody>
+          {payments.length === 0 ? (
+            <EmptyState
+              icon={CircleDollarSign}
+              title="אין תשלומים עדיין"
+              description="תשלומים נרשמים אוטומטית לאחר השלמת שיעור."
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-end">סכום</TableHead>
+                  <TableHead>סטטוס</TableHead>
+                  <TableHead>אמצעי</TableHead>
+                  <TableHead>שולם בתאריך</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {payments.map((p: Payment) => (
-                  <li key={p.id} className="flex items-center justify-between py-2 text-sm">
-                    <span className="text-slate-700">{formatShekels(p.amount)}</span>
-                    <span className="flex items-center gap-3 text-slate-500">
-                      <span>{PAYMENT_STATUS_LABEL[p.status]}</span>
-                      {p.method ? <span>{METHOD_LABEL[p.method] ?? p.method}</span> : null}
-                      {p.paidAt ? <span>{formatILDateTime(p.paidAt)}</span> : null}
-                    </span>
-                  </li>
+                  <TableRow key={p.id}>
+                    <TableNumCell>
+                      <span className="font-medium">{formatShekels(p.amount)}</span>
+                    </TableNumCell>
+                    <TableCell>
+                      <StatusPill status={p.status as StatusKind} />
+                    </TableCell>
+                    <TableCell>
+                      {p.method ? (
+                        <span className="text-muted">{METHOD_LABEL[p.method] ?? p.method}</span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {p.paidAt ? (
+                        formatILDateTime(p.paidAt)
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+              </TableBody>
+            </Table>
+          )}
+        </CardBody>
+      </Card>
 
+      {/* ── ארכיון קבלות ── */}
+      <Card>
+        <CardHeader>
+          <CardTitle>ארכיון קבלות</CardTitle>
+        </CardHeader>
+        <CardBody>
+          {receipts.length === 0 ? (
+            <EmptyState
+              icon={ReceiptText}
+              title="אין קבלות שמורות"
+              description="כל קבלה שמופקת נשמרת כאן כעותק PDF להורדה."
+            />
+          ) : (
+            <ul className="divide-y divide-line">
+              {receipts.map((r: Receipt) => (
+                <li
+                  key={r.id}
+                  className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-600">
+                      <ReceiptText className="size-5" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-medium text-ink">
+                        קבלה מס׳{' '}
+                        <span dir="ltr" className="tabular-nums">
+                          {r.morningDocNumber}
+                        </span>
+                      </p>
+                      <p className="text-sm tabular-nums text-muted">{formatShekels(r.amount)}</p>
+                    </div>
+                  </div>
+                  <a
+                    href={r.pdfUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    download
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-line bg-surface px-3 text-sm font-medium text-ink shadow-soft transition-colors duration-150 hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-cream focus-visible:ring-primary"
+                  >
+                    <Download className="size-4" aria-hidden="true" />
+                    הורדת PDF
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* ── קבוצות וחיוב חודשי ── */}
+      {(memberships.length > 0 || groupBilling.length > 0) && (
         <Card>
           <CardHeader>
-            <CardTitle>ארכיון קבלות</CardTitle>
+            <CardTitle>קבוצות וחיוב חודשי</CardTitle>
           </CardHeader>
-          <CardContent>
-            {receipts.length === 0 ? (
-              <p className="text-sm text-slate-500">אין קבלות שמורות.</p>
-            ) : (
-              <ul className="divide-y divide-slate-100">
-                {receipts.map((r: Receipt) => (
-                  <li key={r.id} className="flex items-center justify-between py-2 text-sm">
-                    <span className="text-slate-700">
-                      קבלה מס׳ {r.morningDocNumber} · {formatShekels(r.amount)}
-                    </span>
-                    <a
-                      href={r.pdfUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      download
-                      className="text-brand hover:underline"
+          <CardBody className="space-y-6">
+            {memberships.length > 0 ? (
+              <div className="space-y-3">
+                <p className="flex items-center gap-2 text-sm font-medium text-muted">
+                  <Users className="size-4" aria-hidden="true" />
+                  חברות בקבוצות
+                </p>
+                <ul className="flex flex-wrap gap-2">
+                  {memberships.map((m) => (
+                    <li
+                      key={m.groupId}
+                      className="inline-flex items-center gap-2 rounded-xl border border-line bg-cream/50 px-3 py-2 text-sm"
                     >
-                      הורדת PDF
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+                      <span className="font-medium text-ink">{m.groupName}</span>
+                      <Badge tone={m.active ? 'success' : 'muted'}>
+                        {m.active ? 'פעילה' : 'לא פעילה'}
+                      </Badge>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
 
-        {(memberships.length > 0 || groupBilling.length > 0) && (
-          <Card>
-            <CardHeader>
-              <CardTitle>קבוצות וחיוב חודשי</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {memberships.length > 0 ? (
-                <div>
-                  <p className="mb-1 text-sm font-medium text-slate-700">חברות בקבוצות</p>
-                  <ul className="space-y-1 text-sm text-slate-600">
-                    {memberships.map((m) => (
-                      <li key={m.groupId} className="flex items-center justify-between">
-                        <span>{m.groupName}</span>
-                        <span className={m.active ? 'text-green-600' : 'text-slate-400'}>
-                          {m.active ? 'פעילה' : 'לא פעילה'}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-
-              {groupBilling.length > 0 ? (
-                <div>
-                  <p className="mb-1 text-sm font-medium text-slate-700">חיובים חודשיים</p>
-                  <ul className="space-y-1 text-sm text-slate-600">
+            {groupBilling.length > 0 ? (
+              <div className="space-y-3">
+                <p className="flex items-center gap-2 text-sm font-medium text-muted">
+                  <CircleDollarSign className="size-4" aria-hidden="true" />
+                  חיובים חודשיים
+                </p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>חודש</TableHead>
+                      <TableHead className="text-end">סכום</TableHead>
+                      <TableHead>סטטוס</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {groupBilling.map((b: GroupBilling) => (
-                      <li key={b.id} className="flex items-center justify-between">
-                        <span>
-                          {monthLabel(b.month)} · {formatShekels(b.amount)}
-                        </span>
-                        <span
-                          className={
-                            b.status === 'paid'
-                              ? 'text-green-600'
-                              : b.status === 'due'
-                                ? 'text-red-600'
-                                : 'text-slate-500'
-                          }
-                        >
-                          {PAYMENT_STATUS_LABEL[b.status]}
-                        </span>
-                      </li>
+                      <TableRow key={b.id}>
+                        <TableCell>
+                          <span dir="ltr" className="tabular-nums">
+                            {monthLabel(b.month)}
+                          </span>
+                        </TableCell>
+                        <TableNumCell>
+                          <span className="font-medium">{formatShekels(b.amount)}</span>
+                        </TableNumCell>
+                        <TableCell>
+                          <StatusPill status={b.status as StatusKind} />
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </ul>
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-        )}
-      </main>
+                  </TableBody>
+                </Table>
+              </div>
+            ) : null}
+          </CardBody>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+// Small labeled detail row with a tinted lucide icon chip.
+function DetailRow({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' | 'false' }>;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-600">
+        <Icon className="size-4" aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-xs font-medium text-muted">{label}</p>
+        <div className="mt-0.5 text-sm text-ink">{children}</div>
+      </div>
     </div>
   );
 }
