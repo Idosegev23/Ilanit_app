@@ -135,7 +135,7 @@ export function LessonDialog({
             type="button"
             onClick={onClose}
             aria-label="סגור"
-            className="flex size-9 shrink-0 items-center justify-center rounded-xl text-muted transition-colors duration-200 ease-out hover:bg-primary-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors duration-200 ease-out hover:bg-primary-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <X className="size-5" aria-hidden="true" />
           </button>

@@ -108,7 +108,7 @@ function LessonItem({
         {lesson.status === 'pending' && (
           <>
             <Button
-              size="sm"
+              size="md"
               loading={busy}
               onClick={() => onAction(lesson.id, () => approveLesson(lesson.id))}
             >
@@ -116,7 +116,7 @@ function LessonItem({
               אשר
             </Button>
             <Button
-              size="sm"
+              size="md"
               variant="secondary"
               disabled={busy}
               onClick={() => onAction(lesson.id, () => rejectLesson(lesson.id))}
@@ -128,7 +128,7 @@ function LessonItem({
         )}
         {lesson.status === 'confirmed' && (
           <Button
-            size="sm"
+            size="md"
             variant="danger"
             loading={busy}
             onClick={() => onAction(lesson.id, () => cancelLesson(lesson.id))}
@@ -233,7 +233,7 @@ export function LessonsView({
                   aria-pressed={active}
                   onClick={() => setFilter(f.key)}
                   className={cn(
-                    'rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+                    'inline-flex min-h-11 items-center rounded-full px-4 py-2.5 text-sm font-medium transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
                     active
                       ? 'bg-primary text-primary-fg shadow-soft'
                       : 'text-muted hover:bg-primary-50 hover:text-ink',
@@ -309,7 +309,7 @@ export function LessonsView({
                 aria-selected={active}
                 onClick={() => setTab(key)}
                 className={cn(
-                  'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  'flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                   active
                     ? 'bg-surface text-ink shadow-soft'
                     : 'text-muted hover:text-ink',
