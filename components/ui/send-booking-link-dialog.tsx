@@ -7,6 +7,7 @@ import {
   UserCheck,
   UserPlus,
   Search,
+  SearchX,
   CheckCircle2,
   AlertCircle,
   Copy,
@@ -27,6 +28,27 @@ export interface BookingLinkStudent {
   id: string;
   name: string;
   phone: string;
+}
+
+// Deterministic warm avatar tone + initials (matches the students directory).
+const AVATAR_TONES = [
+  'bg-primary-soft text-primary-600',
+  'bg-accent-soft text-accent-text',
+  'bg-success-soft text-success',
+  'bg-warning-soft text-warning',
+] as const;
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2);
+  return parts[0][0] + parts[parts.length - 1][0];
+}
+
+function toneFor(name: string): string {
+  let sum = 0;
+  for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i);
+  return AVATAR_TONES[sum % AVATAR_TONES.length];
 }
 
 interface SendBookingLinkDialogProps {
@@ -89,15 +111,52 @@ export function SendBookingLinkDialog({
 
   const closeDialog = React.useCallback(() => setOpen(false), []);
 
-  // Close on Escape.
+  const panelRef = React.useRef<HTMLDivElement>(null);
+
+  // Close on Escape + trap Tab focus inside the dialog (so keyboard users can't
+  // tab out into the page behind the scrim).
   React.useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') closeDialog();
+      if (e.key === 'Escape') {
+        closeDialog();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const activeEl = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && activeEl === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && activeEl === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open, closeDialog]);
+
+  // Move initial focus to the first interactive control inside the dialog.
+  React.useEffect(() => {
+    if (!open) return;
+    const id = requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const target = panel.querySelector<HTMLElement>(
+        'input:not([disabled]), [role="tab"][aria-selected="true"], button:not([disabled])',
+      );
+      target?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open, resultUrl, tab]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -182,30 +241,47 @@ export function SendBookingLinkDialog({
           <button
             type="button"
             aria-label="סגור"
-            className="absolute inset-0 bg-ink/40"
+            className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]"
             onClick={closeDialog}
           />
 
-          <div className="relative z-10 w-full max-w-md rounded-t-2xl border border-line bg-surface shadow-pop sm:rounded-2xl">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-line p-5 pb-4">
-              <h2 id="send-link-title" className="text-lg font-semibold text-ink">
-                שליחת לינק לתיאום
-              </h2>
-              <button
-                type="button"
-                onClick={closeDialog}
-                aria-label="סגור חלון"
-                className="flex size-9 items-center justify-center rounded-xl text-muted transition-colors duration-200 hover:bg-primary-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <X className="size-5" aria-hidden="true" />
-              </button>
+          <div
+            ref={panelRef}
+            className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-line bg-surface shadow-pop sm:rounded-3xl"
+          >
+            {/* Gradient header band */}
+            <div className="relative shrink-0 overflow-hidden bg-gradient-warm px-6 py-5">
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -end-8 -top-10 size-32 rounded-full bg-white/15 blur-2xl"
+              />
+              <div className="relative flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex size-11 items-center justify-center rounded-2xl bg-white/20 text-white ring-1 ring-white/30">
+                    <Send className="size-5" aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h2 id="send-link-title" className="text-lg font-bold text-white">
+                      שליחת לינק לתיאום
+                    </h2>
+                    <p className="text-sm text-white/80">לינק אישי לתיאום שיעור בוואטסאפ</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeDialog}
+                  aria-label="סגור חלון"
+                  className="flex size-9 items-center justify-center rounded-xl text-white/90 transition-colors duration-200 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                >
+                  <X className="size-5" aria-hidden="true" />
+                </button>
+              </div>
             </div>
 
             {/* Success state */}
             {resultUrl ? (
-              <div className="flex flex-col items-center gap-4 p-6 text-center">
-                <span className="flex size-14 items-center justify-center rounded-full bg-success-soft text-success">
+              <div className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto p-6 text-center">
+                <span className="flex size-16 items-center justify-center rounded-full bg-success-soft text-success ring-4 ring-success-soft/40">
                   <CheckCircle2 className="size-8" aria-hidden="true" />
                 </span>
                 <div className="space-y-1">
@@ -218,11 +294,11 @@ export function SendBookingLinkDialog({
                       : 'שליחת הוואטסאפ נכשלה — אפשר להעתיק את הלינק ולשלוח ידנית.'}
                   </p>
                 </div>
-                <div className="flex w-full items-center gap-2 rounded-xl border border-line bg-cream/60 p-2">
-                  <span dir="ltr" className="flex-1 truncate px-2 text-sm text-ink" title={resultUrl}>
+                <div className="flex w-full items-center gap-2 rounded-2xl border border-line bg-surface-2/60 p-2 ps-3">
+                  <span dir="ltr" className="flex-1 truncate text-sm text-ink" title={resultUrl}>
                     {resultUrl}
                   </span>
-                  <Button type="button" size="sm" variant="primary" onClick={copyUrl}>
+                  <Button type="button" size="md" variant="primary" onClick={copyUrl}>
                     {copied ? (
                       <Check className="size-4" aria-hidden="true" />
                     ) : (
@@ -241,12 +317,13 @@ export function SendBookingLinkDialog({
                 </div>
               </div>
             ) : (
-              <form onSubmit={submit} className="space-y-4 p-5">
+              <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
                 {/* Tabs */}
                 <div
                   role="tablist"
                   aria-label="בחירת סוג תלמיד"
-                  className="grid grid-cols-2 gap-1 rounded-xl bg-cream p-1"
+                  className="grid grid-cols-2 gap-1.5 rounded-2xl border border-line bg-surface-2/50 p-1.5 shadow-soft"
                 >
                   <button
                     type="button"
@@ -257,10 +334,10 @@ export function SendBookingLinkDialog({
                       setError(null);
                     }}
                     className={cn(
-                      'inline-flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                      'inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                       tab === 'existing'
-                        ? 'bg-surface text-primary-600 shadow-soft'
-                        : 'text-muted hover:text-ink',
+                        ? 'bg-gradient-warm text-white shadow-card'
+                        : 'text-muted hover:bg-primary-50 hover:text-ink',
                     )}
                   >
                     <UserCheck className="size-4" aria-hidden="true" />
@@ -275,10 +352,10 @@ export function SendBookingLinkDialog({
                       setError(null);
                     }}
                     className={cn(
-                      'inline-flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                      'inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                       tab === 'new'
-                        ? 'bg-surface text-primary-600 shadow-soft'
-                        : 'text-muted hover:text-ink',
+                        ? 'bg-gradient-warm text-white shadow-card'
+                        : 'text-muted hover:bg-primary-50 hover:text-ink',
                     )}
                   >
                     <UserPlus className="size-4" aria-hidden="true" />
@@ -309,12 +386,18 @@ export function SendBookingLinkDialog({
                     <div
                       role="listbox"
                       aria-label="תלמידים"
-                      className="max-h-56 overflow-y-auto rounded-xl border border-line"
+                      className="max-h-60 overflow-y-auto rounded-2xl border border-line bg-surface-2/30 p-1.5"
                     >
                       {filtered.length === 0 ? (
-                        <p className="p-4 text-center text-sm text-muted">לא נמצאו תלמידים</p>
+                        <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
+                          <span className="flex size-11 items-center justify-center rounded-full bg-primary-soft/60 text-primary-600 ring-1 ring-primary-100">
+                            <SearchX className="size-5" aria-hidden="true" />
+                          </span>
+                          <p className="text-sm font-medium text-ink">לא נמצאו תלמידים</p>
+                          <p className="text-xs text-muted">נסי שם או מספר טלפון אחר, או הוסיפי תלמיד/ה חדש/ה.</p>
+                        </div>
                       ) : (
-                        <ul className="divide-y divide-line">
+                        <ul className="space-y-1">
                           {filtered.map((s) => {
                             const isSel = selectedId === s.id;
                             return (
@@ -325,14 +408,35 @@ export function SendBookingLinkDialog({
                                   aria-selected={isSel}
                                   onClick={() => setSelectedId(s.id)}
                                   className={cn(
-                                    'flex w-full items-center justify-between gap-3 px-4 py-3 text-start transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
-                                    isSel ? 'bg-primary-50' : 'hover:bg-cream/60',
+                                    'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+                                    isSel
+                                      ? 'bg-primary-50 ring-1 ring-primary-200'
+                                      : 'hover:bg-surface',
                                   )}
                                 >
-                                  <span className="truncate font-medium text-ink">{s.name}</span>
-                                  <span className="shrink-0 text-sm tabular-nums text-muted" dir="ltr">
-                                    {s.phone}
+                                  <span
+                                    aria-hidden="true"
+                                    className={cn(
+                                      'flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-bold shadow-soft',
+                                      toneFor(s.name),
+                                    )}
+                                  >
+                                    {initials(s.name)}
                                   </span>
+                                  <span className="min-w-0 flex-1">
+                                    <span className="block truncate font-medium text-ink">{s.name}</span>
+                                    <span
+                                      className="block text-xs tabular-nums text-muted"
+                                      dir="ltr"
+                                    >
+                                      {s.phone}
+                                    </span>
+                                  </span>
+                                  {isSel && (
+                                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-fg">
+                                      <Check className="size-3.5" aria-hidden="true" />
+                                    </span>
+                                  )}
                                 </button>
                               </li>
                             );
@@ -406,12 +510,13 @@ export function SendBookingLinkDialog({
                     <span>{error}</span>
                   </div>
                 )}
+                </div>
 
-                <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row">
+                <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-line bg-surface/80 p-5 sm:flex-row">
                   <Button type="button" variant="ghost" onClick={closeDialog} className="sm:flex-1">
                     ביטול
                   </Button>
-                  <Button type="submit" loading={submitting} className="sm:flex-1">
+                  <Button type="submit" loading={submitting} className="sm:flex-[2]">
                     <Send className="size-4" aria-hidden="true" />
                     {submitting ? 'שולח…' : 'שליחת הלינק'}
                   </Button>

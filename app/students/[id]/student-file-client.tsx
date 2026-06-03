@@ -112,7 +112,7 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
       {/* ── Top bar: back + edit ── */}
       <div className="flex items-center justify-between gap-3">
         <Link href="/students">
-          <Button variant="secondary" size="sm">
+          <Button variant="secondary" size="md">
             <ChevronRight className="size-4" aria-hidden="true" />
             לרשימת התלמידים
           </Button>
@@ -121,7 +121,7 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
           student={student}
           settingsDefaultPrice={file.settingsDefaultPrice}
           triggerVariant="secondary"
-          triggerSize="sm"
+          triggerSize="md"
         />
       </div>
 

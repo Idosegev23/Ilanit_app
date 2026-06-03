@@ -7,6 +7,8 @@ import {
   Users,
   Archive,
   Search,
+  SearchX,
+  X,
   CircleDollarSign,
   UserCheck,
   Phone,
@@ -14,6 +16,7 @@ import {
 } from 'lucide-react';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { formatShekels, cn } from '@/lib/utils';
@@ -132,11 +135,17 @@ export function StudentsTable({ students, settingsDefaultPrice }: StudentsTableP
           }
         />
       ) : filtered.length === 0 ? (
-        <Card className="px-6 py-12 text-center">
-          <p className="text-sm text-muted">
-            לא נמצאו תלמידים שתואמים ל״<span className="font-medium text-ink">{query}</span>״.
-          </p>
-        </Card>
+        <EmptyState
+          icon={SearchX}
+          title="לא נמצאו תלמידים תואמים"
+          description={`אין תלמיד/ה שתואם/ת ל״${query}״. נסי שם או מספר טלפון אחר.`}
+          action={
+            <Button type="button" variant="secondary" onClick={() => setQuery('')}>
+              <X className="size-4" aria-hidden="true" />
+              ניקוי החיפוש
+            </Button>
+          }
+        />
       ) : (
         <Card className="overflow-hidden">
           <ul className="divide-y divide-line">

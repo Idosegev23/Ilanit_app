@@ -65,20 +65,57 @@ export function StudentFormDialog({
   const [error, setError] = React.useState<string | null>(null);
   const titleId = React.useId();
 
+  const panelRef = React.useRef<HTMLDivElement>(null);
+
   const close = React.useCallback(() => {
     if (pending) return;
     setOpen(false);
     setError(null);
   }, [pending]);
 
+  // Close on Escape + trap Tab focus inside the dialog so keyboard users can't
+  // tab out into the page behind the scrim.
   React.useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') {
+        close();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const focusable = panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const activeEl = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && activeEl === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && activeEl === last) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open, close]);
+
+  // Move initial focus to the first field when the dialog opens.
+  React.useEffect(() => {
+    if (!open) return;
+    const id = requestAnimationFrame(() => {
+      const panel = panelRef.current;
+      const target = panel?.querySelector<HTMLElement>(
+        'input:not([disabled]), textarea:not([disabled])',
+      );
+      target?.focus();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [open]);
 
   async function onSubmit(formData: FormData) {
     setError(null);
@@ -131,7 +168,10 @@ export function StudentFormDialog({
             onClick={close}
           />
 
-          <div className="relative z-10 flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-line bg-surface shadow-pop sm:rounded-3xl">
+          <div
+            ref={panelRef}
+            className="relative z-10 flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-line bg-surface shadow-pop sm:rounded-3xl"
+          >
             {/* Gradient header band */}
             <div className="relative shrink-0 overflow-hidden bg-gradient-warm px-6 py-5">
               <div
