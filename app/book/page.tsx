@@ -1,20 +1,15 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { BookingForm } from '@/app/book/BookingForm';
 
-// Placeholder public booking page. Feature agent B2 replaces this with the real
-// availability picker + booking form.
+// Public booking page (no login). The interactive availability picker + form
+// lives in the client component; this server component just frames it.
+export const metadata = {
+  title: 'קביעת שיעור — אילנית',
+};
+
 export default function BookPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>קביעת שיעור</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-600">
-            עמוד התיאום בבנייה. כאן תוכלו לבחור מועד פנוי ולקבוע שיעור.
-          </p>
-        </CardContent>
-      </Card>
+    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+      <BookingForm />
     </main>
   );
 }
