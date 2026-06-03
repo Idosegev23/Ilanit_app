@@ -64,7 +64,7 @@ export function AuthLayout({
   return (
     <div
       className={cn(
-        'grid min-h-[100dvh] grid-rows-[auto_1fr] lg:grid-rows-1',
+        'grid min-h-[100dvh] grid-rows-[auto_1fr] overflow-x-hidden lg:grid-rows-1',
         wide
           ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]'
           : 'lg:grid-cols-2',
