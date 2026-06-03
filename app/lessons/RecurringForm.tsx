@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useActionState } from 'react';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Repeat, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -31,11 +31,13 @@ function Field({
   label,
   htmlFor,
   required,
+  hint,
   children,
 }: {
   label: string;
   htmlFor: string;
   required?: boolean;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -43,6 +45,28 @@ function Field({
       <Label htmlFor={htmlFor} required={required}>
         {label}
       </Label>
+      {children}
+      {hint && <p className="text-xs text-muted">{hint}</p>}
+    </div>
+  );
+}
+
+// Section wrapper — groups related fields with a quiet eyebrow + icon.
+function Section({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: typeof Repeat;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-4 rounded-2xl border border-line bg-gradient-tint p-4">
+      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-accent-text">
+        <Icon className="size-4" aria-hidden="true" />
+        {title}
+      </p>
       {children}
     </div>
   );
@@ -74,89 +98,94 @@ export function RecurringForm({
 
   return (
     <form action={formAction} className="space-y-4">
-      <Field label="סוג" htmlFor="rec-kind">
-        <Select
-          id="rec-kind"
-          name="kind"
-          value={kind}
-          onChange={(e) => setKind(e.target.value as 'individual' | 'group')}
-        >
-          <option value="individual">תלמיד יחיד</option>
-          <option value="group">קבוצה</option>
-        </Select>
-      </Field>
-
-      {kind === 'individual' ? (
-        <Field label="תלמיד" htmlFor="rec-student" required>
-          <Select id="rec-student" name="studentId" required>
-            <option value="">— בחר/י —</option>
-            {studentOptions.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
+      <Section icon={Repeat} title="משתתפים">
+        <Field label="סוג" htmlFor="rec-kind">
+          <Select
+            id="rec-kind"
+            name="kind"
+            value={kind}
+            onChange={(e) => setKind(e.target.value as 'individual' | 'group')}
+          >
+            <option value="individual">תלמיד יחיד</option>
+            <option value="group">קבוצה</option>
           </Select>
         </Field>
-      ) : (
-        <Field label="קבוצה" htmlFor="rec-group" required>
-          <Select id="rec-group" name="groupId" required>
-            <option value="">— בחר/י —</option>
-            {groupOptions.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="יום בשבוע" htmlFor="rec-weekday">
-          <Select id="rec-weekday" name="weekday" defaultValue={0}>
-            {WEEKDAYS.map((d) => (
-              <option key={d.value} value={d.value}>
-                {d.label}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="שעה" htmlFor="rec-time" required>
-          <Input id="rec-time" name="startTime" type="time" required />
-        </Field>
-      </div>
+        {kind === 'individual' ? (
+          <Field label="תלמיד" htmlFor="rec-student" required>
+            <Select id="rec-student" name="studentId" required>
+              <option value="">— בחר/י —</option>
+              {studentOptions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        ) : (
+          <Field label="קבוצה" htmlFor="rec-group" required>
+            <Select id="rec-group" name="groupId" required>
+              <option value="">— בחר/י —</option>
+              {groupOptions.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        )}
+      </Section>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Field label="משך (דק׳)" htmlFor="rec-duration">
-          <Input
-            id="rec-duration"
-            name="durationMin"
-            type="number"
-            min={1}
-            className="tabular-nums"
-            placeholder="60"
-          />
-        </Field>
-        <Field label="מחיר (₪)" htmlFor="rec-price">
-          <Input
-            id="rec-price"
-            name="price"
-            type="number"
-            min={0}
-            step={1}
-            className="tabular-nums"
-          />
-        </Field>
-        <Field label="אופק (ימים)" htmlFor="rec-horizon">
-          <Input
-            id="rec-horizon"
-            name="horizonDays"
-            type="number"
-            min={1}
-            className="tabular-nums"
-            placeholder="30"
-          />
-        </Field>
-      </div>
+      <Section icon={CalendarClock} title="מועד, משך ותמחור">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="יום בשבוע" htmlFor="rec-weekday">
+            <Select id="rec-weekday" name="weekday" defaultValue={0}>
+              {WEEKDAYS.map((d) => (
+                <option key={d.value} value={d.value}>
+                  {d.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="שעה" htmlFor="rec-time" required>
+            <Input id="rec-time" name="startTime" type="time" required />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <Field label="משך (דק׳)" htmlFor="rec-duration">
+            <Input
+              id="rec-duration"
+              name="durationMin"
+              type="number"
+              min={1}
+              className="tabular-nums"
+              placeholder="60"
+            />
+          </Field>
+          <Field label="מחיר (₪)" htmlFor="rec-price">
+            <Input
+              id="rec-price"
+              name="price"
+              type="number"
+              min={0}
+              step={1}
+              inputMode="numeric"
+              className="tabular-nums"
+            />
+          </Field>
+          <Field label="אופק (ימים)" htmlFor="rec-horizon">
+            <Input
+              id="rec-horizon"
+              name="horizonDays"
+              type="number"
+              min={1}
+              className="tabular-nums"
+              placeholder="30"
+            />
+          </Field>
+        </div>
+      </Section>
 
       {state.error && (
         <p className="flex items-center gap-1.5 text-sm text-danger" role="alert">
@@ -171,7 +200,7 @@ export function RecurringForm({
         </p>
       )}
 
-      <Button type="submit" loading={pending} className="w-full">
+      <Button type="submit" variant="gradient" size="lg" loading={pending} className="w-full">
         {pending ? 'יוצר…' : 'צור סדרה'}
       </Button>
     </form>

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useActionState } from 'react';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, User, CalendarClock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,11 +19,13 @@ function Field({
   label,
   htmlFor,
   required,
+  hint,
   children,
 }: {
   label: string;
   htmlFor: string;
   required?: boolean;
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -31,6 +33,29 @@ function Field({
       <Label htmlFor={htmlFor} required={required}>
         {label}
       </Label>
+      {children}
+      {hint && <p className="text-xs text-muted">{hint}</p>}
+    </div>
+  );
+}
+
+// Section wrapper — groups related fields with a quiet eyebrow + icon so the
+// form reads as a crafted, sectioned flow rather than a flat field stack.
+function Section({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: typeof User;
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-4 rounded-2xl border border-line bg-gradient-tint p-4">
+      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-accent-text">
+        <Icon className="size-4" aria-hidden="true" />
+        {title}
+      </p>
       {children}
     </div>
   );
@@ -52,53 +77,63 @@ export function ManualLessonForm({ onSuccess }: { onSuccess?: () => void }) {
 
   return (
     <form action={formAction} className="space-y-4">
-      <Field label="שם תלמיד" htmlFor="manual-name" required>
-        <Input id="manual-name" name="name" required />
-      </Field>
-      <Field label="טלפון" htmlFor="manual-phone" required>
-        <Input
-          id="manual-phone"
-          name="phone"
-          inputMode="tel"
-          dir="ltr"
-          className="text-start"
-          required
-          placeholder="0501234567"
-        />
-      </Field>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="תאריך" htmlFor="manual-date" required>
-          <Input id="manual-date" name="date" type="date" required />
+      <Section icon={User} title="פרטי התלמיד">
+        <Field label="שם תלמיד" htmlFor="manual-name" required>
+          <Input id="manual-name" name="name" required />
         </Field>
-        <Field label="שעה" htmlFor="manual-time" required>
-          <Input id="manual-time" name="time" type="time" required />
-        </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="משך (דק׳)" htmlFor="manual-duration">
+        <Field label="טלפון" htmlFor="manual-phone" required>
           <Input
-            id="manual-duration"
-            name="durationMin"
-            type="number"
-            min={1}
-            className="tabular-nums"
-            placeholder="60"
+            id="manual-phone"
+            name="phone"
+            inputMode="tel"
+            dir="ltr"
+            className="text-start"
+            required
+            placeholder="0501234567"
           />
         </Field>
-        <Field label="מחיר (₪)" htmlFor="manual-price">
-          <Input
-            id="manual-price"
-            name="price"
-            type="number"
-            min={0}
-            step={1}
-            className="tabular-nums"
-          />
+      </Section>
+
+      <Section icon={CalendarClock} title="מועד ותמחור">
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="תאריך" htmlFor="manual-date" required>
+            <Input id="manual-date" name="date" type="date" required />
+          </Field>
+          <Field label="שעה" htmlFor="manual-time" required>
+            <Input id="manual-time" name="time" type="time" required />
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="משך (דק׳)" htmlFor="manual-duration">
+            <Input
+              id="manual-duration"
+              name="durationMin"
+              type="number"
+              min={1}
+              className="tabular-nums"
+              placeholder="60"
+            />
+          </Field>
+          <Field
+            label="מחיר לשיעור (₪)"
+            htmlFor="manual-price"
+            hint="ריק = מחיר ברירת-המחדל של התלמיד"
+          >
+            <Input
+              id="manual-price"
+              name="price"
+              type="number"
+              min={0}
+              step={1}
+              inputMode="numeric"
+              className="tabular-nums"
+            />
+          </Field>
+        </div>
+        <Field label="הערות" htmlFor="manual-notes">
+          <Textarea id="manual-notes" name="notes" rows={2} />
         </Field>
-      </div>
-      <Field label="הערות" htmlFor="manual-notes">
-        <Textarea id="manual-notes" name="notes" rows={2} />
-      </Field>
+      </Section>
 
       {state.error && (
         <p className="flex items-center gap-1.5 text-sm text-danger" role="alert">
@@ -113,7 +148,7 @@ export function ManualLessonForm({ onSuccess }: { onSuccess?: () => void }) {
         </p>
       )}
 
-      <Button type="submit" loading={pending} className="w-full">
+      <Button type="submit" variant="gradient" size="lg" loading={pending} className="w-full">
         {pending ? 'יוצר…' : 'צור שיעור'}
       </Button>
     </form>

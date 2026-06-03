@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { createPortal } from 'react-dom';
-import { X } from 'lucide-react';
+import { X, CalendarPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // Lightweight accessible modal used by the lessons screen to host the
@@ -115,27 +115,40 @@ export function LessonDialog({
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
         className={cn(
-          'relative z-10 w-full max-w-lg rounded-2xl border border-line bg-surface shadow-pop',
+          'relative z-10 w-full max-w-lg overflow-hidden rounded-3xl border border-line bg-surface shadow-pop',
           'transition-[transform,opacity] duration-200 ease-out',
           visible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-2 scale-[0.98] opacity-0',
         )}
       >
-        <div className="flex items-start justify-between gap-3 border-b border-line p-6 pb-4">
-          <div className="min-w-0">
-            <h2 id={titleId} className="text-lg font-semibold text-ink">
-              {title}
-            </h2>
-            {description && (
-              <p id={descId} className="mt-1 text-sm text-muted">
-                {description}
-              </p>
-            )}
+        <div className="relative flex items-start justify-between gap-3 overflow-hidden border-b border-line bg-gradient-tint p-6 pb-5">
+          {/* soft decorative blob to add depth (non-interactive) */}
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-12 -left-10 size-32 rounded-full bg-gradient-warm opacity-15 blur-2xl"
+          />
+          <div className="relative flex min-w-0 items-start gap-3">
+            <span
+              className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-warm text-primary-fg shadow-card"
+              aria-hidden="true"
+            >
+              <CalendarPlus className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 id={titleId} className="text-lg font-bold text-ink">
+                {title}
+              </h2>
+              {description && (
+                <p id={descId} className="mt-0.5 text-sm text-muted">
+                  {description}
+                </p>
+              )}
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="סגור"
-            className="flex size-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors duration-200 ease-out hover:bg-primary-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="relative flex size-11 shrink-0 items-center justify-center rounded-xl text-muted transition-colors duration-200 ease-out hover:bg-surface hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <X className="size-5" aria-hidden="true" />
           </button>
