@@ -15,6 +15,13 @@
       "when": 1780509671086,
       "tag": "0001_living_stardust",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780511879244,
+      "tag": "0002_shocking_stephen_strange",
+      "breakpoints": true
     }
   ]
 }

@@ -11,19 +11,24 @@ import { cn } from '@/lib/utils';
 // Legacy names kept for back-compat: `default` → primary, `outline` → secondary,
 // `destructive` → danger.
 const buttonVariants = cva(
-  'inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-medium transition-[background-color,box-shadow,color,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-cream focus-visible:ring-primary active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 cursor-pointer',
+  'inline-flex select-none items-center justify-center gap-2 whitespace-nowrap font-medium transition-[background-color,background-image,box-shadow,color,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-cream focus-visible:ring-primary active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 cursor-pointer',
   {
     variants: {
       variant: {
-        primary: 'bg-primary text-primary-fg shadow-soft hover:bg-primary-600',
+        primary:
+          'bg-primary text-primary-fg shadow-card hover:bg-primary-600 hover:-translate-y-px hover:shadow-pop',
+        // Warm gradient CTA — for hero / standout primary actions.
+        gradient:
+          'bg-gradient-warm text-primary-fg shadow-card hover:-translate-y-px hover:shadow-pop hover:brightness-[1.03]',
         secondary:
-          'border border-line bg-surface text-ink shadow-soft hover:bg-primary-50',
+          'border border-line bg-surface text-ink shadow-soft hover:bg-primary-50 hover:border-primary-200',
         ghost: 'text-ink hover:bg-primary-50',
         danger: 'bg-danger text-white shadow-soft hover:brightness-95',
         // Back-compat aliases
-        default: 'bg-primary text-primary-fg shadow-soft hover:bg-primary-600',
+        default:
+          'bg-primary text-primary-fg shadow-card hover:bg-primary-600 hover:-translate-y-px hover:shadow-pop',
         outline:
-          'border border-line bg-surface text-ink shadow-soft hover:bg-primary-50',
+          'border border-line bg-surface text-ink shadow-soft hover:bg-primary-50 hover:border-primary-200',
         destructive: 'bg-danger text-white shadow-soft hover:brightness-95',
       },
       size: {

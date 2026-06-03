@@ -19,7 +19,11 @@ const config: Config = {
       colors: {
         // ── Surfaces & text ──
         cream: 'var(--color-cream)',
-        surface: 'var(--color-surface)',
+        surface: {
+          DEFAULT: 'var(--color-surface)',
+          2: 'var(--color-surface-2)',
+        },
+        'surface-2': 'var(--color-surface-2)',
         ink: 'var(--color-ink)',
         muted: 'var(--color-muted)',
         line: 'var(--color-line)',
@@ -38,10 +42,11 @@ const config: Config = {
         },
         'primary-600': 'var(--color-primary-600)',
 
-        // ── Accent (honey) ──
+        // ── Accent (honey / amber) ──
         accent: {
           DEFAULT: 'var(--color-accent)',
           500: 'var(--color-accent)',
+          600: 'var(--color-accent-600)',
           text: 'var(--color-accent-text)',
           soft: 'var(--color-accent-soft)',
         },
@@ -81,12 +86,14 @@ const config: Config = {
         lg: '16px',
         xl: '20px',
         '2xl': '24px',
+        '3xl': '28px',
         full: '9999px',
       },
       boxShadow: {
-        soft: '0 1px 2px rgba(46,37,33,0.05), 0 2px 8px rgba(46,37,33,0.06)',
-        card: '0 4px 16px rgba(46,37,33,0.07)',
-        pop: '0 12px 32px rgba(46,37,33,0.12)',
+        // Warm-tinted, present-but-soft elevation scale (v2 = richer).
+        soft: '0 1px 2px rgba(70,40,25,0.05), 0 2px 8px rgba(70,40,25,0.07)',
+        card: '0 8px 28px -8px rgba(70,40,25,0.18)',
+        pop: '0 20px 48px -12px rgba(70,40,25,0.28)',
       },
       fontSize: {
         // Warm type scale (px → rem). base = 16.
@@ -108,13 +115,26 @@ const config: Config = {
       transitionTimingFunction: {
         DEFAULT: 'cubic-bezier(0.16, 1, 0.3, 1)',
       },
+      backgroundImage: {
+        'gradient-warm':
+          'linear-gradient(135deg, var(--grad-warm-1) 0%, var(--grad-warm-2) 55%, var(--grad-warm-3) 100%)',
+        'gradient-soft':
+          'linear-gradient(160deg, var(--grad-soft-1) 0%, var(--grad-soft-2) 100%)',
+        'gradient-tint':
+          'linear-gradient(160deg, var(--color-surface-2) 0%, var(--color-surface) 70%)',
+      },
       keyframes: {
         shimmer: {
           '100%': { transform: 'translateX(-100%)' },
         },
+        'fade-in': {
+          from: { opacity: '0', transform: 'translateY(8px)' },
+          to: { opacity: '1', transform: 'translateY(0)' },
+        },
       },
       animation: {
         shimmer: 'shimmer 1.4s ease-in-out infinite',
+        'fade-in': 'fade-in 220ms cubic-bezier(0.16, 1, 0.3, 1)',
       },
     },
   },

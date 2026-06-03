@@ -15,6 +15,7 @@ const DEFAULT_SETTINGS: Omit<NewSettings, 'id' | 'createdAt' | 'updatedAt'> = {
   paymentFollowupDelayH: 24,
   groupBillingDay: 1,
   groupFollowupDays: 3,
+  defaultPrivatePrice: null,
   morningDocType: null,
   morningBusinessMeta: null,
   timezone: 'Asia/Jerusalem',

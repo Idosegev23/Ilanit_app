@@ -38,9 +38,15 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className="min-h-screen bg-cream">
+    <div className="relative min-h-screen bg-cream">
+      {/* Faint warm wash at the top so content never floats in a flat void. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-surface-2/70 to-transparent"
+      />
+
       {/* Desktop: fixed right sidebar (RTL → right edge), content to its left. */}
-      <aside className="fixed inset-y-0 end-0 z-30 hidden w-64 border-s border-line lg:block">
+      <aside className="fixed inset-y-0 end-0 z-30 hidden w-64 border-s border-line shadow-soft lg:block">
         <Sidebar />
       </aside>
 
@@ -67,7 +73,7 @@ export function AppShell({ children }: AppShellProps) {
       )}
 
       {/* Main column — offset by the sidebar width on desktop (logical end). */}
-      <div className="lg:me-64">
+      <div className="relative lg:me-64">
         <Topbar onOpenMenu={() => setDrawerOpen(true)} />
         <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
           {children}

@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { GraduationCap, LogOut } from 'lucide-react';
-import { NAV_ITEMS, isActivePath } from './nav-items';
+import { LogOut } from 'lucide-react';
+import { NAV_GROUPS, isActivePath } from './nav-items';
 import { signOutAction } from './shell-actions';
+import { Brand } from './brand';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -13,49 +14,68 @@ interface SidebarProps {
   className?: string;
 }
 
-// Right-side navigation (RTL): logo/title, nav items with active highlight +
-// inline-start accent border, and a visually separated sign-out at the bottom.
+// Right-side navigation (RTL): branded header, grouped nav with subtle section
+// labels + active pill (primary-soft bg, primary text, inline-start accent bar),
+// and a visually separated sign-out footer. Surface is a soft tint gradient so
+// it reads as a crafted panel, not a flat empty rail.
 export function Sidebar({ onNavigate, className }: SidebarProps) {
   const pathname = usePathname();
 
   return (
-    <div className={cn('flex h-full flex-col bg-surface', className)}>
+    <div
+      className={cn(
+        'flex h-full flex-col bg-gradient-tint',
+        className,
+      )}
+    >
       {/* Brand */}
-      <div className="flex items-center gap-3 px-5 py-5">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-fg shadow-soft">
-          <GraduationCap className="size-5" aria-hidden="true" />
-        </span>
-        <span className="text-base font-bold leading-tight text-ink">
-          המערכת של אילנית
-        </span>
+      <div className="px-5 py-6">
+        <Brand size="sm" />
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 space-y-1 px-3 py-2" aria-label="ניווט ראשי">
-        {NAV_ITEMS.map((item) => {
-          const active = isActivePath(pathname, item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={onNavigate}
-              aria-current={active ? 'page' : undefined}
-              className={cn(
-                'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-150',
-                active
-                  ? 'bg-primary-50 text-primary-600 before:absolute before:inset-y-1.5 before:start-0 before:w-1 before:rounded-full before:bg-primary'
-                  : 'text-muted hover:bg-primary-50 hover:text-ink',
-              )}
-            >
-              <Icon className="size-5 shrink-0" aria-hidden="true" />
-              {item.label}
-            </Link>
-          );
-        })}
+      {/* Grouped nav */}
+      <nav className="flex-1 overflow-y-auto px-3 pb-2" aria-label="ניווט ראשי">
+        {NAV_GROUPS.map((group, gi) => (
+          <div key={group.label ?? gi} className={cn(gi > 0 && 'mt-6')}>
+            {group.label && (
+              <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-muted/80">
+                {group.label}
+              </p>
+            )}
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const active = isActivePath(pathname, item.href);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={onNavigate}
+                    aria-current={active ? 'page' : undefined}
+                    className={cn(
+                      'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150',
+                      active
+                        ? 'bg-primary-soft text-primary-600 shadow-soft before:absolute before:inset-y-1.5 before:start-0 before:w-1 before:rounded-full before:bg-primary'
+                        : 'text-muted hover:bg-white/60 hover:text-ink',
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        'size-5 shrink-0',
+                        active ? 'text-primary' : 'text-muted',
+                      )}
+                      aria-hidden="true"
+                    />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </nav>
 
-      {/* Sign-out — separated */}
+      {/* Sign-out — separated footer */}
       <div className="border-t border-line px-3 py-3">
         <form action={signOutAction}>
           <button

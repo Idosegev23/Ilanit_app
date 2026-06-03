@@ -16,7 +16,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       className={cn(
         fieldClasses,
         'min-h-[44px] resize-y py-2.5 leading-relaxed',
-        error && 'border-danger focus-visible:border-danger focus-visible:ring-danger/30',
+        error && 'border-danger focus:border-danger focus:ring-danger/30',
         className,
       )}
       {...props}

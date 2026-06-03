@@ -201,6 +201,9 @@ export const settings = pgTable('settings', {
   paymentFollowupDelayH: integer('payment_followup_delay_h').notNull().default(24),
   groupBillingDay: integer('group_billing_day').notNull().default(1),
   groupFollowupDays: integer('group_followup_days').notNull().default(3),
+  // Default price (₪, integer) for a private lesson, used when a student has no
+  // own defaultPrice. Nullable = no default configured.
+  defaultPrivatePrice: integer('default_private_price'),
   morningDocType: text('morning_doc_type'),
   morningBusinessMeta: jsonb('morning_business_meta'),
   timezone: text('timezone').notNull().default('Asia/Jerusalem'),

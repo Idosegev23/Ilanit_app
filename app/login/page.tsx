@@ -1,6 +1,5 @@
-import { CalendarHeart } from 'lucide-react';
 import { signIn } from '@/auth';
-import { Card, CardContent } from '@/components/ui/card';
+import { AuthLayout } from '@/components/ui/auth-layout';
 import { Button } from '@/components/ui/button';
 
 // Owner login. A single Google sign-in grants both app access and Calendar
@@ -32,34 +31,36 @@ function GoogleMark() {
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-gradient-to-b from-primary-soft to-cream px-4 py-12">
-      <Card className="w-full max-w-sm">
-        <CardContent className="flex flex-col items-center gap-6 py-8 text-center">
-          <span className="flex size-14 items-center justify-center rounded-2xl bg-primary-soft text-primary-600">
-            <CalendarHeart className="size-7" aria-hidden="true" />
-          </span>
+    <AuthLayout
+      eyebrow="ברוכים הבאים"
+      valueProp="ניהול השיעורים, התיאומים והתשלומים — במקום אחד."
+      highlights={[
+        'תיאום שיעורים ואישורים בלחיצה',
+        'מעקב תשלומים וקבלות',
+        'תזכורות אוטומטיות בוואטסאפ',
+      ]}
+    >
+      <div className="flex flex-col gap-7 text-center">
+        <div className="space-y-1.5">
+          <h1 className="text-2xl font-bold text-ink">כניסה למערכת</h1>
+          <p className="text-sm leading-relaxed text-muted">
+            התחברי עם חשבון Google שלך. ההתחברות מאשרת גם גישה ליומן.
+          </p>
+        </div>
 
-          <div className="space-y-1.5">
-            <h1 className="text-2xl font-bold text-ink">כניסה למערכת</h1>
-            <p className="text-sm leading-relaxed text-muted">
-              התחברי עם חשבון Google שלך. ההתחברות מאשרת גם גישה ליומן.
-            </p>
-          </div>
-
-          <form
-            className="w-full"
-            action={async () => {
-              'use server';
-              await signIn('google', { redirectTo: '/dashboard' });
-            }}
-          >
-            <Button type="submit" variant="secondary" size="lg" className="w-full">
-              <GoogleMark />
-              התחבר עם Google
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </main>
+        <form
+          className="w-full"
+          action={async () => {
+            'use server';
+            await signIn('google', { redirectTo: '/dashboard' });
+          }}
+        >
+          <Button type="submit" variant="secondary" size="lg" className="w-full">
+            <GoogleMark />
+            התחבר עם Google
+          </Button>
+        </form>
+      </div>
+    </AuthLayout>
   );
 }

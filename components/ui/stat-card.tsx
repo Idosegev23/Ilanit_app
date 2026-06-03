@@ -3,23 +3,37 @@ import { ArrowUpRight, ArrowDownRight, type LucideIcon } from 'lucide-react';
 import { Card } from './card';
 import { cn } from '@/lib/utils';
 
+export type StatTone = 'primary' | 'accent' | 'success' | 'warning' | 'danger';
+
+const TONE_CHIP: Record<StatTone, string> = {
+  primary: 'bg-primary-soft text-primary-600',
+  accent: 'bg-accent-soft text-accent-text',
+  success: 'bg-success-soft text-success',
+  warning: 'bg-warning-soft text-warning',
+  danger: 'bg-danger-soft text-danger',
+};
+
 export interface StatCardProps extends React.HTMLAttributes<HTMLDivElement> {
   label: string;
   /** Big value — rendered with tabular figures. */
   value: React.ReactNode;
   icon?: LucideIcon;
+  /** Color family for the icon chip. Defaults to primary. */
+  tone?: StatTone;
   /** Optional small caption below the value. */
   hint?: string;
-  /** Optional trend delta, e.g. "+12%". Positive/negative styling by `deltaDirection`. */
+  /** Optional trend delta, e.g. "+12%". Styled by `deltaDirection`. */
   delta?: string;
   deltaDirection?: 'up' | 'down';
 }
 
-// KPI tile: tinted icon chip + big tabular value + label (+ optional delta).
+// KPI tile: subtle tint at the top, colored icon chip, big tabular value +
+// label, optional trend pill.
 export function StatCard({
   label,
   value,
   icon: Icon,
+  tone = 'primary',
   hint,
   delta,
   deltaDirection,
@@ -28,30 +42,40 @@ export function StatCard({
 }: StatCardProps) {
   const DeltaIcon = deltaDirection === 'down' ? ArrowDownRight : ArrowUpRight;
   return (
-    <Card className={cn('p-5', className)} {...props}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
+    <Card className={cn('overflow-hidden', className)} {...props}>
+      {/* tinted sheen at the top edge */}
+      <div className="bg-gradient-tint px-5 pt-5">
+        <div className="flex items-start justify-between gap-3">
           <p className="text-sm font-medium text-muted">{label}</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-ink">{value}</p>
-          {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
+          {Icon && (
+            <span
+              className={cn(
+                'flex size-10 shrink-0 items-center justify-center rounded-xl shadow-soft',
+                TONE_CHIP[tone],
+              )}
+            >
+              <Icon className="size-5" aria-hidden="true" />
+            </span>
+          )}
         </div>
-        {Icon && (
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-600">
-            <Icon className="size-5" aria-hidden="true" />
-          </span>
+      </div>
+      <div className="px-5 pb-5 pt-1">
+        <p className="text-3xl font-bold tabular-nums text-ink">{value}</p>
+        {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
+        {delta && (
+          <p
+            className={cn(
+              'mt-3 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums',
+              deltaDirection === 'down'
+                ? 'bg-danger-soft text-danger'
+                : 'bg-success-soft text-success',
+            )}
+          >
+            <DeltaIcon className="size-3.5" aria-hidden="true" />
+            {delta}
+          </p>
         )}
       </div>
-      {delta && (
-        <p
-          className={cn(
-            'mt-3 inline-flex items-center gap-1 text-xs font-medium tabular-nums',
-            deltaDirection === 'down' ? 'text-danger' : 'text-success',
-          )}
-        >
-          <DeltaIcon className="size-3.5" aria-hidden="true" />
-          {delta}
-        </p>
-      )}
     </Card>
   );
 }

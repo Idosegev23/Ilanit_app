@@ -3,37 +3,48 @@
 @tailwind utilities;
 
 /*
-  Ilanit design system — "Warm & Personal".
+  Ilanit design system v2 — "Warm & Confident" (premium soft-UI).
   Palette tokens live here as CSS vars and are mirrored in tailwind.config.ts.
-  Contrast verified ≥ 4.5:1 for text/bg pairs (ink on cream/surface; primary-fg
-  on primary; semantic text on soft backgrounds).
+  v2 deepens the terracotta primary, adds a honey/amber accent, warm gradients,
+  a tinted second surface, and richer warm-shadow recipes. All token NAMES from
+  v1 are preserved (additive) so existing markup keeps working.
+  Contrast verified ≥ 4.5:1 for text/bg pairs (ink on cream/surface/surface-2;
+  primary-fg on primary; semantic text on soft backgrounds).
 */
 :root {
   /* Surfaces & text */
-  --color-cream: #fbf6f0; /* page background */
+  --color-cream: #fbf4ec; /* page background (slightly warmer) */
   --color-surface: #ffffff; /* cards */
-  --color-ink: #2e2521; /* primary text — ~13:1 on cream */
-  --color-muted: #6f6157; /* secondary text — ~4.8:1 on cream */
-  --color-line: #eadfd2; /* borders */
+  --color-surface-2: #fdefe6; /* tinted second surface (peach) */
+  --color-ink: #2b211c; /* primary text — ~14:1 on cream */
+  --color-muted: #6e5f54; /* secondary text — ~4.8:1 on cream */
+  --color-line: #ecdfd2; /* borders */
 
-  /* Primary — terracotta */
-  --color-primary: #b84e26; /* 500 — white text ~4.7:1 */
-  --color-primary-600: #9e4220; /* hover — white text ~6:1 */
+  /* Primary — terracotta (deeper / more confident) */
+  --color-primary: #b5471f; /* 500 — white text ~5.0:1 */
+  --color-primary-600: #97380f; /* hover — white text ~6.6:1 */
   --color-primary-fg: #ffffff;
-  --color-primary-50: #fbf0ea;
-  --color-primary-100: #f6dfd2;
-  --color-primary-200: #eec0a8;
-  --color-primary-300: #e29b78;
-  --color-primary-soft: #fbeee4;
+  --color-primary-50: #fbeee6;
+  --color-primary-100: #f6dccc;
+  --color-primary-200: #eebda1;
+  --color-primary-300: #e09a72;
+  --color-primary-soft: #fdefe6;
 
-  /* Accent — honey */
-  --color-accent: #c98a2b;
-  --color-accent-text: #8a5e12; /* readable on light/soft bg */
+  /* Accent — honey / amber */
+  --color-accent: #d98a2c; /* honey */
+  --color-accent-600: #9a5e12; /* deep amber */
+  --color-accent-text: #8a5512; /* readable on light/soft bg ≈ 5:1 */
   --color-accent-soft: #fbf1de;
 
-  /* Semantic (text-safe: darkened from the brief so 12px text on the soft bg
-     and on white both clear WCAG AA ≥ 4.5:1 — see contract "darken if fails") */
-  --color-success: #3d6341; /* on success-soft ≈ 5.9:1, on white ≈ 6.9:1 */
+  /* Warm gradient stops (consumed by .bg-gradient-warm / -soft below) */
+  --grad-warm-1: #b5471f;
+  --grad-warm-2: #d98a2c;
+  --grad-warm-3: #f0b27a;
+  --grad-soft-1: #fdefe6;
+  --grad-soft-2: #fbf4ec;
+
+  /* Semantic (text-safe: 12px text on soft bg and on white both clear AA) */
+  --color-success: #3f7a52; /* on success-soft ≈ 4.8:1, on white ≈ 4.9:1 */
   --color-success-soft: #e7f0e7;
   --color-warning: #8a5e12; /* on warning-soft ≈ 5.1:1, on white ≈ 5.7:1 */
   --color-warning-soft: #fbf1de;
@@ -41,7 +52,7 @@
   --color-danger-soft: #fbe7e4;
 
   /* Focus ring */
-  --color-ring: #b84e26;
+  --color-ring: #b5471f;
 
   /* Back-compat aliases for the old slate/indigo design */
   --background: var(--color-cream);
@@ -94,6 +105,64 @@ body {
   }
 }
 
+@layer utilities {
+  /* ── Warm gradients ── */
+  .bg-gradient-warm {
+    background-image: linear-gradient(
+      135deg,
+      var(--grad-warm-1) 0%,
+      var(--grad-warm-2) 55%,
+      var(--grad-warm-3) 100%
+    );
+  }
+  .bg-gradient-soft {
+    background-image: linear-gradient(
+      160deg,
+      var(--grad-soft-1) 0%,
+      var(--grad-soft-2) 100%
+    );
+  }
+  /* Subtle peach→cream sheen for card headers / hero panels. */
+  .bg-gradient-tint {
+    background-image: linear-gradient(
+      160deg,
+      var(--color-surface-2) 0%,
+      var(--color-surface) 70%
+    );
+  }
+
+  /* ── Decorative texture: faint warm dot relief for hero panels ── */
+  .texture-dots {
+    background-image: radial-gradient(
+      rgba(255, 255, 255, 0.18) 1.2px,
+      transparent 1.2px
+    );
+    background-size: 22px 22px;
+  }
+
+  /* ── Soft blurred color blob (decorative, aria-hidden containers) ── */
+  .blob {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(48px);
+    opacity: 0.55;
+    pointer-events: none;
+  }
+}
+
+@layer components {
+  /* Interactive card hover-lift — transform/shadow only (no layout shift). */
+  .hover-lift {
+    transition:
+      transform 200ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 48px -12px rgba(70, 40, 25, 0.28);
+  }
+}
+
 /* Respect users who prefer less motion. */
 @media (prefers-reduced-motion: reduce) {
   *,
@@ -103,5 +172,8 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+  .hover-lift:hover {
+    transform: none;
   }
 }

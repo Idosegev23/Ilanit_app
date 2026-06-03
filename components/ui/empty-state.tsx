@@ -11,7 +11,9 @@ export interface EmptyStateProps extends React.HTMLAttributes<HTMLDivElement> {
   action?: React.ReactNode;
 }
 
-// Friendly empty placeholder — used by "אין זמנים", empty lists, etc.
+// Friendly empty placeholder — a large illustrative icon nested in concentric
+// tinted rings (so it reads as crafted, not a bare line), helpful copy, and an
+// optional CTA. Used by "אין זמנים", empty lists, etc.
 export function EmptyState({
   icon: Icon,
   title,
@@ -23,18 +25,26 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line bg-surface/60 px-6 py-12 text-center',
+        'flex flex-col items-center justify-center gap-4 rounded-2xl border border-line bg-gradient-tint px-6 py-14 text-center',
         className,
       )}
       {...props}
     >
       {Icon && (
-        <span className="flex size-12 items-center justify-center rounded-full bg-primary-soft text-primary-600">
-          <Icon className="size-6" aria-hidden="true" />
+        <span className="flex size-20 items-center justify-center rounded-full bg-primary-soft/60 ring-1 ring-primary-100">
+          <span className="flex size-14 items-center justify-center rounded-full bg-surface text-primary shadow-soft ring-1 ring-primary-100">
+            <Icon className="size-7" aria-hidden="true" />
+          </span>
         </span>
       )}
-      <p className="text-base font-semibold text-ink">{title}</p>
-      {description && <p className="max-w-sm text-sm text-muted">{description}</p>}
+      <div className="space-y-1.5">
+        <p className="text-lg font-semibold text-ink">{title}</p>
+        {description && (
+          <p className="mx-auto max-w-sm text-sm leading-relaxed text-muted">
+            {description}
+          </p>
+        )}
+      </div>
       {action && <div className="mt-1">{action}</div>}
     </div>
   );

@@ -19,7 +19,7 @@ const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         className={cn(
           fieldClasses,
           'h-11 appearance-none py-2 pe-10',
-          error && 'border-danger focus-visible:border-danger focus-visible:ring-danger/30',
+          error && 'border-danger focus:border-danger focus:ring-danger/30',
           className,
         )}
         {...props}
