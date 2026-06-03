@@ -17,6 +17,10 @@ next-env.d.ts
 .env.development.local
 .env.test.local
 .env.production.local
+.env.local.*
+.env*.backup
+*.bak
+*.user-backup
 
 # misc
 .DS_Store
