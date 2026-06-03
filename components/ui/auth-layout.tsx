@@ -9,10 +9,23 @@ export interface AuthLayoutProps {
   eyebrow?: string;
   /** One-line value prop shown under the wordmark on the brand panel. */
   valueProp?: string;
+  /** Optional headline rendered above the value prop on desktop (defaults to the value prop alone). */
+  headline?: string;
   /** Optional list of short selling points rendered as a checklist on desktop. */
   highlights?: string[];
+  /** Optional richer highlights with their own lucide icon (overrides `highlights`). */
+  features?: { icon: React.ComponentType<{ className?: string }>; label: string }[];
   /** Constrains the action card width. */
   cardClassName?: string;
+  /**
+   * `wide` gives the action surface a roomier card (max-w-xl) and a slightly
+   * wider column — used by /book/[token] for its slot grid. When `bare` is set
+   * the children render WITHOUT the default card chrome (they bring their own
+   * Card), still centered on the soft gradient.
+   */
+  wide?: boolean;
+  /** Render children without the built-in card shell (the child supplies its own Card). */
+  bare?: boolean;
 }
 
 const DEFAULT_VALUE_PROP =
@@ -20,10 +33,15 @@ const DEFAULT_VALUE_PROP =
 
 /**
  * Full-screen RTL split shell for every STANDALONE route (/login, /book,
- * /book/[token], /a, /m, /p). One side is a `bg-gradient-warm` brand panel with
- * the wordmark + value prop + soft decorative blobs; the other is an elevated
- * action card on `bg-gradient-soft`. On mobile it collapses to a gradient header
- * band (brand) above the card — never a lonely card in an empty void.
+ * /book/[token], /a, /m, /p). One side is the warm `.brand-panel` (gradient +
+ * AA-safe scrim) with the wordmark + value prop + soft decorative blobs; the
+ * other is an elevated action card on `bg-gradient-soft`. On mobile it collapses
+ * to a gradient header band (brand) above the card — never a lonely card in a
+ * void.
+ *
+ * Contrast: the white copy renders over `.brand-panel`, whose directional scrim
+ * keeps every text pixel on a background ≥ terracotta (white ≥ 4.5:1). The fix
+ * lives in globals.css `.brand-panel` so it is shared by /book/[token] too.
  *
  * In RTL the brand panel sits on the inline-start (visual right is content);
  * the grid order places brand first so it lands on the right under `dir=rtl`.
@@ -32,49 +50,79 @@ export function AuthLayout({
   children,
   eyebrow,
   valueProp = DEFAULT_VALUE_PROP,
+  headline,
   highlights,
+  features,
   cardClassName,
+  wide = false,
+  bare = false,
 }: AuthLayoutProps) {
+  const list =
+    features ??
+    (highlights ?? []).map((label) => ({ icon: CheckIcon, label }));
+
   return (
-    <div className="grid min-h-[100dvh] grid-rows-[auto_1fr] lg:grid-cols-2 lg:grid-rows-1">
+    <div
+      className={cn(
+        'grid min-h-[100dvh] grid-rows-[auto_1fr] lg:grid-rows-1',
+        wide
+          ? 'lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]'
+          : 'lg:grid-cols-2',
+      )}
+    >
       {/* ── Brand panel (desktop: full column; mobile: header band) ── */}
-      <section className="relative isolate flex flex-col justify-center overflow-hidden bg-gradient-warm px-6 py-10 text-white texture-dots lg:px-14 lg:py-16">
-        {/* Decorative blobs */}
+      <section className="brand-panel relative flex flex-col justify-center overflow-hidden px-6 py-10 text-white texture-dots lg:px-14 lg:py-16">
+        {/* Decorative blobs — pinned to the corner away from the text band, and
+            sitting BEHIND the scrim (z-index:-1) so they never lift contrast. */}
         <span
           aria-hidden="true"
-          className="blob -top-24 -end-16 size-72 bg-[var(--grad-warm-3)]"
+          className="blob -top-24 -end-20 size-72 bg-[var(--grad-warm-3)]"
         />
         <span
           aria-hidden="true"
-          className="blob -bottom-28 -start-10 size-80 bg-[var(--grad-warm-1)]"
+          className="blob -bottom-32 -start-16 size-[22rem] bg-[var(--grad-warm-2)]"
         />
 
         <div className="relative z-10 mx-auto w-full max-w-md lg:mx-0">
           <Brand size="lg" onDark className="lg:mb-10" />
 
-          {/* Value prop — hidden on mobile to keep the header band compact,
-              shown in full on desktop. */}
+          {/* Desktop value prop — over the AA-safe scrim. */}
           <div className="mt-6 hidden lg:block">
             {eyebrow && (
-              <p className="text-sm font-medium uppercase tracking-wide text-white/75">
+              <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] text-white ring-1 ring-white/25 backdrop-blur-sm">
                 {eyebrow}
               </p>
             )}
-            <p className="mt-2 text-2xl font-bold leading-snug text-white text-balance">
+            {headline ? (
+              <h1 className="mt-4 text-3xl font-bold leading-snug text-white text-balance">
+                {headline}
+              </h1>
+            ) : null}
+            <p
+              className={cn(
+                'text-white text-balance',
+                headline
+                  ? 'mt-3 text-lg leading-relaxed text-white/95'
+                  : 'mt-4 text-2xl font-bold leading-snug',
+              )}
+            >
               {valueProp}
             </p>
 
-            {highlights && highlights.length > 0 && (
-              <ul className="mt-8 space-y-3">
-                {highlights.map((h) => (
-                  <li key={h} className="flex items-center gap-3 text-white/90">
+            {list.length > 0 && (
+              <ul className="mt-9 space-y-3.5">
+                {list.map(({ icon: Icon, label }) => (
+                  <li
+                    key={label}
+                    className="flex items-center gap-3 text-white"
+                  >
                     <span
                       aria-hidden="true"
-                      className="flex size-6 shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/25"
+                      className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/30 backdrop-blur-sm"
                     >
-                      <CheckGlyph />
+                      <Icon className="size-[1.05rem] text-white" />
                     </span>
-                    <span className="text-base">{h}</span>
+                    <span className="text-base leading-snug">{label}</span>
                   </li>
                 ))}
               </ul>
@@ -83,7 +131,7 @@ export function AuthLayout({
 
           {/* Mobile-only condensed value prop */}
           {valueProp && (
-            <p className="mt-3 text-base font-medium text-white/90 lg:hidden">
+            <p className="mt-3 text-base font-medium text-white lg:hidden">
               {valueProp}
             </p>
           )}
@@ -92,25 +140,38 @@ export function AuthLayout({
 
       {/* ── Action surface ── */}
       <section className="flex items-start justify-center bg-gradient-soft px-4 py-8 sm:items-center sm:px-6 sm:py-12">
-        <div
-          className={cn(
-            'w-full max-w-md rounded-3xl border border-line bg-surface p-6 shadow-pop sm:p-8',
-            'animate-fade-in',
-            cardClassName,
-          )}
-        >
-          {children}
-        </div>
+        {bare ? (
+          <div
+            className={cn(
+              'w-full animate-fade-in',
+              wide ? 'max-w-xl' : 'max-w-md',
+              cardClassName,
+            )}
+          >
+            {children}
+          </div>
+        ) : (
+          <div
+            className={cn(
+              'w-full rounded-3xl border border-line bg-surface p-6 shadow-pop sm:p-8',
+              'animate-fade-in',
+              wide ? 'max-w-xl' : 'max-w-md',
+              cardClassName,
+            )}
+          >
+            {children}
+          </div>
+        )}
       </section>
     </div>
   );
 }
 
-// Small inline check glyph (no extra icon import; lucide Check used inline).
-function CheckGlyph() {
+// Inline check glyph used as the default highlight bullet (no extra icon import).
+function CheckIcon({ className }: { className?: string }) {
   return (
     <svg
-      className="size-3.5"
+      className={className}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

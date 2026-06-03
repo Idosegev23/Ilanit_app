@@ -225,9 +225,23 @@ export function TokenBookingForm({ token, studentName, studentEmail }: TokenBook
             type="date"
             value={date}
             min={todayISO()}
+            dir="ltr"
+            className="date-field text-start"
             onChange={(e) => {
               setDate(e.target.value);
               setPhase('pick');
+            }}
+            onClick={(e) => {
+              // Make the whole field open the native picker (not just the glyph)
+              // where the browser supports it — no custom calendar JS.
+              const el = e.currentTarget as HTMLInputElement & {
+                showPicker?: () => void;
+              };
+              try {
+                el.showPicker?.();
+              } catch {
+                /* showPicker may throw if not user-activated — ignore. */
+              }
             }}
           />
         </div>
