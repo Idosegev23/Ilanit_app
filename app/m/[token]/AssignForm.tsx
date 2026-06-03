@@ -1,7 +1,10 @@
 'use client';
 
 import * as React from 'react';
+import { UserCheck, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 // Student picker for /m/[token]. Posts the chosen student to /api/assign; the
 // single-use token is consumed server-side. Optionally remembers an alias
@@ -61,20 +64,31 @@ export function AssignForm({
   }
 
   if (done) {
-    return <p className="text-sm font-medium text-green-700">השיעור שויך לתלמיד/ה בהצלחה. ✅</p>;
+    return (
+      <div
+        role="status"
+        className="flex items-start gap-3 rounded-xl border border-success/20 bg-success-soft p-4"
+      >
+        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
+        <p className="text-sm font-medium text-success">השיעור שויך לתלמיד/ה בהצלחה.</p>
+      </div>
+    );
   }
 
   return (
-    <form className="space-y-3" onSubmit={submit}>
-      <div>
-        <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="assign-student">
+    <form className="space-y-4" onSubmit={submit}>
+      <div className="space-y-1.5">
+        <Label htmlFor="assign-student" required>
           בחירת תלמיד/ה
-        </label>
-        <select
+        </Label>
+        <Select
           id="assign-student"
           value={studentId}
-          onChange={(e) => setStudentId(e.target.value)}
-          className="flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          error={Boolean(error) && !studentId}
+          onChange={(e) => {
+            setStudentId(e.target.value);
+            if (error) setError(null);
+          }}
         >
           <option value="">— בחר/י —</option>
           {students.map((s) => (
@@ -82,24 +96,36 @@ export function AssignForm({
               {s.name} ({s.phone})
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {eventTitle && (
-        <label className="flex items-center gap-2 text-sm text-slate-700">
+        <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-line bg-cream/50 p-3 text-sm text-ink transition-colors duration-150 ease-out hover:bg-primary-50">
           <input
             type="checkbox"
             checked={remember}
             onChange={(e) => setRemember(e.target.checked)}
+            className="mt-0.5 size-4 shrink-0 cursor-pointer rounded border-line accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           />
-          לזכור שיוך זה לאירועים עתידיים עם הכותרת &quot;{eventTitle}&quot;
+          <span>
+            לזכור שיוך זה לאירועים עתידיים עם הכותרת &quot;{eventTitle}&quot;
+          </span>
         </label>
       )}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-xl border border-danger/20 bg-danger-soft p-3"
+        >
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
+          <p className="text-sm text-danger">{error}</p>
+        </div>
+      )}
 
-      <Button type="submit" disabled={busy}>
-        {busy ? 'משייך…' : 'שיוך השיעור'}
+      <Button type="submit" variant="primary" size="lg" className="w-full" loading={busy}>
+        {!busy && <UserCheck className="size-5" aria-hidden="true" />}
+        שיוך השיעור
       </Button>
     </form>
   );

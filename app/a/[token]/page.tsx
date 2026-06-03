@@ -1,4 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CalendarClock, Clock, MapPin, CircleDollarSign, User, StickyNote, Link2Off } from 'lucide-react';
+import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { StatusPill } from '@/components/ui/badge';
 import { peekApproveToken } from '@/lib/availability/approval';
 import { formatILDateTime } from '@/lib/time';
 import { formatShekels } from '@/lib/utils';
@@ -20,53 +22,77 @@ export default async function ApprovePage({
   const view = await peekApproveToken(token);
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 p-6">
+    <main className="flex min-h-screen items-center justify-center bg-cream p-4 sm:p-6">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>אישור שיעור</CardTitle>
+        <CardHeader className="items-center text-center">
+          <span className="mb-1 flex size-12 items-center justify-center rounded-2xl bg-primary-soft text-primary-600">
+            <CalendarClock className="size-6" aria-hidden="true" />
+          </span>
+          <CardTitle className="text-xl">אישור שיעור</CardTitle>
+          <CardDescription>בקשת תיאום חדשה ממתינה לאישורך</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardBody>
           {!view ? (
-            <p className="text-sm text-slate-600">
-              הקישור אינו תקין, פג תוקפו, או שהשיעור כבר טופל.
-            </p>
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <span className="flex size-11 items-center justify-center rounded-full bg-primary-50 text-muted">
+                <Link2Off className="size-5" aria-hidden="true" />
+              </span>
+              <p className="text-sm text-muted">
+                הקישור אינו תקין, פג תוקפו, או שהשיעור כבר טופל.
+              </p>
+            </div>
           ) : view.status !== 'pending' ? (
-            <p className="text-sm text-slate-600">השיעור כבר טופל (סטטוס נוכחי: {view.status}).</p>
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <StatusPill status={view.status} />
+              <p className="text-sm text-muted">השיעור כבר טופל.</p>
+            </div>
           ) : (
-            <div className="space-y-3">
-              <dl className="space-y-1 text-sm text-slate-700">
-                <div>
-                  <dt className="inline font-medium">תלמיד/ה: </dt>
-                  <dd className="inline">{view.studentName}</dd>
-                </div>
-                <div>
-                  <dt className="inline font-medium">מתי: </dt>
-                  <dd className="inline">{formatILDateTime(new Date(view.startISO))}</dd>
-                </div>
-                {view.location && (
-                  <div>
-                    <dt className="inline font-medium">כתובת: </dt>
-                    <dd className="inline">{view.location}</dd>
-                  </div>
-                )}
+            <div className="space-y-5">
+              <div className="flex justify-center">
+                <StatusPill status="pending" />
+              </div>
+              <dl className="space-y-3 rounded-xl border border-line bg-cream/50 p-4">
+                <DetailRow icon={User} label="תלמיד/ה" value={view.studentName} />
+                <DetailRow
+                  icon={Clock}
+                  label="מתי"
+                  value={formatILDateTime(new Date(view.startISO))}
+                />
+                {view.location && <DetailRow icon={MapPin} label="כתובת" value={view.location} />}
                 {view.price != null && (
-                  <div>
-                    <dt className="inline font-medium">מחיר: </dt>
-                    <dd className="inline">{formatShekels(view.price)}</dd>
-                  </div>
+                  <DetailRow
+                    icon={CircleDollarSign}
+                    label="מחיר"
+                    value={<span className="tabular-nums">{formatShekels(view.price)}</span>}
+                  />
                 )}
-                {view.notes && (
-                  <div>
-                    <dt className="inline font-medium">הערות: </dt>
-                    <dd className="inline">{view.notes}</dd>
-                  </div>
-                )}
+                {view.notes && <DetailRow icon={StickyNote} label="הערות" value={view.notes} />}
               </dl>
               <ApproveActions token={token} />
             </div>
           )}
-        </CardContent>
+        </CardBody>
       </Card>
     </main>
+  );
+}
+
+function DetailRow({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof User;
+  label: string;
+  value: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-3 text-sm">
+      <Icon className="mt-0.5 size-4 shrink-0 text-primary-600" aria-hidden="true" />
+      <div className="min-w-0">
+        <dt className="text-xs font-medium text-muted">{label}</dt>
+        <dd className="text-ink">{value}</dd>
+      </div>
+    </div>
   );
 }
