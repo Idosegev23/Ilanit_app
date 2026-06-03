@@ -39,5 +39,8 @@ export { Skeleton } from './skeleton';
 export { Sidebar } from './sidebar';
 export { Topbar } from './topbar';
 export { AppShell } from './app-shell';
-export { ShareLinkButton, CopyLinkField } from './share-link-button';
+export {
+  SendBookingLinkDialog,
+  type BookingLinkStudent,
+} from './send-booking-link-dialog';
 export { NAV_ITEMS, isActivePath, type NavItem } from './nav-items';

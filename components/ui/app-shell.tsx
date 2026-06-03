@@ -18,15 +18,13 @@ function isStandalone(pathname: string): boolean {
 }
 
 interface AppShellProps {
-  /** Full public /book URL for the Topbar share affordance. */
-  bookingUrl: string;
   children: React.ReactNode;
 }
 
 // RTL app shell: a RIGHT-side sidebar with main content to its left, plus a
 // Topbar. Collapses to a top bar + drawer on mobile. Only wraps authenticated
 // owner pages — standalone routes render bare.
-export function AppShell({ bookingUrl, children }: AppShellProps) {
+export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
@@ -70,7 +68,7 @@ export function AppShell({ bookingUrl, children }: AppShellProps) {
 
       {/* Main column — offset by the sidebar width on desktop (logical end). */}
       <div className="lg:me-64">
-        <Topbar bookingUrl={bookingUrl} onOpenMenu={() => setDrawerOpen(true)} />
+        <Topbar onOpenMenu={() => setDrawerOpen(true)} />
         <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
           {children}
         </main>

@@ -1,44 +1,42 @@
 import { db } from '@/lib/db';
-import { lessons, type Lesson } from '@/db/schema';
+import { lessons, type Lesson, type Student } from '@/db/schema';
 import { and, eq, lt, gt, inArray } from 'drizzle-orm';
 import { env } from '@/lib/env';
-import { normalizePhoneIL } from '@/lib/utils';
 import { getSettings } from '@/lib/settings';
-import { findStudentByPhone, createStudent, updateStudent } from '@/lib/students';
+import { getStudent, updateStudent } from '@/lib/students';
+import { resolveBookingLink } from '@/lib/booking-links';
 import { isSlotBookable } from '@/lib/availability';
 import { createActionToken } from '@/lib/tokens';
 import { notify } from '@/lib/notifications/dispatch';
 import { formatILDateTime } from '@/lib/time';
 
-// Core booking service used by /api/book. Re-checks the slot, matches or creates
-// a student by phone, creates a pending lesson with a price+location snapshot,
-// mints an approve action-token, and fires the two WhatsApp notifications
-// (pending → Ilanit, pending → student). External calls are mocked in tests.
+// Core booking service used by /api/book. The student is identified from a
+// PERSONAL booking-link token (Ilanit sent them the link) — NOT from a name +
+// phone form. We re-check the slot, create a pending lesson with a price +
+// location snapshot, mint an approve action-token, and fire the two WhatsApp
+// notifications (pending → Ilanit, pending → student). The student may supply an
+// email (used for the Google Calendar invite). External calls are mocked in
+// tests.
 
 const APPROVE_TTL_MIN = 14 * 24 * 60; // approval links valid for 2 weeks
 
 export interface BookRequest {
-  name: string;
-  phone: string;
-  email?: string;
+  /** Raw booking-link token identifying the student. */
+  token: string;
   startISO: string;
   endISO: string;
+  /** Optional email for the calendar invite. */
+  email?: string;
   notes?: string;
 }
 
 export type BookResult =
   | { ok: true; lessonId: string }
-  | { ok: false; error: 'invalid_input' | 'slot_taken' | 'internal'; message: string };
-
-/** Validates required booking fields; returns a normalized phone or throws. */
-function validate(req: BookRequest): { name: string; e164: string; email?: string } {
-  const name = (req.name ?? '').trim();
-  if (!name) throw new Error('name required');
-  if (!req.phone || !req.phone.trim()) throw new Error('phone required');
-  const e164 = normalizePhoneIL(req.phone);
-  const email = req.email?.trim() ? req.email.trim() : undefined;
-  return { name, e164, email };
-}
+  | {
+      ok: false;
+      error: 'invalid_input' | 'invalid_token' | 'slot_taken' | 'internal';
+      message: string;
+    };
 
 /**
  * Atomically guards against a double-booking: re-reads any overlapping
@@ -62,15 +60,14 @@ async function hasConflict(start: Date, end: Date): Promise<boolean> {
 
 /**
  * Performs the booking. Returns a typed result; never throws for expected
- * conditions (bad input, taken slot). Notifications failing do not fail the
- * booking — the lesson is already persisted and visible in the dashboard.
+ * conditions (bad input, invalid token, taken slot). Notifications failing do
+ * not fail the booking — the lesson is already persisted and visible in the
+ * dashboard.
  */
 export async function bookLesson(req: BookRequest): Promise<BookResult> {
-  let parsed: { name: string; e164: string; email?: string };
-  try {
-    parsed = validate(req);
-  } catch (err) {
-    return { ok: false, error: 'invalid_input', message: (err as Error).message };
+  const token = (req.token ?? '').trim();
+  if (!token) {
+    return { ok: false, error: 'invalid_token', message: 'הקישור אינו תקין' };
   }
 
   const start = new Date(req.startISO);
@@ -79,36 +76,44 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
     return { ok: false, error: 'invalid_input', message: 'invalid slot times' };
   }
 
-  // 1) re-check the slot (template + exceptions + freeBusy + lead-time + past)
+  const email = req.email?.trim() ? req.email.trim() : undefined;
+
+  // 1) resolve the student from the personal booking-link token
+  const resolved = await resolveBookingLink(token);
+  if (!resolved) {
+    return { ok: false, error: 'invalid_token', message: 'הקישור אינו תקין או שפג תוקפו' };
+  }
+
+  let student: Student | null = await getStudent(resolved.studentId);
+  if (!student) {
+    return { ok: false, error: 'invalid_token', message: 'התלמיד לא נמצא' };
+  }
+
+  // 2) re-check the slot (template + exceptions + freeBusy + lead-time + past)
   const bookable = await isSlotBookable(req.startISO, req.endISO);
   if (!bookable) {
     return { ok: false, error: 'slot_taken', message: 'המועד כבר אינו פנוי' };
   }
-  // 2) final conflict guard against a concurrent booking
+  // 3) final conflict guard against a concurrent booking
   if (await hasConflict(start, end)) {
     return { ok: false, error: 'slot_taken', message: 'המועד כבר אינו פנוי' };
   }
 
   const settings = await getSettings();
 
-  // 3) match or create the student by phone (snapshot price from the student)
-  let student = await findStudentByPhone(parsed.e164);
-  if (!student) {
-    student = await createStudent({
-      name: parsed.name,
-      phone: parsed.e164,
-      email: parsed.email ?? null,
-      defaultDurationMin: settings.defaultDurationMin,
-    });
-  } else if (parsed.email && !student.email) {
-    // opportunistically record a newly-supplied email on the existing student
-    student = await updateStudent(student.id, { email: parsed.email });
+  // 4) opportunistically record a newly-supplied email on the student
+  if (email && !student.email) {
+    try {
+      student = await updateStudent(student.id, { email });
+    } catch (err) {
+      console.error('[booking] failed to record student email (continuing):', err);
+    }
   }
 
   const price = student.defaultPrice ?? null;
   const location = settings.locationAddress || null;
 
-  // 4) create the pending lesson with the price + location snapshot
+  // 5) create the pending lesson with the price + location snapshot
   let lesson: Lesson;
   try {
     const inserted = await db
@@ -123,8 +128,8 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
         needsMatch: false,
         price,
         location,
-        bookedByName: parsed.name,
-        bookedByPhone: parsed.e164,
+        bookedByName: student.name,
+        bookedByPhone: student.phone,
         notes: req.notes?.trim() || null,
       })
       .returning();
@@ -134,7 +139,7 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
     return { ok: false, error: 'internal', message: 'שגיאה ביצירת השיעור' };
   }
 
-  // 5) approve action-token + notifications (best-effort; do not fail booking)
+  // 6) approve action-token + notifications (best-effort; do not fail booking)
   try {
     const rawToken = await createActionToken('approve', lesson.id, APPROVE_TTL_MIN);
     const appUrl = env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
@@ -145,8 +150,8 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
       'booking_pending_ilanit',
       env().ILANIT_PHONE,
       {
-        studentName: parsed.name,
-        phone: parsed.e164,
+        studentName: student.name,
+        phone: student.phone,
         datetime,
         price: price ?? 0,
         notes: req.notes?.trim() ?? '',
@@ -158,8 +163,8 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
 
     await notify(
       'booking_pending_student',
-      parsed.e164,
-      { studentName: parsed.name, datetime },
+      student.phone,
+      { studentName: student.name, datetime },
       `pending-student:${lesson.id}`,
       lesson.id,
     );

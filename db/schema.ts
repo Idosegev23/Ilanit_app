@@ -261,6 +261,23 @@ export const messageLog = pgTable(
   }),
 );
 
+export const bookingLinks = pgTable(
+  'booking_links',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tokenHash: text('token_hash').notNull(),
+    studentId: uuid('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'cascade' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    tokenHashUnique: uniqueIndex('booking_links_hash_unique').on(t.tokenHash),
+    studentIdx: index('booking_links_student_idx').on(t.studentId),
+  }),
+);
+
 export const insightsCache = pgTable('insights_cache', {
   id: uuid('id').primaryKey().defaultRandom(),
   period: text('period').notNull(),
@@ -319,3 +336,5 @@ export type GroupMember = typeof groupMembers.$inferSelect;
 export type GroupBilling = typeof groupBilling.$inferSelect;
 export type NewGroupBilling = typeof groupBilling.$inferInsert;
 export type StudentAlias = typeof studentAliases.$inferSelect;
+export type BookingLink = typeof bookingLinks.$inferSelect;
+export type NewBookingLink = typeof bookingLinks.$inferInsert;

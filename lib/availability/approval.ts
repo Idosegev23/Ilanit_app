@@ -5,6 +5,7 @@ import { and, eq, gt, isNull } from 'drizzle-orm';
 import { env } from '@/lib/env';
 import { getSettings } from '@/lib/settings';
 import { consumeActionToken } from '@/lib/tokens';
+import { createBookingLink } from '@/lib/booking-links';
 import { insertEvent } from '@/lib/google-calendar';
 import { notify } from '@/lib/notifications/dispatch';
 import { isSlotBookable } from '@/lib/availability';
@@ -208,13 +209,26 @@ async function rejectLesson(data: LessonWithStudent): Promise<ApproveResult> {
 
   if (data.studentPhone) {
     try {
+      // Mint a fresh PERSONAL re-book link tied to the student (the model no
+      // longer has a generic public booking page). Fall back to the bare /book
+      // info page only when the lesson has no associated student.
+      let bookingUrl = `${appUrl}/book`;
+      if (lesson.studentId) {
+        try {
+          const link = await createBookingLink(lesson.studentId);
+          bookingUrl = link.url;
+        } catch (err) {
+          console.error('[approval] re-book link creation failed (using fallback):', err);
+        }
+      }
+
       await notify(
         'booking_rejected_student',
         data.studentPhone,
         {
           studentName: data.studentName,
           datetime: formatILDateTime(lesson.startsAt),
-          bookingUrl: `${appUrl}/book`,
+          bookingUrl,
         },
         `rejected:${lesson.id}`,
         lesson.id,

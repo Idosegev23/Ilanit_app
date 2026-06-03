@@ -1,27 +1,36 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Unit tests for the booking service. All cross-module deps are mocked: the
-// slot re-check, student CRUD, token minting, notifications, settings, env and
-// the db (lessons insert + the conflict guard query).
+// Unit tests for the token-based booking service. The student is identified from
+// a personal booking-link token (no name/phone form). All cross-module deps are
+// mocked: link resolution, student lookup/update, slot re-check, token minting,
+// notifications, settings, env and the db (lessons insert + the conflict guard).
 
 const state = vi.hoisted(() => ({
   bookable: true,
   conflictRows: [] as Array<{ id: string }>,
-  student: null as null | { id: string; name: string; phone: string; email: string | null; defaultPrice: number | null; defaultDurationMin: number },
+  resolved: { studentId: 'student-1' } as null | { studentId: string },
+  student: {
+    id: 'student-1',
+    name: 'דנה לוי',
+    phone: '+972501234567',
+    email: 'dana@example.com' as string | null,
+    defaultPrice: 150 as number | null,
+    defaultDurationMin: 60,
+  } as null | {
+    id: string;
+    name: string;
+    phone: string;
+    email: string | null;
+    defaultPrice: number | null;
+    defaultDurationMin: number;
+  },
   insertedValues: null as Record<string, unknown> | null,
 }));
 
 const mocks = vi.hoisted(() => ({
+  resolveBookingLink: vi.fn(async () => state.resolved),
   isSlotBookable: vi.fn(async () => state.bookable),
-  findStudentByPhone: vi.fn(async () => state.student),
-  createStudent: vi.fn(async (data: Record<string, unknown>) => ({
-    id: 'new-student',
-    name: data.name,
-    phone: data.phone,
-    email: data.email ?? null,
-    defaultPrice: null,
-    defaultDurationMin: data.defaultDurationMin ?? 60,
-  })),
+  getStudent: vi.fn(async () => state.student),
   updateStudent: vi.fn(async (_id: string, patch: Record<string, unknown>) => ({
     ...state.student,
     ...patch,
@@ -44,12 +53,10 @@ const mocks = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock('@/lib/availability', () => ({
-  isSlotBookable: mocks.isSlotBookable,
-}));
+vi.mock('@/lib/booking-links', () => ({ resolveBookingLink: mocks.resolveBookingLink }));
+vi.mock('@/lib/availability', () => ({ isSlotBookable: mocks.isSlotBookable }));
 vi.mock('@/lib/students', () => ({
-  findStudentByPhone: mocks.findStudentByPhone,
-  createStudent: mocks.createStudent,
+  getStudent: mocks.getStudent,
   updateStudent: mocks.updateStudent,
 }));
 vi.mock('@/lib/tokens', () => ({ createActionToken: mocks.createActionToken }));
@@ -91,29 +98,41 @@ const FUTURE_END = '2026-06-08T08:00:00.000Z'; // 11:00 IL
 beforeEach(() => {
   state.bookable = true;
   state.conflictRows = [];
-  state.student = null;
+  state.resolved = { studentId: 'student-1' };
+  state.student = {
+    id: 'student-1',
+    name: 'דנה לוי',
+    phone: '+972501234567',
+    email: 'dana@example.com',
+    defaultPrice: 150,
+    defaultDurationMin: 60,
+  };
   state.insertedValues = null;
   Object.values(mocks).forEach((m) => m.mockClear());
 });
 
-describe('bookLesson — validation', () => {
-  it('rejects a missing name', async () => {
-    const res = await bookLesson({ name: '  ', phone: '0501234567', startISO: FUTURE_START, endISO: FUTURE_END });
-    expect(res).toMatchObject({ ok: false, error: 'invalid_input' });
+describe('bookLesson — token guards', () => {
+  it('rejects a missing token', async () => {
+    const res = await bookLesson({ token: '  ', startISO: FUTURE_START, endISO: FUTURE_END });
+    expect(res).toMatchObject({ ok: false, error: 'invalid_token' });
+    expect(state.insertedValues).toBeNull();
   });
 
-  it('rejects a missing phone', async () => {
-    const res = await bookLesson({ name: 'דנה', phone: '', startISO: FUTURE_START, endISO: FUTURE_END });
-    expect(res).toMatchObject({ ok: false, error: 'invalid_input' });
+  it('rejects an unknown/expired token', async () => {
+    state.resolved = null;
+    const res = await bookLesson({ token: 'bad', startISO: FUTURE_START, endISO: FUTURE_END });
+    expect(res).toMatchObject({ ok: false, error: 'invalid_token' });
+    expect(state.insertedValues).toBeNull();
   });
 
-  it('rejects an invalid phone', async () => {
-    const res = await bookLesson({ name: 'דנה', phone: 'abc', startISO: FUTURE_START, endISO: FUTURE_END });
-    expect(res).toMatchObject({ ok: false, error: 'invalid_input' });
+  it('rejects when the student no longer exists', async () => {
+    state.student = null;
+    const res = await bookLesson({ token: 'tok', startISO: FUTURE_START, endISO: FUTURE_END });
+    expect(res).toMatchObject({ ok: false, error: 'invalid_token' });
   });
 
   it('rejects end <= start', async () => {
-    const res = await bookLesson({ name: 'דנה', phone: '0501234567', startISO: FUTURE_END, endISO: FUTURE_START });
+    const res = await bookLesson({ token: 'tok', startISO: FUTURE_END, endISO: FUTURE_START });
     expect(res).toMatchObject({ ok: false, error: 'invalid_input' });
   });
 });
@@ -121,25 +140,23 @@ describe('bookLesson — validation', () => {
 describe('bookLesson — slot guards', () => {
   it('refuses when the slot is no longer bookable', async () => {
     state.bookable = false;
-    const res = await bookLesson({ name: 'דנה', phone: '0501234567', startISO: FUTURE_START, endISO: FUTURE_END });
+    const res = await bookLesson({ token: 'tok', startISO: FUTURE_START, endISO: FUTURE_END });
     expect(res).toMatchObject({ ok: false, error: 'slot_taken' });
     expect(state.insertedValues).toBeNull();
   });
 
   it('refuses on a concurrent-booking conflict', async () => {
     state.conflictRows = [{ id: 'other' }];
-    const res = await bookLesson({ name: 'דנה', phone: '0501234567', startISO: FUTURE_START, endISO: FUTURE_END });
+    const res = await bookLesson({ token: 'tok', startISO: FUTURE_START, endISO: FUTURE_END });
     expect(res).toMatchObject({ ok: false, error: 'slot_taken' });
     expect(state.insertedValues).toBeNull();
   });
 });
 
-describe('bookLesson — happy path (new student)', () => {
+describe('bookLesson — happy path (student from token)', () => {
   it('creates a pending lesson with price+location snapshot, token and notifications', async () => {
     const res = await bookLesson({
-      name: 'דנה לוי',
-      phone: '050-123-4567',
-      email: 'dana@example.com',
+      token: 'tok',
       startISO: FUTURE_START,
       endISO: FUTURE_END,
       notes: 'מבחן מחר',
@@ -147,17 +164,18 @@ describe('bookLesson — happy path (new student)', () => {
 
     expect(res).toEqual({ ok: true, lessonId: 'lesson-1' });
 
-    // new student created (phone normalized to E.164)
-    expect(mocks.createStudent).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'דנה לוי', phone: '+972501234567', email: 'dana@example.com' }),
-    );
+    // student resolved from the token (no createStudent in this flow)
+    expect(mocks.resolveBookingLink).toHaveBeenCalledWith('tok');
+    expect(mocks.getStudent).toHaveBeenCalledWith('student-1');
 
-    // pending lesson snapshot
+    // pending lesson snapshot — booked-by fields come from the known student
     expect(state.insertedValues).toMatchObject({
       type: 'individual',
       source: 'booking',
       status: 'pending',
       needsMatch: false,
+      studentId: 'student-1',
+      price: 150,
       location: 'רחוב הדקל 1, חיפה',
       bookedByName: 'דנה לוי',
       bookedByPhone: '+972501234567',
@@ -174,30 +192,8 @@ describe('bookLesson — happy path (new student)', () => {
     const ilanitCall = mocks.notify.mock.calls.find((c) => c[0] === 'booking_pending_ilanit');
     expect(ilanitCall?.[2]).toMatchObject({ actionUrl: 'https://ilanit.test/a/raw-token-xyz' });
   });
-});
 
-describe('bookLesson — existing student', () => {
-  it('reuses the existing student and snapshots their default price', async () => {
-    state.student = {
-      id: 'student-9',
-      name: 'יוסי',
-      phone: '+972521112233',
-      email: 'yossi@example.com',
-      defaultPrice: 150,
-      defaultDurationMin: 60,
-    };
-    const res = await bookLesson({
-      name: 'יוסי',
-      phone: '0521112233',
-      startISO: FUTURE_START,
-      endISO: FUTURE_END,
-    });
-    expect(res).toEqual({ ok: true, lessonId: 'lesson-1' });
-    expect(mocks.createStudent).not.toHaveBeenCalled();
-    expect(state.insertedValues).toMatchObject({ studentId: 'student-9', price: 150 });
-  });
-
-  it('records a newly-supplied email on an existing student missing one', async () => {
+  it('records a newly-supplied email on a student missing one', async () => {
     state.student = {
       id: 'student-10',
       name: 'מיכל',
@@ -206,9 +202,9 @@ describe('bookLesson — existing student', () => {
       defaultPrice: null,
       defaultDurationMin: 60,
     };
+    state.resolved = { studentId: 'student-10' };
     await bookLesson({
-      name: 'מיכל',
-      phone: '0524445566',
+      token: 'tok',
       email: 'michal@example.com',
       startISO: FUTURE_START,
       endISO: FUTURE_END,
@@ -216,14 +212,19 @@ describe('bookLesson — existing student', () => {
     expect(mocks.updateStudent).toHaveBeenCalledWith('student-10', { email: 'michal@example.com' });
   });
 
-  it('still succeeds when notifications fail', async () => {
-    mocks.notify.mockRejectedValueOnce(new Error('green api down'));
-    const res = await bookLesson({
-      name: 'דנה',
-      phone: '0501234567',
+  it('does not overwrite an existing student email', async () => {
+    await bookLesson({
+      token: 'tok',
+      email: 'other@example.com',
       startISO: FUTURE_START,
       endISO: FUTURE_END,
     });
+    expect(mocks.updateStudent).not.toHaveBeenCalled();
+  });
+
+  it('still succeeds when notifications fail', async () => {
+    mocks.notify.mockRejectedValueOnce(new Error('green api down'));
+    const res = await bookLesson({ token: 'tok', startISO: FUTURE_START, endISO: FUTURE_END });
     expect(res).toEqual({ ok: true, lessonId: 'lesson-1' });
   });
 });

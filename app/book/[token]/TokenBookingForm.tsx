@@ -8,6 +8,7 @@ import {
   CalendarX2,
   CheckCircle2,
   Clock,
+  UserRound,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,14 +19,23 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-// Public booking flow (RTL Hebrew): pick a date → load real free slots → pick a
-// slot → fill name + phone (required) + email (recommended) + notes → submit to
-// /api/book. On success shows the "pending approval" confirmation.
+// Token-based booking flow (RTL Hebrew). The student is ALREADY known (resolved
+// server-side from the personal link), so there is NO name/phone entry: we show
+// the name read-only, an OPTIONAL email field (for the calendar invite), pick a
+// date → load real free slots → pick a slot → submit { token, startISO, endISO,
+// email? } to /api/book. On success shows the "pending approval" confirmation.
 
 interface Slot {
   startISO: string;
   endISO: string;
   label: string;
+}
+
+interface TokenBookingFormProps {
+  token: string;
+  studentName: string;
+  /** Pre-fills the email field when the student already has one on file. */
+  studentEmail?: string | null;
 }
 
 function todayISO(): string {
@@ -52,9 +62,9 @@ function formatDateHe(iso: string): string {
   }
 }
 
-type Phase = 'pick' | 'form' | 'done';
+type Phase = 'pick' | 'confirm' | 'done';
 
-export function BookingForm() {
+export function TokenBookingForm({ token, studentName, studentEmail }: TokenBookingFormProps) {
   const [date, setDate] = React.useState(todayISO());
   const [slots, setSlots] = React.useState<Slot[]>([]);
   const [loadingSlots, setLoadingSlots] = React.useState(false);
@@ -62,9 +72,7 @@ export function BookingForm() {
   const [selected, setSelected] = React.useState<Slot | null>(null);
 
   const [phase, setPhase] = React.useState<Phase>('pick');
-  const [name, setName] = React.useState('');
-  const [phone, setPhone] = React.useState('');
-  const [email, setEmail] = React.useState('');
+  const [email, setEmail] = React.useState(studentEmail ?? '');
   const [notes, setNotes] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -96,21 +104,13 @@ export function BookingForm() {
 
   function pickSlot(slot: Slot) {
     setSelected(slot);
-    setPhase('form');
+    setPhase('confirm');
     setFormError(null);
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!selected) return;
-    if (!name.trim()) {
-      setFormError('יש להזין שם');
-      return;
-    }
-    if (!phone.trim()) {
-      setFormError('יש להזין מספר טלפון');
-      return;
-    }
     setSubmitting(true);
     setFormError(null);
     try {
@@ -118,8 +118,7 @@ export function BookingForm() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
-          phone,
+          token,
           email: email.trim() || undefined,
           notes: notes.trim() || undefined,
           startISO: selected.startISO,
@@ -165,7 +164,7 @@ export function BookingForm() {
             התקבלה וממתינה לאישור של אילנית.
           </p>
           <p className="max-w-sm text-sm text-muted">
-            תקבלו הודעת וואטסאפ ברגע שהשיעור יאושר.
+            תקבל/י הודעת וואטסאפ ברגע שהשיעור יאושר.
           </p>
           <Button
             variant="secondary"
@@ -173,9 +172,6 @@ export function BookingForm() {
             onClick={() => {
               setPhase('pick');
               setSelected(null);
-              setName('');
-              setPhone('');
-              setEmail('');
               setNotes('');
             }}
           >
@@ -189,6 +185,17 @@ export function BookingForm() {
   return (
     <Card>
       <CardContent className="space-y-6 py-6">
+        {/* Known student — read-only identity (no name/phone entry). */}
+        <div className="flex items-center gap-3 rounded-xl bg-primary-soft px-4 py-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface text-primary-600">
+            <UserRound className="size-5" aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs text-muted">קביעת שיעור עבור</p>
+            <p className="truncate font-semibold text-ink">{studentName}</p>
+          </div>
+        </div>
+
         {/* Date picker */}
         <div className="space-y-1.5">
           <Label htmlFor="book-date">
@@ -275,8 +282,8 @@ export function BookingForm() {
           </div>
         )}
 
-        {/* Booking form */}
-        {phase === 'form' && selected && (
+        {/* Confirm step — optional email + notes, then submit. */}
+        {phase === 'confirm' && selected && (
           <form className="space-y-4" onSubmit={submit}>
             {/* Selected-slot recap */}
             <div className="flex items-center gap-3 rounded-xl bg-primary-soft px-4 py-3">
@@ -291,40 +298,8 @@ export function BookingForm() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="book-name" required>
-                שם מלא
-              </Label>
-              <Input
-                id="book-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="שם התלמיד/ה"
-                autoComplete="name"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="book-phone" required>
-                טלפון
-              </Label>
-              <Input
-                id="book-phone"
-                type="tel"
-                dir="ltr"
-                className="text-end"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="050-123-4567"
-                autoComplete="tel"
-                required
-              />
-            </div>
-
-            <div className="space-y-1.5">
               <Label htmlFor="book-email">
-                אימייל{' '}
-                <span className="font-normal text-accent-text">(מומלץ)</span>
+                אימייל <span className="font-normal text-accent-text">(מומלץ)</span>
               </Label>
               <Input
                 id="book-email"
@@ -374,12 +349,8 @@ export function BookingForm() {
                 <ArrowRight className="size-4" aria-hidden="true" />
                 חזרה לבחירת מועד
               </Button>
-              <Button
-                type="submit"
-                loading={submitting}
-                className="sm:ms-auto"
-              >
-                {submitting ? 'שולח…' : 'שליחת הבקשה'}
+              <Button type="submit" loading={submitting} className="sm:ms-auto">
+                {submitting ? 'שולח…' : 'אישור וקביעת השיעור'}
               </Button>
             </div>
           </form>

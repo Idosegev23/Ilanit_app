@@ -5,6 +5,7 @@ import { formatShekels } from '@/lib/utils';
 // and interpolated; templates never call external services.
 
 export type TemplateKey =
+  | 'booking_link_student'
   | 'booking_pending_student'
   | 'booking_pending_ilanit'
   | 'booking_approved_student'
@@ -35,6 +36,12 @@ function money(vars: Vars, key: string): string {
 }
 
 const builders: Record<TemplateKey, (v: Vars) => string> = {
+  booking_link_student: (v) =>
+    `שלום ${s(v, 'studentName')}! 🌟\n` +
+    `הנה לינק אישי לתיאום שיעור עם אילנית:\n` +
+    `${s(v, 'bookingUrl')}\n` +
+    `פותחים את הקישור, בוחרים מועד פנוי — וזהו. נתראה!`,
+
   booking_pending_student: (v) =>
     `שלום ${s(v, 'studentName')}! 🌟\n` +
     `בקשתך לשיעור בתאריך ${s(v, 'datetime')} התקבלה וממתינה לאישור של אילנית.\n` +

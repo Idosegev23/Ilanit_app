@@ -11,7 +11,7 @@ import {
   ClipboardCheck,
   CircleDollarSign,
   Sparkles,
-  Link2,
+  Send,
   ChevronLeft,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -19,10 +19,14 @@ import { StatCard } from '@/components/ui/stat-card';
 import { PageHeader } from '@/components/ui/page-header';
 import { EmptyState } from '@/components/ui/empty-state';
 import { buttonVariants } from '@/components/ui/button';
-import { CopyLinkField } from '@/components/ui/share-link-button';
+import {
+  SendBookingLinkDialog,
+  type BookingLinkStudent,
+} from '@/components/ui/send-booking-link-dialog';
 import { StatusPill } from '@/components/ui/badge';
 import { formatShekels } from '@/lib/utils';
 import { getDashboardData } from '@/lib/insights/metrics';
+import { listStudents } from '@/lib/students';
 import { getCachedInsights } from '@/lib/insights';
 import { InsightsPanel } from './insights-panel';
 import {
@@ -44,10 +48,6 @@ import type {
 export const dynamic = 'force-dynamic';
 
 const PERIOD_DAYS = 30;
-
-// Public booking URL Ilanit shares with students. NEXT_PUBLIC_* is safe to read
-// at render time; trailing slash trimmed so we never produce `//book`.
-const BOOKING_URL = `${(process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')}/book`;
 
 function KpiRow({ kpis }: { kpis: DashboardKpis }) {
   const totalLessons = Object.values(kpis.lessonsByStatus).reduce((s, n) => s + n, 0);
@@ -194,8 +194,17 @@ function UnpaidList({ rows }: { rows: UnpaidRow[] }) {
 }
 
 export default async function DashboardPage() {
-  const data = await getDashboardData(PERIOD_DAYS);
-  const cached = await getCachedInsights(PERIOD_DAYS);
+  const [data, cached, studentRows] = await Promise.all([
+    getDashboardData(PERIOD_DAYS),
+    getCachedInsights(PERIOD_DAYS),
+    listStudents(),
+  ]);
+
+  const dialogStudents: BookingLinkStudent[] = studentRows.map((s) => ({
+    id: s.id,
+    name: s.name,
+    phone: s.phone,
+  }));
 
   return (
     <div className="space-y-8">
@@ -204,21 +213,24 @@ export default async function DashboardPage() {
         subtitle="סקירת ההכנסות, התפוסה והפעולות הפתוחות שלך ב-30 הימים האחרונים."
       />
 
-      {/* Prominent booking-link card — the link Ilanit shares with students. */}
+      {/* Prominent action — send a PERSONAL booking link to a student. */}
       <Card className="border-primary-100 bg-primary-soft/60">
         <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-fg">
-              <Link2 className="size-5" aria-hidden="true" />
+              <Send className="size-5" aria-hidden="true" />
             </span>
             <div>
-              <h2 className="text-lg font-semibold text-ink">לינק לתיאום שיעור</h2>
+              <h2 className="text-lg font-semibold text-ink">שליחת לינק לתיאום</h2>
               <p className="mt-1 text-sm text-muted">
-                שתפי את הקישור הזה עם התלמידים כדי שיוכלו לקבוע שיעור בעצמם.
+                בחרי תלמיד/ה (או הוסיפי חדש/ה) ונשלח לו/ה לינק אישי לתיאום שיעור בוואטסאפ.
               </p>
             </div>
           </div>
-          <CopyLinkField url={BOOKING_URL} className="w-full sm:w-auto sm:min-w-[22rem]" />
+          <SendBookingLinkDialog
+            students={dialogStudents}
+            className="w-full sm:w-auto"
+          />
         </CardContent>
       </Card>
 

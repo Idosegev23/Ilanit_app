@@ -32,9 +32,15 @@ const mocks = vi.hoisted(() => ({
   ),
   isSlotBookable: vi.fn(async () => state.bookable),
   getSettings: vi.fn(async () => ({ locationAddress: 'רחוב הדקל 1' })),
+  createBookingLink: vi.fn(async (studentId: string) => ({
+    token: 'rebook-token',
+    url: `https://ilanit.test/book/rebook-token`,
+    studentId,
+  })),
 }));
 
 vi.mock('@/lib/tokens', () => ({ consumeActionToken: mocks.consumeActionToken }));
+vi.mock('@/lib/booking-links', () => ({ createBookingLink: mocks.createBookingLink }));
 vi.mock('@/lib/google-calendar', () => ({ insertEvent: mocks.insertEvent }));
 vi.mock('@/lib/notifications/dispatch', () => ({ notify: mocks.notify }));
 vi.mock('@/lib/settings', () => ({ getSettings: mocks.getSettings }));
@@ -171,7 +177,7 @@ describe('decideLesson — approve', () => {
 });
 
 describe('decideLesson — reject', () => {
-  it('marks the lesson rejected, frees the slot and sends a re-book link', async () => {
+  it('marks the lesson rejected, frees the slot and sends a personal re-book link', async () => {
     const res = await decideLesson('tok', 'reject');
     expect(res).toEqual({ ok: true, action: 'rejected' });
     expect(mocks.insertEvent).not.toHaveBeenCalled();
@@ -179,6 +185,18 @@ describe('decideLesson — reject', () => {
     const rej = state.updated.find((u) => u.status === 'rejected');
     expect(rej).toMatchObject({ status: 'rejected' });
 
+    // A fresh PERSONAL booking link is minted for the student and sent.
+    expect(mocks.createBookingLink).toHaveBeenCalledWith('student-1');
+    const note = mocks.notify.mock.calls.find((c) => c[0] === 'booking_rejected_student');
+    expect(note?.[2]).toMatchObject({ bookingUrl: 'https://ilanit.test/book/rebook-token' });
+  });
+
+  it('falls back to the bare /book page when the lesson has no student', async () => {
+    state.lessonRow = pendingLesson({ studentId: null });
+    // when there is no studentId we still need a phone to notify
+    const res = await decideLesson('tok', 'reject');
+    expect(res).toEqual({ ok: true, action: 'rejected' });
+    expect(mocks.createBookingLink).not.toHaveBeenCalled();
     const note = mocks.notify.mock.calls.find((c) => c[0] === 'booking_rejected_student');
     expect(note?.[2]).toMatchObject({ bookingUrl: 'https://ilanit.test/book' });
   });

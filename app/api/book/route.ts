@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { bookLesson, type BookRequest } from '@/lib/availability/booking';
 
-// Public booking endpoint. POST /api/book with { name, phone, email?, startISO,
-// endISO, notes? }. Re-checks the slot, matches/creates the student, creates a
-// pending lesson and fires the approval flow. No auth (booking is public).
+// Token-based booking endpoint. POST /api/book with { token, startISO, endISO,
+// email?, notes? }. The student is identified from the PERSONAL booking-link
+// token (no name/phone form). Re-checks the slot, creates a pending lesson and
+// fires the approval flow. No login (the token IS the authorization).
 
 export const dynamic = 'force-dynamic';
 
@@ -20,8 +21,7 @@ export async function POST(req: Request) {
   }
 
   const input: BookRequest = {
-    name: str(body.name),
-    phone: str(body.phone),
+    token: str(body.token),
     email: str(body.email) || undefined,
     startISO: str(body.startISO),
     endISO: str(body.endISO),
@@ -34,6 +34,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, lessonId: result.lessonId });
   }
 
-  const status = result.error === 'invalid_input' ? 400 : result.error === 'slot_taken' ? 409 : 500;
+  const status =
+    result.error === 'invalid_input'
+      ? 400
+      : result.error === 'invalid_token'
+        ? 410
+        : result.error === 'slot_taken'
+          ? 409
+          : 500;
   return NextResponse.json({ ok: false, error: result.message }, { status });
 }
