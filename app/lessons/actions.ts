@@ -135,8 +135,10 @@ export async function createManualLesson(formData: FormData): Promise<ActionResu
     }
 
     const price = priceRaw ? Number(priceRaw) : (student.defaultPrice ?? null);
-    if (price !== null && (!Number.isFinite(price) || price < 0)) {
-      return { ok: false, error: 'מחיר לא תקין' };
+    // Money is integer shekels (no agorot/decimals); enforce on the server, not
+    // just via the client-side step={1} input.
+    if (price !== null && (!Number.isInteger(price) || price < 0)) {
+      return { ok: false, error: 'מחיר חייב להיות מספר שלם של שקלים (0 ומעלה)' };
     }
 
     const location = settings.locationAddress || null;
@@ -208,6 +210,11 @@ export async function createRecurringSeries(formData: FormData): Promise<ActionR
     const durationMin = durationRaw ? Number(durationRaw) : settings.defaultDurationMin;
     const horizonDays = horizonRaw ? Number(horizonRaw) : settings.bookingHorizonDays;
     const price = priceRaw ? Number(priceRaw) : undefined;
+    // Money is integer shekels (no agorot/decimals); enforce on the server, not
+    // just via the client-side step={1} input.
+    if (price !== undefined && (!Number.isInteger(price) || price < 0)) {
+      return { ok: false, error: 'מחיר חייב להיות מספר שלם של שקלים (0 ומעלה)' };
+    }
 
     const res = await createSeries({
       kind,

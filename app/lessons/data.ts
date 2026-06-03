@@ -30,7 +30,11 @@ export interface GroupOption {
   name: string;
 }
 
-/** Loads all non-archived lessons (newest first) with student/group names. */
+/**
+ * Loads every lesson (newest first) with student/group names. Lessons have no
+ * archive flag (only students do), so no archive filter is applied — all
+ * statuses (pending/confirmed/completed/rejected/cancelled) are returned.
+ */
 export async function loadLessons(): Promise<LessonRow[]> {
   const rows = await db
     .select({

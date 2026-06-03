@@ -12,13 +12,14 @@ import {
 } from '@/db/schema';
 import { getStudent } from '@/lib/students';
 import { getSettings } from '@/lib/settings';
-import { nowIL, startOfDayIL, ilWeekday, toILDateStr, parseILDateTime } from '@/lib/time';
+import { nowIL, toILDateStr, parseILDateTime } from '@/lib/time';
 import {
   insertRecurringEvent,
   cancelEvent,
   type EventInput,
 } from '@/lib/google-calendar';
 import { and, eq, gte, inArray } from 'drizzle-orm';
+import { addDays } from 'date-fns';
 
 export interface CreateSeriesInput {
   kind: 'individual' | 'group';
@@ -31,10 +32,25 @@ export interface CreateSeriesInput {
   horizonDays: number; // generate occurrences this many days forward
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
 // Google RRULE weekday codes indexed by JS weekday (0 = Sunday).
 const RRULE_DAYS = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'] as const;
+
+/** Weekday (0=Sunday … 6=Saturday) of a calendar `yyyy-MM-dd` string. */
+function weekdayOfDateStr(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  // Date.UTC avoids any host-timezone interpretation of the calendar date.
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+/** Adds `days` calendar days to a `yyyy-MM-dd` string, returning a new one. */
+function addDaysToDateStr(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const next = addDays(new Date(Date.UTC(y, m - 1, d)), days);
+  const yy = next.getUTCFullYear();
+  const mm = String(next.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(next.getUTCDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
 
 /** Validates a HH:mm wall-clock string. */
 function assertTime(startTime: string): void {
@@ -45,9 +61,16 @@ function assertTime(startTime: string): void {
 
 /**
  * Computes the UTC instants for every occurrence of `weekday`@`startTime`
- * (Asia/Jerusalem) from tomorrow through `horizonDays` forward, inclusive of
- * the horizon edge. Today is skipped so we never create a same-day recurring
- * lesson behind the current time.
+ * (Asia/Jerusalem) from today through `horizonDays` forward, inclusive of the
+ * horizon edge. Occurrences already started (e.g. earlier today) are skipped.
+ *
+ * The day cursor is stepped via calendar-date arithmetic (`yyyy-MM-dd` strings),
+ * NOT by adding a fixed 24h to a midnight instant. Across an Asia/Jerusalem DST
+ * transition a fixed-24h step drifts off the wall-clock day boundary, which can
+ * enumerate the same calendar date twice (duplicate lessons + inflated RRULE
+ * COUNT at fall-back) or skip a matching weekday entirely (dropped occurrence at
+ * spring-forward). Each calendar date is then re-zoned to its wall-clock start
+ * instant, so the day boundary stays correct on both sides of any transition.
  */
 function occurrenceStarts(
   weekday: number,
@@ -55,12 +78,15 @@ function occurrenceStarts(
   horizonDays: number,
 ): Date[] {
   const now = nowIL();
-  const todayStart = startOfDayIL(now);
+  const startDateStr = toILDateStr(now);
   const out: Date[] = [];
+  const seen = new Set<string>();
   for (let offset = 0; offset <= horizonDays; offset++) {
-    const dayInstant = new Date(todayStart.getTime() + offset * DAY_MS);
-    if (ilWeekday(dayInstant) !== weekday) continue;
-    const dateStr = toILDateStr(dayInstant);
+    const dateStr = addDaysToDateStr(startDateStr, offset);
+    if (weekdayOfDateStr(dateStr) !== weekday) continue;
+    // De-dupe defensively: never enumerate the same calendar date twice.
+    if (seen.has(dateStr)) continue;
+    seen.add(dateStr);
     const startsAt = parseILDateTime(dateStr, startTime);
     // Skip occurrences that have already started (e.g. earlier today).
     if (startsAt.getTime() <= now.getTime()) continue;
@@ -88,6 +114,11 @@ export async function createSeries(
   }
   if (!Number.isInteger(horizonDays) || horizonDays <= 0) {
     throw new Error(`invalid horizonDays: ${horizonDays}`);
+  }
+  // Money = integer shekels (no agorot/decimals). Guard the optional override
+  // here too so any caller (server action / API) cannot persist a fractional ₪.
+  if (input.price !== undefined && (!Number.isInteger(input.price) || input.price < 0)) {
+    throw new Error(`invalid price (expected non-negative integer shekels): ${input.price}`);
   }
 
   const settings = await getSettings();
@@ -251,6 +282,15 @@ export async function cancelOne(lessonId: string): Promise<void> {
   // Only remove the Google event for standalone lessons. A recurring-series
   // instance shares the master recurring event with its siblings, so deleting
   // it would wipe the whole series — cancelSeries handles that case instead.
+  //
+  // KNOWN LIMITATION (spec §5.6 single-instance cancel): when this lesson
+  // belongs to a series (recurrenceId set), the system row is marked cancelled
+  // but the matching occurrence is NOT removed from Google Calendar, because the
+  // lib/google-calendar contract only exposes cancelEvent(eventId) for the whole
+  // event — there is no instance-level (EXDATE / per-occurrence) cancel. The
+  // cancelled occurrence therefore still shows in Google Calendar, diverging
+  // from system state. Closing this gap requires adding instance cancellation to
+  // the lib/google-calendar contract (foundation/B1); see REPORT blockers.
   if (lesson.googleEventId && !lesson.recurrenceId) {
     await cancelEvent(lesson.googleEventId);
   }

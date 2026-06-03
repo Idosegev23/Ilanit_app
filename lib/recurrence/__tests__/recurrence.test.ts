@@ -143,9 +143,12 @@ vi.mock('@/lib/settings', () => ({
 // Use a fixed "now" so occurrence generation is deterministic.
 // Reference instant: Mon 2026-06-01 09:00 Asia/Jerusalem (UTC+3) = 06:00Z.
 const FIXED_NOW = new Date('2026-06-01T06:00:00.000Z');
+// Mutable so individual tests (e.g. the DST regression below) can move "now"
+// across a DST transition; reset to FIXED_NOW in the top-level beforeEach.
+let mockNow: Date = FIXED_NOW;
 vi.mock('@/lib/time', async () => {
   const actual = await vi.importActual<typeof import('@/lib/time')>('@/lib/time');
-  return { ...actual, nowIL: () => FIXED_NOW };
+  return { ...actual, nowIL: () => mockNow };
 });
 
 import { createSeries, cancelSeries, cancelOne } from '@/lib/recurrence';
@@ -154,6 +157,7 @@ beforeEach(() => {
   store.recurrences = [];
   store.lessons = [];
   store.groups = [];
+  mockNow = FIXED_NOW;
   idSeq = 0;
   insertRecurringEvent.mockClear();
   cancelEvent.mockClear();
@@ -383,6 +387,103 @@ describe('createSeries — group', () => {
         horizonDays: 7,
       }),
     ).rejects.toThrow(/groupId/);
+  });
+});
+
+describe('createSeries — DST boundary (Asia/Jerusalem fall-back 2026-10-25)', () => {
+  beforeEach(() => {
+    // now = Mon 2026-10-12 ~09:00 IL (UTC+3), well before the late-October
+    // fall-back so the horizon spans the 2026-10-25 transition (UTC+3 → UTC+2).
+    mockNow = new Date('2026-10-12T06:00:00.000Z');
+    getStudent.mockResolvedValue({
+      id: 'stud-1',
+      name: 'דנה',
+      email: 'dana@example.com',
+      defaultPrice: 150,
+    });
+  });
+
+  it('enumerates each Sunday exactly once across the DST transition (no duplicate 2026-10-25)', async () => {
+    // Sundays in [2026-10-12 .. +28d]: 10-18, 10-25, 11-01, 11-08.
+    // The pre-transition wall-clock offset is +3 (10-18 → 07:00Z); from 10-25
+    // onward it is +2 (08:00Z). A fixed-24h day cursor would land on 10-25
+    // twice and emit a duplicate 10-25T08:00Z lesson + inflated RRULE COUNT.
+    const res = await createSeries({
+      kind: 'individual',
+      studentId: 'stud-1',
+      weekday: 0, // Sunday
+      startTime: '10:00',
+      durationMin: 60,
+      horizonDays: 28,
+    });
+
+    expect(res.count).toBe(4);
+    expect(store.lessons).toHaveLength(4);
+
+    const isos = store.lessons
+      .map((l) => (l.startsAt as Date).toISOString())
+      .sort();
+    expect(isos).toEqual([
+      '2026-10-18T07:00:00.000Z', // pre fall-back (UTC+3)
+      '2026-10-25T08:00:00.000Z', // transition day (now UTC+2) — exactly once
+      '2026-11-01T08:00:00.000Z',
+      '2026-11-08T08:00:00.000Z',
+    ]);
+
+    // No two lessons share the same start instant.
+    expect(new Set(isos).size).toBe(isos.length);
+  });
+
+  it('RRULE COUNT matches the distinct occurrence count (not inflated by DST)', async () => {
+    await createSeries({
+      kind: 'individual',
+      studentId: 'stud-1',
+      weekday: 0,
+      startTime: '10:00',
+      durationMin: 60,
+      horizonDays: 28,
+    });
+    const [, rrule] = insertRecurringEvent.mock.calls[0];
+    expect(rrule).toBe('RRULE:FREQ=WEEKLY;BYDAY=SU;COUNT=4');
+  });
+});
+
+describe('createSeries — integer-shekel price guard', () => {
+  beforeEach(() => {
+    getStudent.mockResolvedValue({
+      id: 'stud-1',
+      name: 'דנה',
+      email: null,
+      defaultPrice: 150,
+    });
+  });
+
+  it('rejects a fractional price override', async () => {
+    await expect(
+      createSeries({
+        kind: 'individual',
+        studentId: 'stud-1',
+        weekday: 3,
+        startTime: '17:00',
+        durationMin: 60,
+        horizonDays: 7,
+        price: 120.5,
+      }),
+    ).rejects.toThrow(/price/);
+  });
+
+  it('rejects a negative price override', async () => {
+    await expect(
+      createSeries({
+        kind: 'individual',
+        studentId: 'stud-1',
+        weekday: 3,
+        startTime: '17:00',
+        durationMin: 60,
+        horizonDays: 7,
+        price: -10,
+      }),
+    ).rejects.toThrow(/price/);
   });
 });
 
