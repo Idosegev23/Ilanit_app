@@ -2,9 +2,11 @@
 
 import * as React from 'react';
 import { useActionState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { createRecurringSeries, type ActionResult } from './actions';
 import type { StudentOption, GroupOption } from './data';
 
@@ -25,115 +27,153 @@ const WEEKDAYS: Array<{ value: number; label: string }> = [
   { value: 6, label: 'שבת' },
 ];
 
-const selectClass =
-  'flex h-10 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  htmlFor,
+  required,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
+    <div className="space-y-1.5">
+      <Label htmlFor={htmlFor} required={required}>
+        {label}
+      </Label>
       {children}
-    </label>
+    </div>
   );
 }
 
+// Weekly recurring-series create form (individual student or group). Lives in
+// the lessons dialog. Preserves the exact form `name` fields and the
+// createRecurringSeries server action; fires onSuccess only on a real create
+// (a zero-count run is reported via state.error and keeps the form open).
 export function RecurringForm({
   studentOptions,
   groupOptions,
+  onSuccess,
 }: {
   studentOptions: StudentOption[];
   groupOptions: GroupOption[];
+  onSuccess?: () => void;
 }) {
-  const [open, setOpen] = React.useState(false);
   const [kind, setKind] = React.useState<'individual' | 'group'>('individual');
   const [state, formAction, pending] = useActionState(action, initialState);
+  const succeeded = state.ok && !state.error;
+
+  React.useEffect(() => {
+    if (succeeded) {
+      const id = setTimeout(() => onSuccess?.(), 700);
+      return () => clearTimeout(id);
+    }
+  }, [succeeded, onSuccess]);
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>שיעור חוזר שבועי</CardTitle>
-          <Button type="button" size="sm" variant="ghost" onClick={() => setOpen((v) => !v)}>
-            {open ? 'סגור' : 'הוסף'}
-          </Button>
-        </div>
-      </CardHeader>
-      {open && (
-        <CardContent>
-          <form action={formAction} className="space-y-3">
-            <Field label="סוג">
-              <select
-                name="kind"
-                value={kind}
-                onChange={(e) => setKind(e.target.value as 'individual' | 'group')}
-                className={selectClass}
-              >
-                <option value="individual">תלמיד יחיד</option>
-                <option value="group">קבוצה</option>
-              </select>
-            </Field>
+    <form action={formAction} className="space-y-4">
+      <Field label="סוג" htmlFor="rec-kind">
+        <Select
+          id="rec-kind"
+          name="kind"
+          value={kind}
+          onChange={(e) => setKind(e.target.value as 'individual' | 'group')}
+        >
+          <option value="individual">תלמיד יחיד</option>
+          <option value="group">קבוצה</option>
+        </Select>
+      </Field>
 
-            {kind === 'individual' ? (
-              <Field label="תלמיד">
-                <select name="studentId" className={selectClass} required>
-                  <option value="">— בחר/י —</option>
-                  {studentOptions.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            ) : (
-              <Field label="קבוצה">
-                <select name="groupId" className={selectClass} required>
-                  <option value="">— בחר/י —</option>
-                  {groupOptions.map((g) => (
-                    <option key={g.id} value={g.id}>
-                      {g.name}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            )}
-
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="יום בשבוע">
-                <select name="weekday" className={selectClass} defaultValue={0}>
-                  {WEEKDAYS.map((d) => (
-                    <option key={d.value} value={d.value}>
-                      {d.label}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="שעה">
-                <Input name="startTime" type="time" required />
-              </Field>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <Field label="משך (דק׳)">
-                <Input name="durationMin" type="number" min={1} placeholder="60" />
-              </Field>
-              <Field label="מחיר (₪)">
-                <Input name="price" type="number" min={0} step={1} />
-              </Field>
-              <Field label="אופק (ימים)">
-                <Input name="horizonDays" type="number" min={1} placeholder="30" />
-              </Field>
-            </div>
-
-            {state.error && <p className="text-sm text-red-600">{state.error}</p>}
-            {state.ok && !state.error && (
-              <p className="text-sm text-emerald-600">הסדרה נוצרה.</p>
-            )}
-            <Button type="submit" disabled={pending} className="w-full">
-              {pending ? 'יוצר…' : 'צור סדרה'}
-            </Button>
-          </form>
-        </CardContent>
+      {kind === 'individual' ? (
+        <Field label="תלמיד" htmlFor="rec-student" required>
+          <Select id="rec-student" name="studentId" required>
+            <option value="">— בחר/י —</option>
+            {studentOptions.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      ) : (
+        <Field label="קבוצה" htmlFor="rec-group" required>
+          <Select id="rec-group" name="groupId" required>
+            <option value="">— בחר/י —</option>
+            {groupOptions.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
       )}
-    </Card>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="יום בשבוע" htmlFor="rec-weekday">
+          <Select id="rec-weekday" name="weekday" defaultValue={0}>
+            {WEEKDAYS.map((d) => (
+              <option key={d.value} value={d.value}>
+                {d.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="שעה" htmlFor="rec-time" required>
+          <Input id="rec-time" name="startTime" type="time" required />
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <Field label="משך (דק׳)" htmlFor="rec-duration">
+          <Input
+            id="rec-duration"
+            name="durationMin"
+            type="number"
+            min={1}
+            className="tabular-nums"
+            placeholder="60"
+          />
+        </Field>
+        <Field label="מחיר (₪)" htmlFor="rec-price">
+          <Input
+            id="rec-price"
+            name="price"
+            type="number"
+            min={0}
+            step={1}
+            className="tabular-nums"
+          />
+        </Field>
+        <Field label="אופק (ימים)" htmlFor="rec-horizon">
+          <Input
+            id="rec-horizon"
+            name="horizonDays"
+            type="number"
+            min={1}
+            className="tabular-nums"
+            placeholder="30"
+          />
+        </Field>
+      </div>
+
+      {state.error && (
+        <p className="flex items-center gap-1.5 text-sm text-danger" role="alert">
+          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+          {state.error}
+        </p>
+      )}
+      {succeeded && (
+        <p className="flex items-center gap-1.5 text-sm text-success" role="status">
+          <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
+          הסדרה נוצרה.
+        </p>
+      )}
+
+      <Button type="submit" loading={pending} className="w-full">
+        {pending ? 'יוצר…' : 'צור סדרה'}
+      </Button>
+    </form>
   );
 }
