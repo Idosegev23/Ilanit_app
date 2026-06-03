@@ -81,16 +81,20 @@ export function PaymentForm({ token, suggestedAmount }: Props) {
     return (
       <div
         role="status"
-        className="flex flex-col items-center gap-3 rounded-2xl border border-success/20 bg-success-soft px-6 py-8 text-center animate-fade-in"
+        className="relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-success/25 bg-success-soft px-6 py-9 text-center shadow-card animate-fade-in"
       >
         <span
-          className="flex size-14 items-center justify-center rounded-full bg-success text-white shadow-soft"
+          aria-hidden="true"
+          className="absolute inset-x-0 -top-px h-1 bg-success/70"
+        />
+        <span
+          className="flex size-16 items-center justify-center rounded-full bg-success text-white shadow-card ring-4 ring-success/15"
           aria-hidden="true"
         >
-          <CheckCircle2 className="size-7" />
+          <CheckCircle2 className="size-8" />
         </span>
-        <p className="text-base font-semibold text-success">הקבלה הופקה ונשלחה</p>
-        <p className="text-sm leading-relaxed text-success/90">
+        <p className="text-lg font-bold text-success">הקבלה הופקה ונשלחה</p>
+        <p className="max-w-xs text-sm leading-relaxed text-ink">
           התשלום עודכן, הקבלה נשלחה לתלמיד/ה כצרופה ועותק נשמר בתיק הלקוח.
         </p>
       </div>
@@ -101,16 +105,20 @@ export function PaymentForm({ token, suggestedAmount }: Props) {
     return (
       <div
         role="status"
-        className="flex flex-col items-center gap-3 rounded-2xl border border-accent/20 bg-accent-soft px-6 py-8 text-center animate-fade-in"
+        className="relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-accent/25 bg-accent-soft px-6 py-9 text-center shadow-card animate-fade-in"
       >
         <span
-          className="flex size-14 items-center justify-center rounded-full bg-accent-600 text-white shadow-soft"
+          aria-hidden="true"
+          className="absolute inset-x-0 -top-px h-1 bg-accent-600/70"
+        />
+        <span
+          className="flex size-16 items-center justify-center rounded-full bg-accent-600 text-white shadow-card ring-4 ring-accent-600/15"
           aria-hidden="true"
         >
-          <Send className="size-7" />
+          <Send className="size-8" />
         </span>
-        <p className="text-base font-semibold text-accent-text">בקשת תשלום נשלחה</p>
-        <p className="text-sm leading-relaxed text-accent-text/90">
+        <p className="text-lg font-bold text-accent-text">בקשת תשלום נשלחה</p>
+        <p className="max-w-xs text-sm leading-relaxed text-ink">
           הבקשה נשלחה לתלמיד/ה בוואטסאפ.
         </p>
       </div>

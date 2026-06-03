@@ -42,16 +42,20 @@ export function ApproveActions({ token }: { token: string }) {
     return (
       <div
         role="status"
-        className="flex flex-col items-center gap-3 rounded-2xl border border-success/20 bg-success-soft px-6 py-8 text-center animate-fade-in"
+        className="relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-success/25 bg-success-soft px-6 py-9 text-center shadow-card animate-fade-in"
       >
         <span
-          className="flex size-14 items-center justify-center rounded-full bg-success text-white shadow-soft"
+          aria-hidden="true"
+          className="absolute inset-x-0 -top-px h-1 bg-success/70"
+        />
+        <span
+          className="flex size-16 items-center justify-center rounded-full bg-success text-white shadow-card ring-4 ring-success/15"
           aria-hidden="true"
         >
-          <CheckCircle2 className="size-7" />
+          <CheckCircle2 className="size-8" />
         </span>
-        <p className="text-base font-semibold text-success">השיעור אושר</p>
-        <p className="text-sm leading-relaxed text-success/90">
+        <p className="text-lg font-bold text-success">השיעור אושר</p>
+        <p className="max-w-xs text-sm leading-relaxed text-ink">
           השיעור נכנס ליומן ונשלחה הודעת אישור לתלמיד/ה.
         </p>
       </div>
@@ -62,16 +66,16 @@ export function ApproveActions({ token }: { token: string }) {
     return (
       <div
         role="status"
-        className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-surface-2/60 px-6 py-8 text-center animate-fade-in"
+        className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-surface-2 px-6 py-9 text-center shadow-card animate-fade-in"
       >
         <span
-          className="flex size-14 items-center justify-center rounded-full bg-primary-50 text-muted shadow-soft"
+          className="flex size-16 items-center justify-center rounded-full bg-surface text-muted shadow-soft ring-1 ring-line"
           aria-hidden="true"
         >
-          <CircleX className="size-7" />
+          <CircleX className="size-8" />
         </span>
-        <p className="text-base font-semibold text-ink">השיעור נדחה</p>
-        <p className="text-sm leading-relaxed text-muted">
+        <p className="text-lg font-bold text-ink">השיעור נדחה</p>
+        <p className="max-w-xs text-sm leading-relaxed text-muted">
           נשלח לתלמיד/ה לינק לקביעת מועד חדש.
         </p>
       </div>
