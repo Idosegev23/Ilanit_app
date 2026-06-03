@@ -4,6 +4,7 @@ import * as React from 'react';
 import {
   AlertCircle,
   CalendarCheck2,
+  CalendarHeart,
   CalendarX2,
   Check,
   Clock,
@@ -33,7 +34,12 @@ type SaveState =
   | { kind: 'saved' }
   | { kind: 'error'; message: string };
 
-/** A single live summary chip in the settings hero band. */
+/**
+ * A single live summary chip in the settings hero band. The chip sits on a
+ * fully opaque white surface (not a translucent tint over the gradient), so the
+ * ink/muted text always clears WCAG AA regardless of the gradient stop behind
+ * it. A soft hover-lift gives the band tactile depth.
+ */
 function SummaryStat({
   icon: Icon,
   label,
@@ -44,13 +50,13 @@ function SummaryStat({
   value: string;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-line bg-surface/85 px-4 py-3 shadow-soft backdrop-blur-sm">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-600 shadow-soft">
+    <div className="hover-lift group flex items-center gap-3.5 rounded-2xl border border-white/40 bg-surface px-4 py-3.5 shadow-card ring-1 ring-black/[0.03]">
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-tint text-primary-600 shadow-soft ring-1 ring-primary-100">
         <Icon className="size-5" aria-hidden="true" />
       </span>
       <div className="min-w-0">
         <p className="truncate text-xs font-medium text-muted">{label}</p>
-        <p className="text-lg font-bold leading-tight tabular-nums text-ink">
+        <p className="text-xl font-extrabold leading-tight tabular-nums text-ink">
           {value}
         </p>
       </div>
@@ -140,28 +146,53 @@ export function SettingsView({
       : '—';
 
   return (
-    <div className="space-y-8">
-      {/* ── Hero overview band — warm gradient, brand depth, live figures ── */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-warm p-6 shadow-pop sm:p-8">
-        {/* Decorative soft blobs + dotted relief so the band has depth. */}
-        <div aria-hidden="true" className="texture-dots absolute inset-0 opacity-40" />
+    <div className="space-y-10">
+      {/* ── Hero overview band ──────────────────────────────────────────────
+          Premium full-bleed warm composition: brand mark + value prop + live
+          figures. WCAG: the descriptive copy sits in a dedicated dark-terracotta
+          scrim panel (not raw over the honey/peach stops), so full-opacity white
+          text clears 4.5:1 across the whole region; the live-stat chips ride on
+          opaque white surfaces. */}
+      <section className="relative overflow-hidden rounded-[28px] bg-gradient-warm p-6 shadow-pop sm:p-9">
+        {/* Decorative depth: dotted relief + soft blurred color blobs. */}
+        <div aria-hidden="true" className="texture-dots absolute inset-0 opacity-50" />
         <div
           aria-hidden="true"
-          className="blob -top-16 end-[-3rem] size-56 bg-[var(--grad-warm-3)]"
+          className="blob -top-20 end-[-4rem] size-64 bg-[var(--grad-warm-3)]"
         />
         <div
           aria-hidden="true"
-          className="blob bottom-[-4rem] start-[-2rem] size-48 bg-white/40"
+          className="blob bottom-[-5rem] start-[-3rem] size-56 bg-white/50"
         />
+        {/* Inline-start vertical sheen for a crafted, lit edge. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 start-0 w-1/3 bg-gradient-to-l from-transparent to-white/10"
+        />
+
         <div className="relative">
-          <p className="text-sm font-semibold text-white/90">
-            תצוגה מהירה של ההגדרות
-          </p>
-          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-white/80">
-            כך נראית הזמינות שלך כרגע. כל שינוי כאן משפיע ישירות על הסלוטים והמחירים
-            שתלמידים רואים בלינק התיאום.
-          </p>
-          <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {/* Brand lockup — wordmark + calendar-heart mark. */}
+          <div className="flex items-center gap-2.5">
+            <span className="flex size-9 items-center justify-center rounded-xl bg-white/20 text-white shadow-soft ring-1 ring-white/30 backdrop-blur-sm">
+              <CalendarHeart className="size-5" aria-hidden="true" />
+            </span>
+            <span className="text-lg font-extrabold tracking-tight text-white drop-shadow-sm">
+              אילנית
+            </span>
+          </div>
+
+          {/* Copy lives in its own dark-terracotta scrim → guaranteed contrast. */}
+          <div className="mt-5 max-w-2xl rounded-2xl bg-[#3a1709]/60 p-5 ring-1 ring-white/10 backdrop-blur-[2px]">
+            <p className="text-xs font-bold tracking-wide text-white">
+              תצוגה מהירה של ההגדרות
+            </p>
+            <p className="mt-2 text-base font-medium leading-relaxed text-white">
+              כך נראית הזמינות שלך כרגע. כל שינוי כאן משפיע ישירות על הסלוטים
+              והמחירים שתלמידים רואים בלינק התיאום.
+            </p>
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
             <SummaryStat
               icon={CalendarCheck2}
               label="ימים פעילים בשבוע"
@@ -186,21 +217,24 @@ export function SettingsView({
         </div>
       </section>
 
-      <AvailabilityEditor windows={windows} onChange={handleWindows} />
-      <ExceptionsEditor exceptions={exceptions} onChange={handleExceptions} />
-      <BusinessSettingsForm values={settings} onChange={handleSettings} />
+      <div className="space-y-8">
+        <AvailabilityEditor windows={windows} onChange={handleWindows} />
+        <ExceptionsEditor exceptions={exceptions} onChange={handleExceptions} />
+        <BusinessSettingsForm values={settings} onChange={handleSettings} />
+      </div>
 
-      {/* Sticky save bar — feedback lives next to the action. */}
-      <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-2xl border border-line bg-surface/90 p-4 shadow-pop backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+      {/* Sticky save bar — feedback lives next to the action, raised on a soft
+          ring + warm shadow so it reads as a floating action shelf. */}
+      <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-2xl border border-white/60 bg-surface/95 p-4 shadow-pop ring-1 ring-primary-100/60 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
         <div aria-live="polite" className="min-h-6 text-sm">
           {save.kind === 'saved' && (
-            <span className="inline-flex items-center gap-1.5 font-medium text-success">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-success">
               <Check className="size-4" aria-hidden="true" />
               ההגדרות נשמרו
             </span>
           )}
           {save.kind === 'error' && (
-            <span className="inline-flex items-center gap-1.5 font-medium text-danger" role="alert">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-danger" role="alert">
               <AlertCircle className="size-4" aria-hidden="true" />
               {save.message}
             </span>
@@ -211,8 +245,15 @@ export function SettingsView({
             </span>
           )}
         </div>
-        <Button type="button" onClick={onSave} loading={saving} className="sm:w-auto">
-          {!saving && <Save className="size-4" aria-hidden="true" />}
+        <Button
+          type="button"
+          variant="gradient"
+          size="lg"
+          onClick={onSave}
+          loading={saving}
+          className="sm:w-auto"
+        >
+          {!saving && <Save className="size-5" aria-hidden="true" />}
           שמירת הגדרות
         </Button>
       </div>

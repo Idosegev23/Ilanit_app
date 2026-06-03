@@ -41,22 +41,41 @@ function Section({
   title,
   description,
   children,
+  highlight = false,
 }: {
   icon: LucideIcon;
   title: string;
   description?: string;
   children: React.ReactNode;
+  /** Emphasised treatment (warm tint + ring) for the standout pricing block. */
+  highlight?: boolean;
 }) {
   return (
-    <fieldset className="rounded-2xl border border-line/70 bg-cream/40 p-5">
+    <fieldset
+      className={cn(
+        'rounded-2xl border p-5 transition-colors duration-200 sm:p-6',
+        highlight
+          ? 'border-primary-200 bg-gradient-tint shadow-soft ring-1 ring-primary-100'
+          : 'border-line/70 bg-cream/40',
+      )}
+    >
       <legend className="mb-1 flex w-full items-center gap-2.5">
-        <span className="flex size-8 items-center justify-center rounded-xl bg-primary-soft text-primary-600 shadow-soft">
-          <Icon className="size-4" aria-hidden="true" />
+        <span
+          className={cn(
+            'flex size-9 items-center justify-center rounded-xl shadow-soft',
+            highlight
+              ? 'bg-gradient-warm text-primary-fg'
+              : 'bg-primary-soft text-primary-600 ring-1 ring-primary-100',
+          )}
+        >
+          <Icon className="size-5" aria-hidden="true" />
         </span>
-        <span className="text-sm font-semibold text-ink">{title}</span>
+        <span className="text-base font-bold text-ink">{title}</span>
       </legend>
       {description && (
-        <p className="mb-4 ps-[42px] text-xs text-muted">{description}</p>
+        <p className="mb-4 ps-[46px] text-xs leading-relaxed text-muted">
+          {description}
+        </p>
       )}
       {children}
     </fieldset>
@@ -165,21 +184,22 @@ export function BusinessSettingsForm({ values, onChange }: BusinessSettingsFormP
           </div>
         </Section>
 
-        {/* ── תמחור — the new functional field ── */}
+        {/* ── תמחור — the new functional field (emphasised standout block) ── */}
         <Section
           icon={Wallet}
           title="תמחור"
+          highlight
           description="מחיר זה משמש כברירת-מחדל כאשר לתלמיד אין מחיר אישי לשיעור פרטי. מספר שלם בשקלים, ללא אגורות."
         >
-          <div className="sm:max-w-xs">
+          <div className="sm:max-w-sm">
             <Label htmlFor="defaultPrivatePrice">
-              מחיר ברירת-מחדל לשיעור פרטי (₪)
+              מחיר ברירת-מחדל לשיעור פרטי
             </Label>
-            <div className="relative mt-1.5">
+            <div className="relative mt-2">
               {/* Inline ₪ adornment at the inline-start (RTL aware). */}
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-3.5 text-sm font-medium text-muted"
+                className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-4 text-xl font-bold text-primary-600"
               >
                 ₪
               </span>
@@ -204,11 +224,11 @@ export function BusinessSettingsForm({ values, onChange }: BusinessSettingsFormP
                     Number.isFinite(n) && n >= 0 ? n : null,
                   );
                 }}
-                className={cn('ps-9 tabular-nums')}
+                className={cn('h-14 ps-11 text-2xl font-bold tabular-nums')}
                 aria-describedby="defaultPrivatePrice-help"
               />
             </div>
-            <p id="defaultPrivatePrice-help" className="mt-1.5 text-xs text-muted">
+            <p id="defaultPrivatePrice-help" className="mt-2 text-xs leading-relaxed text-muted">
               {priceHasValue
                 ? 'תלמידים ללא מחיר אישי יחויבו בסכום זה.'
                 : 'השאירי ריק כדי לחייב לפי מחיר אישי בלבד.'}

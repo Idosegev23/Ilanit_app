@@ -70,7 +70,7 @@ export function ExceptionsEditor({ exceptions, onChange }: ExceptionsEditorProps
             title="אין חריגים"
             description="הוסיפי תאריך חסום או יום עם שעות מיוחדות."
             action={
-              <Button type="button" size="sm" variant="secondary" onClick={addException}>
+              <Button type="button" size="md" variant="secondary" onClick={addException}>
                 <Plus className="size-4" aria-hidden="true" />
                 הוסף חריג
               </Button>
@@ -88,8 +88,8 @@ export function ExceptionsEditor({ exceptions, onChange }: ExceptionsEditorProps
                     key={i}
                     className={
                       customInvalid
-                        ? 'flex flex-wrap items-end gap-3 rounded-xl border border-danger/60 bg-danger-soft/40 p-3'
-                        : 'flex flex-wrap items-end gap-3 rounded-xl border border-line bg-surface p-3 shadow-soft'
+                        ? 'flex flex-wrap items-end gap-3 rounded-xl border border-danger/60 bg-danger-soft/50 p-3.5'
+                        : 'flex flex-wrap items-end gap-3 rounded-xl border border-line bg-surface p-3.5 shadow-soft transition-colors duration-200 hover:border-primary-200'
                     }
                   >
                     <label className="flex flex-col gap-1">
@@ -160,14 +160,14 @@ export function ExceptionsEditor({ exceptions, onChange }: ExceptionsEditorProps
                       </div>
                     )}
 
-                    <div className="ms-auto pb-1">
+                    <div className="ms-auto">
                       <Button
                         type="button"
-                        size="sm"
+                        size="md"
                         variant="ghost"
                         onClick={() => removeException(i)}
                         aria-label="מחק חריג"
-                        className="text-danger hover:bg-danger/10"
+                        className="text-danger hover:bg-danger-soft"
                       >
                         <Trash2 className="size-4" aria-hidden="true" />
                         הסר
@@ -183,7 +183,7 @@ export function ExceptionsEditor({ exceptions, onChange }: ExceptionsEditorProps
                 );
               })}
             </ul>
-            <Button type="button" size="sm" variant="secondary" onClick={addException}>
+            <Button type="button" size="md" variant="secondary" onClick={addException}>
               <Plus className="size-4" aria-hidden="true" />
               הוסף חריג
             </Button>
