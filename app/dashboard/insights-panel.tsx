@@ -71,7 +71,7 @@ export function InsightsPanel({
             <span>טרם הופקו תובנות</span>
           )}
         </div>
-        <Button size="sm" onClick={regenerate} loading={loading}>
+        <Button size="md" onClick={regenerate} loading={loading}>
           <Sparkles className="size-4" aria-hidden="true" />
           {loading ? 'מפיק תובנות…' : 'הפק תובנות חדשות'}
         </Button>
