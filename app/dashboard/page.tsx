@@ -1,6 +1,26 @@
 import Link from 'next/link';
-import { Nav } from '@/components/ui/nav';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Wallet,
+  CalendarCheck,
+  Gauge,
+  AlertCircle,
+  Users,
+  TrendingUp,
+  CalendarDays,
+  CalendarClock,
+  ClipboardCheck,
+  CircleDollarSign,
+  Sparkles,
+  Link2,
+  ChevronLeft,
+} from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { StatCard } from '@/components/ui/stat-card';
+import { PageHeader } from '@/components/ui/page-header';
+import { EmptyState } from '@/components/ui/empty-state';
+import { buttonVariants } from '@/components/ui/button';
+import { CopyLinkField } from '@/components/ui/share-link-button';
+import { StatusPill } from '@/components/ui/badge';
 import { formatShekels } from '@/lib/utils';
 import { getDashboardData } from '@/lib/insights/metrics';
 import { getCachedInsights } from '@/lib/insights';
@@ -25,45 +45,61 @@ export const dynamic = 'force-dynamic';
 
 const PERIOD_DAYS = 30;
 
-function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <Card>
-      <CardContent className="p-5">
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
-        {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
-      </CardContent>
-    </Card>
-  );
-}
+// Public booking URL Ilanit shares with students. NEXT_PUBLIC_* is safe to read
+// at render time; trailing slash trimmed so we never produce `//book`.
+const BOOKING_URL = `${(process.env.NEXT_PUBLIC_APP_URL ?? '').replace(/\/$/, '')}/book`;
 
 function KpiRow({ kpis }: { kpis: DashboardKpis }) {
+  const totalLessons = Object.values(kpis.lessonsByStatus).reduce((s, n) => s + n, 0);
   return (
     <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-      <Kpi label="הכנסות (30 ימים)" value={formatShekels(kpis.revenue)} />
-      <Kpi
-        label="שיעורים"
-        value={String(
-          Object.values(kpis.lessonsByStatus).reduce((s, n) => s + n, 0),
-        )}
-        hint={lessonsByStatusSummary(kpis.lessonsByStatus)}
+      <StatCard
+        label="הכנסות (30 ימים)"
+        value={formatShekels(kpis.revenue)}
+        icon={Wallet}
       />
-      <Kpi label="אחוז תפוסה" value={`${kpis.occupancyPct}%`} />
-      <Kpi label="תלמידים פעילים" value={String(kpis.activeStudents)} />
-      <Kpi
+      <StatCard
+        label="שיעורים"
+        value={totalLessons}
+        hint={lessonsByStatusSummary(kpis.lessonsByStatus)}
+        icon={CalendarCheck}
+      />
+      <StatCard
+        label="אחוז תפוסה"
+        value={`${kpis.occupancyPct}%`}
+        icon={Gauge}
+      />
+      <StatCard
+        label="תלמידים פעילים"
+        value={kpis.activeStudents}
+        icon={Users}
+      />
+      <StatCard
         label="חובות פתוחים"
         value={formatShekels(kpis.outstandingAmount)}
         hint={`${kpis.outstandingCount} תשלומים`}
+        icon={AlertCircle}
       />
     </div>
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({
+  title,
+  icon: Icon,
+  children,
+}: {
+  title: string;
+  icon: typeof TrendingUp;
+  children: React.ReactNode;
+}) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <Icon className="size-5 text-primary-600" aria-hidden="true" />
+          {title}
+        </CardTitle>
       </CardHeader>
       <CardContent>{children}</CardContent>
     </Card>
@@ -72,13 +108,21 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
 
 function UpcomingList({ rows }: { rows: ActionLessonRow[] }) {
   if (rows.length === 0)
-    return <p className="text-sm text-slate-500">אין שיעורים קרובים.</p>;
+    return (
+      <EmptyState
+        icon={CalendarClock}
+        title="אין שיעורים קרובים"
+        description="כשייקבעו שיעורים חדשים הם יופיעו כאן."
+      />
+    );
   return (
-    <ul className="divide-y divide-slate-100">
+    <ul className="divide-y divide-line">
       {rows.map((r) => (
-        <li key={r.id} className="flex items-center justify-between py-2 text-sm">
-          <span className="font-medium text-slate-800">{r.studentName}</span>
-          <span className="text-slate-500">{formatILDayTime(r.startsAt)}</span>
+        <li key={r.id} className="flex items-center justify-between gap-3 py-3">
+          <span className="truncate font-medium text-ink">{r.studentName}</span>
+          <span className="shrink-0 text-sm tabular-nums text-muted">
+            {formatILDayTime(r.startsAt)}
+          </span>
         </li>
       ))}
     </ul>
@@ -87,19 +131,29 @@ function UpcomingList({ rows }: { rows: ActionLessonRow[] }) {
 
 function PendingList({ rows }: { rows: ActionLessonRow[] }) {
   if (rows.length === 0)
-    return <p className="text-sm text-slate-500">אין בקשות הממתינות לאישור.</p>;
+    return (
+      <EmptyState
+        icon={ClipboardCheck}
+        title="אין בקשות הממתינות לאישור"
+        description="בקשות תיאום חדשות יופיעו כאן לאישור."
+      />
+    );
   return (
-    <ul className="divide-y divide-slate-100">
+    <ul className="divide-y divide-line">
       {rows.map((r) => (
-        <li key={r.id} className="flex items-center justify-between py-2 text-sm">
-          <div className="flex flex-col">
-            <span className="font-medium text-slate-800">{r.studentName}</span>
-            <span className="text-xs text-slate-400">{formatILShort(r.startsAt)}</span>
+        <li key={r.id} className="flex items-center justify-between gap-3 py-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="truncate font-medium text-ink">{r.studentName}</span>
+            <span className="text-xs tabular-nums text-muted">
+              {formatILShort(r.startsAt)}
+            </span>
           </div>
           <Link
             href={`/lessons?lesson=${r.id}`}
-            className="rounded-lg bg-brand px-3 py-1 text-xs font-medium text-white hover:bg-brand-dark"
+            aria-label={`אישור שיעור עבור ${r.studentName}`}
+            className={buttonVariants({ size: 'sm', variant: 'primary' })}
           >
+            <ClipboardCheck className="size-4" aria-hidden="true" />
             אישור
           </Link>
         </li>
@@ -110,16 +164,29 @@ function PendingList({ rows }: { rows: ActionLessonRow[] }) {
 
 function UnpaidList({ rows }: { rows: UnpaidRow[] }) {
   if (rows.length === 0)
-    return <p className="text-sm text-slate-500">כל התשלומים סגורים. כל הכבוד!</p>;
+    return (
+      <EmptyState
+        icon={CircleDollarSign}
+        title="כל התשלומים סגורים"
+        description="אין חובות פתוחים — כל הכבוד!"
+      />
+    );
   return (
-    <ul className="divide-y divide-slate-100">
+    <ul className="divide-y divide-line">
       {rows.map((r) => (
-        <li key={r.paymentId} className="flex items-center justify-between py-2 text-sm">
-          <div className="flex flex-col">
-            <span className="font-medium text-slate-800">{r.studentName}</span>
-            <span className="text-xs text-slate-400">{formatILShort(r.startsAt)}</span>
+        <li key={r.paymentId} className="flex items-center justify-between gap-3 py-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <span className="truncate font-medium text-ink">{r.studentName}</span>
+            <span className="text-xs tabular-nums text-muted">
+              {formatILShort(r.startsAt)}
+            </span>
           </div>
-          <span className="font-semibold text-red-600">{formatShekels(r.amount)}</span>
+          <div className="flex shrink-0 items-center gap-2">
+            <StatusPill status="due" />
+            <span className="font-semibold tabular-nums text-ink">
+              {formatShekels(r.amount)}
+            </span>
+          </div>
         </li>
       ))}
     </ul>
@@ -131,69 +198,111 @@ export default async function DashboardPage() {
   const cached = await getCachedInsights(PERIOD_DAYS);
 
   return (
-    <div>
-      <Nav />
-      <main className="mx-auto max-w-6xl space-y-6 p-6">
-        <h1 className="text-2xl font-bold text-slate-900">דשבורד</h1>
+    <div className="space-y-8">
+      <PageHeader
+        title="דשבורד"
+        subtitle="סקירת ההכנסות, התפוסה והפעולות הפתוחות שלך ב-30 הימים האחרונים."
+      />
 
-        <KpiRow kpis={data.kpis} />
+      {/* Prominent booking-link card — the link Ilanit shares with students. */}
+      <Card className="border-primary-100 bg-primary-soft/60">
+        <CardContent className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-fg">
+              <Link2 className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <h2 className="text-lg font-semibold text-ink">לינק לתיאום שיעור</h2>
+              <p className="mt-1 text-sm text-muted">
+                שתפי את הקישור הזה עם התלמידים כדי שיוכלו לקבוע שיעור בעצמם.
+              </p>
+            </div>
+          </div>
+          <CopyLinkField url={BOOKING_URL} className="w-full sm:w-auto sm:min-w-[22rem]" />
+        </CardContent>
+      </Card>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <ChartCard title="הכנסה לאורך זמן">
-            <RevenueChart data={data.charts.revenueByDay} />
-          </ChartCard>
-          <ChartCard title="שיעורים לשבוע">
-            <LessonsPerWeekChart data={data.charts.lessonsPerWeek} />
-          </ChartCard>
-          <ChartCard title="מגמת תפוסה לפי יום">
-            <OccupancyTrendChart data={data.charts.weekdayDistribution} />
-          </ChartCard>
-          <ChartCard title="תלמידים מובילים">
-            <TopStudentsChart data={data.charts.topStudents} />
-          </ChartCard>
-        </div>
+      <KpiRow kpis={data.kpis} />
 
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <ChartCard title="הכנסה לאורך זמן" icon={TrendingUp}>
+          <RevenueChart data={data.charts.revenueByDay} />
+        </ChartCard>
+        <ChartCard title="שיעורים לשבוע" icon={CalendarCheck}>
+          <LessonsPerWeekChart data={data.charts.lessonsPerWeek} />
+        </ChartCard>
+        <ChartCard title="מגמת תפוסה לפי יום" icon={CalendarDays}>
+          <OccupancyTrendChart data={data.charts.weekdayDistribution} />
+        </ChartCard>
+        <ChartCard title="תלמידים מובילים" icon={Users}>
+          <TopStudentsChart data={data.charts.topStudents} />
+        </ChartCard>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="size-5 text-accent-text" aria-hidden="true" />
+            תובנות AI
+          </CardTitle>
+          <CardDescription>
+            ניתוח חכם של הלו&quot;ז וההכנסות שלך, מבוסס נתוני 30 הימים האחרונים.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <InsightsPanel
+            periodDays={PERIOD_DAYS}
+            initialText={cached?.text ?? null}
+            initialGeneratedAt={cached ? formatILShort(cached.generatedAt) : null}
+            initialModel={cached?.model ?? null}
+          />
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle>תובנות AI</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarClock className="size-5 text-primary-600" aria-hidden="true" />
+              שיעורי השבוע הקרוב
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <InsightsPanel
-              periodDays={PERIOD_DAYS}
-              initialText={cached?.text ?? null}
-              initialGeneratedAt={cached ? formatILShort(cached.generatedAt) : null}
-              initialModel={cached?.model ?? null}
-            />
+            <UpcomingList rows={data.actions.todayUpcoming} />
           </CardContent>
         </Card>
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>שיעורי השבוע הקרוב</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <UpcomingList rows={data.actions.todayUpcoming} />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>ממתינים לאישור</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PendingList rows={data.actions.pendingApprovals} />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>טרם שולמו</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <UnpaidList rows={data.actions.unpaid} />
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between gap-2">
+              <span className="flex items-center gap-2">
+                <ClipboardCheck className="size-5 text-primary-600" aria-hidden="true" />
+                ממתינים לאישור
+              </span>
+              <Link
+                href="/lessons"
+                className="inline-flex items-center gap-1 rounded-lg text-sm font-medium text-primary-600 transition-colors duration-200 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                לכל השיעורים
+                <ChevronLeft className="size-4" aria-hidden="true" />
+              </Link>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PendingList rows={data.actions.pendingApprovals} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CircleDollarSign className="size-5 text-primary-600" aria-hidden="true" />
+              טרם שולמו
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <UnpaidList rows={data.actions.unpaid} />
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

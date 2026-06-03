@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Sparkles, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toBullets } from './format';
 
@@ -59,10 +60,10 @@ export function InsightsPanel({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-xs text-slate-500">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="text-xs tabular-nums text-muted">
           {generatedAt ? (
-            <span>
+            <span dir="rtl">
               עודכן {generatedAt}
               {model ? ` · ${model}` : ''}
             </span>
@@ -70,24 +71,31 @@ export function InsightsPanel({
             <span>טרם הופקו תובנות</span>
           )}
         </div>
-        <Button size="sm" onClick={regenerate} disabled={loading}>
+        <Button size="sm" onClick={regenerate} loading={loading}>
+          <Sparkles className="size-4" aria-hidden="true" />
           {loading ? 'מפיק תובנות…' : 'הפק תובנות חדשות'}
         </Button>
       </div>
 
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p
+          role="alert"
+          className="flex items-center gap-2 rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger"
+        >
+          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+          {error}
+        </p>
       )}
 
       {bullets.length > 0 ? (
-        <ul className="list-disc space-y-2 pr-5 text-sm text-slate-700 marker:text-brand">
+        <ul className="list-disc space-y-2 pe-5 text-sm leading-relaxed text-ink marker:text-primary">
           {bullets.map((b, i) => (
             <li key={i}>{b}</li>
           ))}
         </ul>
       ) : (
         !error && (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-muted">
             לחצי על &quot;הפק תובנות חדשות&quot; כדי לקבל ניתוח AI של הלו&quot;ז וההכנסות.
           </p>
         )
