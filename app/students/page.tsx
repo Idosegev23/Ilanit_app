@@ -1,100 +1,41 @@
-import Link from 'next/link';
-import { ChevronLeft, Users, Archive } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
-import { EmptyState } from '@/components/ui/empty-state';
-import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableRow,
-  TableHead,
-  TableCell,
-  TableNumCell,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { listStudents } from '@/lib/students';
-import { formatShekels } from '@/lib/utils';
+import { getSettings } from '@/lib/settings';
+import { StudentsTable, type StudentRow } from './students-table';
 
 export const dynamic = 'force-dynamic';
 
-// Protected (middleware-guarded) student directory. Each row links to the full
-// client file at /students/[id].
+// Protected (middleware-guarded) student directory. Server-fetches the roster +
+// the settings default private-lesson price, then hands off to the client
+// directory (stats band, search, premium list, create dialog). Each row links
+// to the full client file at /students/[id].
 export default async function StudentsPage() {
-  const students = await listStudents();
+  const [students, settings] = await Promise.all([listStudents(), getSettings()]);
+
+  const rows: StudentRow[] = students.map((s) => ({
+    id: s.id,
+    name: s.name,
+    phone: s.phone,
+    defaultPrice: s.defaultPrice,
+    defaultDurationMin: s.defaultDurationMin,
+    email: s.email,
+    notes: s.notes,
+    archived: s.archived,
+  }));
 
   return (
     <div className="space-y-6">
       <PageHeader
+        eyebrow="מאגר"
         title="תלמידים"
         subtitle={
-          students.length > 0
-            ? `${students.length} תלמידים במאגר`
-            : 'מאגר התלמידים — כרטיס לכל תלמיד'
+          rows.length > 0
+            ? `${rows.length} תלמידים — כרטיס לכל תלמיד/ה`
+            : 'מאגר התלמידים — כרטיס לכל תלמיד/ה'
         }
       />
 
-      {students.length === 0 ? (
-        <EmptyState
-          icon={Users}
-          title="עדיין אין תלמידים"
-          description="תלמידים נוספים אוטומטית למאגר בעת תיאום שיעור דרך לינק התיאום."
-        />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>שם</TableHead>
-              <TableHead>טלפון</TableHead>
-              <TableHead className="text-end">מחיר ברירת מחדל</TableHead>
-              <TableHead>
-                <span className="sr-only">פתיחת תיק</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {students.map((s) => (
-              <TableRow key={s.id} className="group">
-                <TableCell>
-                  <Link
-                    href={`/students/${s.id}`}
-                    className="inline-flex items-center gap-2 rounded-lg font-medium text-ink transition-colors duration-150 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    {s.name}
-                    {s.archived && (
-                      <Badge tone="muted">
-                        <Archive className="size-3.5" aria-hidden="true" />
-                        בארכיון
-                      </Badge>
-                    )}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <span dir="ltr" className="tabular-nums text-muted">
-                    {s.phone}
-                  </span>
-                </TableCell>
-                <TableNumCell>
-                  {s.defaultPrice != null ? (
-                    <span className="font-medium text-ink">{formatShekels(s.defaultPrice)}</span>
-                  ) : (
-                    <span className="text-muted">—</span>
-                  )}
-                </TableNumCell>
-                <TableCell className="text-end">
-                  <Link
-                    href={`/students/${s.id}`}
-                    aria-label={`פתיחת תיק התלמיד ${s.name}`}
-                    className="inline-flex size-9 items-center justify-center rounded-lg text-muted transition-colors duration-150 hover:bg-primary-50 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  >
-                    {/* RTL: chevron points to the start (right) */}
-                    <ChevronLeft className="size-5" aria-hidden="true" />
-                  </Link>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      <StudentsTable students={rows} settingsDefaultPrice={settings.defaultPrivatePrice} />
     </div>
   );
 }

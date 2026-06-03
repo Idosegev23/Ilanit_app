@@ -11,6 +11,7 @@ import {
   AlertCircle,
   Copy,
   Check,
+  CircleDollarSign,
 } from 'lucide-react';
 import { Button } from './button';
 import { Input } from './input';
@@ -51,6 +52,7 @@ export function SendBookingLinkDialog({
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [name, setName] = React.useState('');
   const [phone, setPhone] = React.useState('');
+  const [defaultPrice, setDefaultPrice] = React.useState('');
 
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -71,6 +73,7 @@ export function SendBookingLinkDialog({
     setSelectedId(null);
     setName('');
     setPhone('');
+    setDefaultPrice('');
     setError(null);
     setResultUrl(null);
     setResultSent(true);
@@ -117,6 +120,17 @@ export function SendBookingLinkDialog({
         return;
       }
       body = { name: name.trim(), phone: phone.trim() };
+      // Optional default private-lesson price (integer shekels). Sent as a hint
+      // to the booking-link endpoint; ignored if it doesn't consume the field.
+      const priceRaw = defaultPrice.replace(/[^\d]/g, '');
+      if (priceRaw !== '') {
+        const n = Number(priceRaw);
+        if (!Number.isFinite(n) || n < 0) {
+          setError('מחיר לא תקין');
+          return;
+        }
+        body.defaultPrice = String(Math.round(n));
+      }
     }
 
     setSubmitting(true);
@@ -357,6 +371,27 @@ export function SendBookingLinkDialog({
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="050-123-4567"
                         autoComplete="tel"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label htmlFor="link-price" className="flex items-center gap-1.5">
+                          <CircleDollarSign className="size-3.5 text-muted" aria-hidden="true" />
+                          מחיר לשיעור פרטי (₪)
+                        </Label>
+                        <span className="text-xs text-muted">לא חובה</span>
+                      </div>
+                      <Input
+                        id="link-price"
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        step={1}
+                        dir="ltr"
+                        className="text-end tabular-nums"
+                        value={defaultPrice}
+                        onChange={(e) => setDefaultPrice(e.target.value)}
+                        placeholder="150"
                       />
                     </div>
                   </div>
