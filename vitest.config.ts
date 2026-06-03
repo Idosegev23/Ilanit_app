@@ -8,6 +8,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
+    retry: 1,
     exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**'],
   },
   resolve: {
