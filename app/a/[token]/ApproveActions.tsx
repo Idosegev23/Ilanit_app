@@ -42,11 +42,17 @@ export function ApproveActions({ token }: { token: string }) {
     return (
       <div
         role="status"
-        className="flex items-start gap-3 rounded-xl border border-success/20 bg-success-soft p-4"
+        className="flex flex-col items-center gap-3 rounded-2xl border border-success/20 bg-success-soft px-6 py-8 text-center animate-fade-in"
       >
-        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
-        <p className="text-sm font-medium text-success">
-          השיעור אושר ונכנס ליומן. נשלחה הודעה לתלמיד/ה.
+        <span
+          className="flex size-14 items-center justify-center rounded-full bg-success text-white shadow-soft"
+          aria-hidden="true"
+        >
+          <CheckCircle2 className="size-7" />
+        </span>
+        <p className="text-base font-semibold text-success">השיעור אושר</p>
+        <p className="text-sm leading-relaxed text-success/90">
+          השיעור נכנס ליומן ונשלחה הודעת אישור לתלמיד/ה.
         </p>
       </div>
     );
@@ -56,11 +62,17 @@ export function ApproveActions({ token }: { token: string }) {
     return (
       <div
         role="status"
-        className="flex items-start gap-3 rounded-xl border border-line bg-primary-50 p-4"
+        className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-surface-2/60 px-6 py-8 text-center animate-fade-in"
       >
-        <CircleX className="mt-0.5 size-5 shrink-0 text-muted" aria-hidden="true" />
-        <p className="text-sm font-medium text-ink">
-          השיעור נדחה. נשלח לתלמיד/ה לינק לקביעה מחדש.
+        <span
+          className="flex size-14 items-center justify-center rounded-full bg-primary-50 text-muted shadow-soft"
+          aria-hidden="true"
+        >
+          <CircleX className="size-7" />
+        </span>
+        <p className="text-base font-semibold text-ink">השיעור נדחה</p>
+        <p className="text-sm leading-relaxed text-muted">
+          נשלח לתלמיד/ה לינק לקביעת מועד חדש.
         </p>
       </div>
     );

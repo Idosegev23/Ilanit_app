@@ -8,9 +8,10 @@ import {
   CalendarX2,
   CheckCircle2,
   Clock,
+  Sparkles,
   UserRound,
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -146,19 +147,24 @@ export function TokenBookingForm({ token, studentName, studentEmail }: TokenBook
   // ── Success: "ממתין לאישור" ────────────────────────────────────────────
   if (phase === 'done') {
     return (
-      <Card>
-        <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
-          <span className="flex size-16 items-center justify-center rounded-full bg-success-soft text-success">
-            <CheckCircle2 className="size-9" aria-hidden="true" />
+      <Card className="overflow-hidden shadow-pop">
+        <CardBody className="flex flex-col items-center gap-5 px-6 py-12 text-center">
+          <span className="flex size-20 items-center justify-center rounded-full bg-success-soft text-success ring-1 ring-success/15">
+            <span className="flex size-14 items-center justify-center rounded-full bg-surface text-success shadow-soft">
+              <CheckCircle2 className="size-8" aria-hidden="true" />
+            </span>
           </span>
-          <div className="space-y-1">
-            <h2 className="text-xl font-bold text-ink">הבקשה התקבלה!</h2>
-            <p className="text-sm font-medium text-warning">ממתין לאישור</p>
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold text-ink">הבקשה התקבלה!</h2>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-3 py-1 text-sm font-medium text-warning">
+              <Clock className="size-3.5" aria-hidden="true" />
+              ממתין לאישור
+            </span>
           </div>
-          <p className="max-w-sm text-sm leading-relaxed text-muted">
+          <p className="max-w-sm text-base leading-relaxed text-muted">
             הבקשה לשיעור ביום{' '}
-            <span className="font-medium text-ink">{formatDateHe(date)}</span> בשעה{' '}
-            <span className="font-medium text-ink" dir="ltr">
+            <span className="font-semibold text-ink">{formatDateHe(date)}</span> בשעה{' '}
+            <span className="font-semibold text-ink tabular-nums" dir="ltr">
               {selected?.label}
             </span>{' '}
             התקבלה וממתינה לאישור של אילנית.
@@ -168,6 +174,7 @@ export function TokenBookingForm({ token, studentName, studentEmail }: TokenBook
           </p>
           <Button
             variant="secondary"
+            size="lg"
             className="mt-2"
             onClick={() => {
               setPhase('pick');
@@ -177,25 +184,34 @@ export function TokenBookingForm({ token, studentName, studentEmail }: TokenBook
           >
             לקביעת שיעור נוסף
           </Button>
-        </CardContent>
+        </CardBody>
       </Card>
     );
   }
 
   return (
-    <Card>
-      <CardContent className="space-y-6 py-6">
-        {/* Known student — read-only identity (no name/phone entry). */}
-        <div className="flex items-center gap-3 rounded-xl bg-primary-soft px-4 py-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface text-primary-600">
-            <UserRound className="size-5" aria-hidden="true" />
+    <Card className="overflow-hidden shadow-pop">
+      {/* Gradient header carrying the known student's identity — sets the tone
+          and removes the "blank form" feeling. */}
+      <CardHeader variant="gradient" className="gap-0 pb-5">
+        <div className="flex items-center gap-3.5">
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-fg shadow-card">
+            <UserRound className="size-6" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <p className="text-xs text-muted">קביעת שיעור עבור</p>
-            <p className="truncate font-semibold text-ink">{studentName}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-accent-text">
+              קביעת שיעור עבור
+            </p>
+            <p className="truncate text-lg font-bold text-ink">{studentName}</p>
           </div>
+          <Sparkles
+            className="ms-auto size-5 shrink-0 text-primary-300"
+            aria-hidden="true"
+          />
         </div>
+      </CardHeader>
 
+      <CardBody className="space-y-6 pt-5">
         {/* Date picker */}
         <div className="space-y-1.5">
           <Label htmlFor="book-date">
@@ -219,15 +235,22 @@ export function TokenBookingForm({ token, studentName, studentEmail }: TokenBook
         {/* Slot picking */}
         {phase === 'pick' && (
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Clock className="size-4 text-primary-600" aria-hidden="true" />
-              <p className="text-sm font-medium text-ink">זמנים פנויים</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+                <Clock className="size-4 text-primary-600" aria-hidden="true" />
+                זמנים פנויים
+              </p>
+              {!loadingSlots && !slotsError && slots.length > 0 && (
+                <span className="rounded-full bg-primary-soft px-2.5 py-0.5 text-xs font-medium tabular-nums text-primary-600">
+                  {slots.length} מועדים
+                </span>
+              )}
             </div>
 
             {loadingSlots && (
               <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3" aria-hidden="true">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <Skeleton key={i} className="h-11" />
+                  <Skeleton key={i} className="h-12 rounded-full" />
                 ))}
               </div>
             )}
@@ -256,7 +279,7 @@ export function TokenBookingForm({ token, studentName, studentEmail }: TokenBook
                 aria-label="זמנים פנויים"
                 className="grid grid-cols-2 gap-2.5 sm:grid-cols-3"
               >
-                {slots.map((s) => {
+                {slots.map((s, i) => {
                   const isSelected = selected?.startISO === s.startISO;
                   return (
                     <button
@@ -265,14 +288,22 @@ export function TokenBookingForm({ token, studentName, studentEmail }: TokenBook
                       onClick={() => pickSlot(s)}
                       aria-pressed={isSelected}
                       dir="ltr"
+                      style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
                       className={cn(
-                        'inline-flex h-11 items-center justify-center rounded-full border px-4 text-sm font-medium tabular-nums shadow-soft transition-[background-color,border-color,color,transform] duration-200 ease-out',
-                        'hover:bg-primary-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:ring-primary',
+                        'group inline-flex h-12 animate-fade-in items-center justify-center gap-1.5 rounded-full border px-4 text-sm font-semibold tabular-nums shadow-soft transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out',
+                        'hover:-translate-y-0.5 hover:border-primary-200 hover:bg-primary-50 hover:shadow-card active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:ring-primary',
                         isSelected
-                          ? 'border-primary bg-primary text-primary-fg hover:bg-primary-600'
+                          ? 'border-primary bg-primary text-primary-fg shadow-card hover:bg-primary-600'
                           : 'border-line bg-surface text-ink',
                       )}
                     >
+                      <Clock
+                        className={cn(
+                          'size-3.5 transition-colors',
+                          isSelected ? 'text-primary-fg/90' : 'text-primary-300 group-hover:text-primary-600',
+                        )}
+                        aria-hidden="true"
+                      />
                       {s.label}
                     </button>
                   );
@@ -286,15 +317,21 @@ export function TokenBookingForm({ token, studentName, studentEmail }: TokenBook
         {phase === 'confirm' && selected && (
           <form className="space-y-4" onSubmit={submit}>
             {/* Selected-slot recap */}
-            <div className="flex items-center gap-3 rounded-xl bg-primary-soft px-4 py-3">
-              <Clock className="size-5 shrink-0 text-primary-600" aria-hidden="true" />
-              <p className="text-sm text-ink">
-                המועד שנבחר:{' '}
-                <span className="font-semibold" dir="ltr">
-                  {selected.label}
-                </span>{' '}
-                · {formatDateHe(date)}
-              </p>
+            <div className="flex items-center gap-3 rounded-2xl bg-gradient-tint px-4 py-3.5 ring-1 ring-line">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-fg shadow-soft">
+                <Clock className="size-5" aria-hidden="true" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs font-medium uppercase tracking-wide text-accent-text">
+                  המועד שנבחר
+                </p>
+                <p className="text-sm font-semibold text-ink">
+                  <span dir="ltr" className="tabular-nums">
+                    {selected.label}
+                  </span>{' '}
+                  · {formatDateHe(date)}
+                </p>
+              </div>
             </div>
 
             <div className="space-y-1.5">
@@ -327,15 +364,17 @@ export function TokenBookingForm({ token, studentName, studentEmail }: TokenBook
               />
             </div>
 
-            {formError && (
-              <div
-                role="alert"
-                className="flex items-start gap-2 rounded-xl bg-danger-soft px-3.5 py-3 text-sm text-danger"
-              >
-                <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                <span>{formError}</span>
-              </div>
-            )}
+            <div aria-live="polite">
+              {formError && (
+                <div
+                  role="alert"
+                  className="flex items-start gap-2 rounded-xl bg-danger-soft px-3.5 py-3 text-sm text-danger"
+                >
+                  <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                  <span>{formError}</span>
+                </div>
+              )}
+            </div>
 
             <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row">
               <Button
@@ -349,13 +388,13 @@ export function TokenBookingForm({ token, studentName, studentEmail }: TokenBook
                 <ArrowRight className="size-4" aria-hidden="true" />
                 חזרה לבחירת מועד
               </Button>
-              <Button type="submit" loading={submitting} className="sm:ms-auto">
+              <Button type="submit" size="lg" loading={submitting} className="sm:ms-auto">
                 {submitting ? 'שולח…' : 'אישור וקביעת השיעור'}
               </Button>
             </div>
           </form>
         )}
-      </CardContent>
+      </CardBody>
     </Card>
   );
 }

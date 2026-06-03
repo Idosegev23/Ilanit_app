@@ -81,11 +81,17 @@ export function PaymentForm({ token, suggestedAmount }: Props) {
     return (
       <div
         role="status"
-        className="flex items-start gap-3 rounded-xl border border-success/20 bg-success-soft p-4"
+        className="flex flex-col items-center gap-3 rounded-2xl border border-success/20 bg-success-soft px-6 py-8 text-center animate-fade-in"
       >
-        <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" aria-hidden="true" />
-        <p className="text-sm font-medium text-success">
-          התשלום עודכן והקבלה הופקה ונשלחה לתלמיד/ה כצרופה. עותק נשמר בתיק הלקוח.
+        <span
+          className="flex size-14 items-center justify-center rounded-full bg-success text-white shadow-soft"
+          aria-hidden="true"
+        >
+          <CheckCircle2 className="size-7" />
+        </span>
+        <p className="text-base font-semibold text-success">הקבלה הופקה ונשלחה</p>
+        <p className="text-sm leading-relaxed text-success/90">
+          התשלום עודכן, הקבלה נשלחה לתלמיד/ה כצרופה ועותק נשמר בתיק הלקוח.
         </p>
       </div>
     );
@@ -95,11 +101,17 @@ export function PaymentForm({ token, suggestedAmount }: Props) {
     return (
       <div
         role="status"
-        className="flex items-start gap-3 rounded-xl border border-accent/20 bg-accent-soft p-4"
+        className="flex flex-col items-center gap-3 rounded-2xl border border-accent/20 bg-accent-soft px-6 py-8 text-center animate-fade-in"
       >
-        <Send className="mt-0.5 size-5 shrink-0 text-accent-text" aria-hidden="true" />
-        <p className="text-sm font-medium text-accent-text">
-          בקשת תשלום נשלחה לתלמיד/ה בוואטסאפ.
+        <span
+          className="flex size-14 items-center justify-center rounded-full bg-accent-600 text-white shadow-soft"
+          aria-hidden="true"
+        >
+          <Send className="size-7" />
+        </span>
+        <p className="text-base font-semibold text-accent-text">בקשת תשלום נשלחה</p>
+        <p className="text-sm leading-relaxed text-accent-text/90">
+          הבקשה נשלחה לתלמיד/ה בוואטסאפ.
         </p>
       </div>
     );
@@ -149,24 +161,36 @@ export function PaymentForm({ token, suggestedAmount }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="space-y-1.5">
-        <Label htmlFor="amount">סכום (₪, שקלים שלמים)</Label>
-        <Input
-          id="amount"
-          type="number"
-          inputMode="numeric"
-          min={1}
-          step={1}
-          className="tabular-nums"
-          value={Number.isFinite(amount) ? amount : ''}
-          onChange={(e) => setAmount(Math.round(Number(e.target.value)))}
-        />
-        <p className="text-xs tabular-nums text-muted">{formatShekels(roundedAmount)}</p>
+      <div className="rounded-2xl border border-line bg-gradient-tint p-4">
+        <Label htmlFor="amount" className="text-muted">
+          סכום שהתקבל (₪, שקלים שלמים)
+        </Label>
+        <div className="mt-2 flex items-baseline gap-2">
+          <span
+            className="text-2xl font-bold leading-none text-primary-600"
+            aria-hidden="true"
+          >
+            ₪
+          </span>
+          <Input
+            id="amount"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            step={1}
+            className="h-14 flex-1 border-0 bg-transparent px-0 text-3xl font-bold tabular-nums text-ink shadow-none focus:ring-0"
+            value={Number.isFinite(amount) ? amount : ''}
+            onChange={(e) => setAmount(Math.round(Number(e.target.value)))}
+          />
+        </div>
+        <p className="mt-1 text-xs tabular-nums text-muted">
+          לקבלה: {formatShekels(roundedAmount)}
+        </p>
       </div>
 
       <fieldset className="space-y-2">
         <legend className="mb-2 block text-sm font-medium text-ink">אמצעי תשלום</legend>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2.5">
           {METHODS.map(({ value, label, icon: Icon }) => {
             const selected = method === value;
             return (
@@ -176,10 +200,10 @@ export function PaymentForm({ token, suggestedAmount }: Props) {
                 onClick={() => setMethod(value)}
                 aria-pressed={selected}
                 className={cn(
-                  'flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-[background-color,border-color,color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+                  'flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-[background-color,border-color,color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
                   selected
-                    ? 'border-primary bg-primary text-primary-fg shadow-soft'
-                    : 'border-line bg-surface text-ink hover:bg-primary-50',
+                    ? 'border-primary bg-primary text-primary-fg shadow-card'
+                    : 'border-line bg-surface text-ink hover:border-primary-200 hover:bg-primary-50',
                 )}
               >
                 <Icon className="size-4" aria-hidden="true" />
