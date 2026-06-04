@@ -3,6 +3,7 @@ import { resolveBookingLink } from '@/lib/booking-links';
 import { getStudent } from '@/lib/students';
 import { AuthLayout } from '@/components/ui/auth-layout';
 import { TokenBookingForm } from '@/app/book/[token]/TokenBookingForm';
+import { loadBookingWeek } from '@/app/book/[token]/actions';
 
 // Personal booking page (no login). The token identifies the student (Ilanit
 // sent them this link); we resolve + load the student server-side and render the
@@ -52,18 +53,23 @@ export default async function TokenBookPage({
     );
   }
 
+  // Initial WEEK view, resolved server-side: this auto-jumps to the nearest open
+  // week within the booking horizon (when any week is open) so the student lands
+  // on a bookable week. Navigation re-fetches via the same server action.
+  const initialWeek = await loadBookingWeek();
+
   // ── Valid link — shared AuthLayout (single source of truth for the brand
   // panel + its AA-safe scrim). `wide` widens the column and `bare` lets the
-  // booking form bring its own Card (it owns the gradient header / slot grid). ──
+  // booking form bring its own Card (it owns the gradient header / week grid). ──
   return (
     <AuthLayout
       wide
       bare
       eyebrow="קביעת שיעור"
       headline="קביעת שיעור עם אילנית"
-      valueProp="בחרו תאריך ומועד שמתאים לכם — והבקשה תועבר לאישור. נחזור אליכם בהקדם."
+      valueProp="בחרו יום ומועד שמתאים לכם מתוך השבוע — והבקשה תועבר לאישור. נחזור אליכם בהקדם."
       features={[
-        { icon: CalendarCheck, label: 'בחירת מועד פנוי ביומן של אילנית' },
+        { icon: CalendarCheck, label: 'תצוגת שבוע מלא — בוחרים יום ומועד פנוי' },
         { icon: Clock, label: 'אישור מהיר ותזכורת בוואטסאפ' },
       ]}
     >
@@ -71,6 +77,7 @@ export default async function TokenBookPage({
         token={token}
         studentName={student.name}
         studentEmail={student.email}
+        initialWeek={initialWeek}
       />
     </AuthLayout>
   );
