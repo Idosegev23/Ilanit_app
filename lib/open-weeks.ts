@@ -1,7 +1,7 @@
 import { db } from '@/lib/db';
 import { openWeeks, type OpenWeek } from '@/db/schema';
 import { and, asc, eq, gte, lte } from 'drizzle-orm';
-import { ilWeekday, toILDateStr, parseILDateTime } from '@/lib/time';
+import { ilWeekday, toILDateStr, parseILDateTime, nowIL } from '@/lib/time';
 
 // Open-weeks: a week (Sunday→Saturday, Asia/Jerusalem) is bookable via personal
 // links ONLY if a row exists for its Sunday `weekStart`. Weeks start CLOSED;
@@ -58,6 +58,22 @@ export async function openWeek(weekStartISO: string): Promise<OpenWeek> {
     .where(eq(openWeeks.weekStart, weekStart))
     .limit(1);
   return rows[0];
+}
+
+/**
+ * Opens the current week plus the next `count-1` weeks (idempotent). Used by the
+ * "פתח את השבועות הקרובים" bulk action so Ilanit can enable booking with one tap
+ * instead of opening every week one by one. Returns how many weeks were opened.
+ */
+export async function openUpcomingWeeks(count: number): Promise<number> {
+  const n = Math.max(1, Math.min(Math.floor(count), 53));
+  let cursor = weekStartOf(nowIL());
+  for (let i = 0; i < n; i++) {
+    await openWeek(cursor);
+    const sunday = parseILDateTime(cursor, '00:00');
+    cursor = weekStartOf(new Date(sunday.getTime() + 7 * MS_PER_DAY));
+  }
+  return n;
 }
 
 /** Closes a week for booking (idempotent — deleting a missing row is a no-op). */

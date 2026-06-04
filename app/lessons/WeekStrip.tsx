@@ -138,6 +138,8 @@ export function WeekStrip() {
   const [weeks, setWeeks] = React.useState<WeekItem[] | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [busyWeek, setBusyWeek] = React.useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = React.useState(false);
+  const autoOpenedRef = React.useRef(false);
 
   const load = React.useCallback(async () => {
     setError(null);
@@ -146,6 +148,27 @@ export function WeekStrip() {
       if (!res.ok) throw new Error('load failed');
       const json = (await res.json()) as { weeks: WeekItem[] };
       setWeeks(json.weeks);
+      // First load with NOTHING open → auto-open the current week so personal
+      // booking links work out of the box. She can still close it or open more.
+      if (
+        !autoOpenedRef.current &&
+        json.weeks.length > 0 &&
+        json.weeks.every((w) => !w.isOpen)
+      ) {
+        autoOpenedRef.current = true;
+        try {
+          await fetch('/api/weeks', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ weekStartISO: json.weeks[0].weekStartISO, open: true }),
+          });
+          setWeeks((prev) =>
+            prev ? prev.map((w, i) => (i === 0 ? { ...w, isOpen: true } : w)) : prev,
+          );
+        } catch {
+          /* non-fatal — Ilanit can open manually */
+        }
+      }
     } catch {
       setError('שגיאה בטעינת השבועות. נסו לרענן את העמוד.');
     }
@@ -181,6 +204,24 @@ export function WeekStrip() {
     }
   }
 
+  async function handleOpenUpcoming(count: number) {
+    setError(null);
+    setBulkBusy(true);
+    try {
+      const res = await fetch('/api/weeks', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ openUpcoming: count }),
+      });
+      if (!res.ok) throw new Error('bulk failed');
+      await load();
+    } catch {
+      setError('שגיאה בפתיחת השבועות. נסו שוב.');
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   const openCount = weeks?.filter((w) => w.isOpen).length ?? 0;
 
   return (
@@ -197,18 +238,33 @@ export function WeekStrip() {
             <div>
               <CardTitle>שבועות פתוחים לתיאום</CardTitle>
               <p className="text-sm text-muted">
-                אילנית פותחת שבוע ידנית — רק שבוע פתוח ניתן לתיאום בקישורים האישיים.
+                רק שבוע פתוח ניתן לתיאום בקישורים האישיים. השבוע הנוכחי נפתח אוטומטית — פתחי עוד שבועות בכפתור או בלחיצה על שבוע.
               </p>
             </div>
           </div>
           {weeks && (
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-3 py-1 text-xs font-semibold tabular-nums text-success"
-              aria-hidden="true"
-            >
-              <LockOpen className="size-3.5" />
-              {openCount} פתוחים
-            </span>
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-3 py-1 text-xs font-semibold tabular-nums text-success"
+                aria-hidden="true"
+              >
+                <LockOpen className="size-3.5" />
+                {openCount} פתוחים
+              </span>
+              <button
+                type="button"
+                onClick={() => handleOpenUpcoming(6)}
+                disabled={bulkBusy}
+                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-sm font-semibold text-white shadow-soft transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60"
+              >
+                {bulkBusy ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <LockOpen className="size-4" aria-hidden="true" />
+                )}
+                פתח את 6 השבועות הקרובים
+              </button>
+            </div>
           )}
         </div>
       </CardHeader>

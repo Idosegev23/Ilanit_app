@@ -90,12 +90,12 @@ vi.mock('@/lib/google-calendar', () => ({
 }));
 
 // Conflict helper + recurrence — controllable per test.
-const hasSlotConflict = vi.hoisted(() => vi.fn(async () => false));
+const hasSlotConflict = vi.hoisted(() => vi.fn(async (_s?: string, _e?: string) => false));
 vi.mock('@/lib/availability', () => ({
   hasSlotConflict: (...a: unknown[]) => hasSlotConflict(...(a as [string, string])),
 }));
 
-const createSeries = vi.hoisted(() => vi.fn(async () => ({ count: 3 })));
+const createSeries = vi.hoisted(() => vi.fn(async (_input?: unknown) => ({ count: 3 })));
 vi.mock('@/lib/recurrence', () => ({
   createSeries: (input: unknown) => createSeries(input),
 }));

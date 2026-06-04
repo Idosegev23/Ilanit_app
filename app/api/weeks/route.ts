@@ -8,6 +8,7 @@ import {
   openWeek,
   closeWeek,
   listOpenWeeks,
+  openUpcomingWeeks,
 } from '@/lib/open-weeks';
 
 // /api/weeks — owner-only endpoint backing the open-weeks WEEK STRIP in /lessons.
@@ -33,10 +34,14 @@ async function requireOwner(): Promise<boolean> {
 
 const YYYYMMDD = /^\d{4}-\d{2}-\d{2}$/;
 
-const postSchema = z.object({
+const toggleSchema = z.object({
   weekStartISO: z.string().regex(YYYYMMDD, 'תאריך תחילת שבוע לא תקין'),
   open: z.boolean(),
 });
+const bulkSchema = z.object({
+  openUpcoming: z.number().int().min(1).max(53),
+});
+const postSchema = z.union([bulkSchema, toggleSchema]);
 
 /**
  * Enumerates the Sunday `weekStart` of every week from the current week through
@@ -103,7 +108,20 @@ export async function POST(request: Request) {
     );
   }
 
-  const { weekStartISO, open } = parsed.data;
+  const data = parsed.data;
+
+  // Bulk: open the current week + the next (count-1) weeks in one tap.
+  if ('openUpcoming' in data) {
+    try {
+      const opened = await openUpcomingWeeks(data.openUpcoming);
+      return NextResponse.json({ ok: true, openedUpcoming: opened });
+    } catch (err) {
+      console.error('[api/weeks] bulk open failed:', err);
+      return NextResponse.json({ error: 'שגיאה בפתיחת השבועות' }, { status: 500 });
+    }
+  }
+
+  const { weekStartISO, open } = data;
 
   try {
     if (open) {
