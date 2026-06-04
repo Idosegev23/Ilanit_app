@@ -5,6 +5,8 @@ vi.mock('@/lib/students', () => ({
   findStudentByPhone: vi.fn(),
   createStudent: vi.fn(),
   getStudent: vi.fn(),
+  contactPhoneFor: (s: { phone: string; guardianPhone?: string | null }) =>
+    s.guardianPhone?.trim() || s.phone,
 }));
 vi.mock('@/lib/booking-links', () => ({ createBookingLink: vi.fn() }));
 vi.mock('@/lib/notifications/dispatch', () => ({ notify: vi.fn() }));

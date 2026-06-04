@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { auth } from '@/auth';
 import { normalizePhoneIL } from '@/lib/utils';
 import { getSettings } from '@/lib/settings';
-import { findStudentByPhone, createStudent, getStudent } from '@/lib/students';
+import { findStudentByPhone, createStudent, getStudent, contactPhoneFor } from '@/lib/students';
 import { createBookingLink } from '@/lib/booking-links';
 import { notify } from '@/lib/notifications/dispatch';
 
@@ -58,7 +58,7 @@ export async function POST(req: Request): Promise<Response> {
       }
       studentId = student.id;
       studentName = student.name;
-      studentPhone = student.phone;
+      studentPhone = contactPhoneFor(student); // guardian phone when present
     } else {
       let e164: string;
       try {
@@ -78,7 +78,7 @@ export async function POST(req: Request): Promise<Response> {
       }
       studentId = student.id;
       studentName = student.name;
-      studentPhone = student.phone;
+      studentPhone = contactPhoneFor(student); // guardian phone when present
     }
   } catch (err) {
     console.error('[booking-link] failed to resolve student:', err);

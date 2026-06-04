@@ -60,7 +60,25 @@ vi.mock('@/lib/students', () => ({
   updateStudent: mocks.updateStudent,
 }));
 vi.mock('@/lib/tokens', () => ({ createActionToken: mocks.createActionToken }));
-vi.mock('@/lib/notifications/dispatch', () => ({ notify: mocks.notify }));
+vi.mock('@/lib/notifications/dispatch', () => ({
+  notify: mocks.notify,
+  // notifyStudent routes to the guardian phone when present, else the student's
+  // own phone, then delegates to the same notify spy.
+  notifyStudent: (
+    student: { phone: string; guardianPhone?: string | null },
+    template: string,
+    vars: Record<string, string | number>,
+    relatedId?: string,
+    relatedLessonId?: string,
+  ) =>
+    mocks.notify(
+      template,
+      student.guardianPhone?.trim() || student.phone,
+      vars,
+      relatedId,
+      relatedLessonId,
+    ),
+}));
 vi.mock('@/lib/settings', () => ({ getSettings: mocks.getSettings }));
 vi.mock('@/lib/env', () => ({
   env: () => ({ NEXT_PUBLIC_APP_URL: 'https://ilanit.test/', ILANIT_PHONE: '972545886779' }),

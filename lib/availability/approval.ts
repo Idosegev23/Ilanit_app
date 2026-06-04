@@ -33,6 +33,7 @@ export async function loadLessonForAction(
       lesson: lessons,
       sName: students.name,
       sPhone: students.phone,
+      sGuardianPhone: students.guardianPhone,
       sEmail: students.email,
     })
     .from(lessons)
@@ -41,10 +42,14 @@ export async function loadLessonForAction(
     .limit(1);
   if (rows.length === 0) return null;
   const r = rows[0];
+  // Route to the guardian (parent) phone when present, else the student's own
+  // phone, else the booked-by snapshot phone.
+  const guardianPhone = r.sGuardianPhone?.trim();
+  const studentPhone = guardianPhone || r.sPhone || r.lesson.bookedByPhone || null;
   return {
     lesson: r.lesson,
     studentName: r.sName ?? r.lesson.bookedByName ?? 'תלמיד/ה',
-    studentPhone: r.sPhone ?? r.lesson.bookedByPhone ?? null,
+    studentPhone,
     studentEmail: r.sEmail ?? null,
   };
 }

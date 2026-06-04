@@ -89,6 +89,15 @@ vi.mock('@/lib/time', async () => {
   return { ...actual, nowIL: () => new Date('2020-01-01T00:00:00.000Z') };
 });
 
+// Open-weeks gate: default OPEN for these tests (which exercise template /
+// exception / lesson / freeBusy logic). The dedicated gating tests live in
+// week.test.ts. `weekStartOf` stays real.
+const weekOpen = vi.hoisted(() => ({ value: true }));
+vi.mock('@/lib/open-weeks', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/open-weeks')>('@/lib/open-weeks');
+  return { ...actual, isWeekOpen: async () => weekOpen.value };
+});
+
 import { availableSlots, occupancy, timeStrToMinutes } from '@/lib/availability';
 import { parseILDateTime, ilWeekday } from '@/lib/time';
 
@@ -103,6 +112,7 @@ function resetData() {
   settingsValue.defaultDurationMin = 60;
   settingsValue.bufferMin = 0;
   settingsValue.leadTimeMin = 0;
+  weekOpen.value = true;
   freeBusyMock.mockReset();
   freeBusyMock.mockResolvedValue([]);
 }

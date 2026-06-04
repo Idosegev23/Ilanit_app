@@ -9,7 +9,7 @@ import {
 import { and, eq, gte, inArray, lt } from 'drizzle-orm';
 import { env } from '@/lib/env';
 import { getSettings } from '@/lib/settings';
-import { notify } from '@/lib/notifications/dispatch';
+import { notify, notifyStudent } from '@/lib/notifications/dispatch';
 import {
   nowIL,
   startOfDayIL,
@@ -98,9 +98,9 @@ export async function runDayBeforeReminders(): Promise<DayBeforeResult> {
     if (lesson.type === 'individual') {
       const student = lesson.studentId ? studentById.get(lesson.studentId) : undefined;
       if (student) {
-        await notify(
+        await notifyStudent(
+          student,
           'reminder_day_before_individual',
-          student.phone,
           { studentName: student.name, datetime: when, location },
           `${lesson.id}:${student.id}`,
           lesson.id,
@@ -118,9 +118,9 @@ export async function runDayBeforeReminders(): Promise<DayBeforeResult> {
           .where(and(eq(groupMembers.groupId, group.id), eq(groupMembers.active, true)));
 
         for (const { student } of members) {
-          await notify(
+          await notifyStudent(
+            student,
             'reminder_day_before_group',
-            student.phone,
             { studentName: student.name, groupName: group.name, datetime: when, location },
             `${lesson.id}:${student.id}`,
             lesson.id,

@@ -1,6 +1,8 @@
 import { renderTemplate, type TemplateKey } from '@/lib/notifications/templates';
 import { sendText } from '@/lib/whatsapp/provider';
 import { alreadySent, logMessage, updateMessageLog } from '@/lib/message-log';
+import { contactPhoneFor } from '@/lib/students';
+import type { Student } from '@/db/schema';
 
 // Idempotent notification dispatch: render → check message-log → send via
 // WhatsApp → record result. When relatedId is given, a previously-sent message
@@ -47,4 +49,20 @@ export async function notify(
 
   await updateMessageLog(logId, { status: 'failed', error: result.error });
   return { ok: false, error: result.error };
+}
+
+/**
+ * Sends a templated WhatsApp message to a STUDENT, routing to the guardian
+ * (parent) phone when one is set (`contactPhoneFor`). Use this anywhere we
+ * message a student so a child's messages reach their parent. All other
+ * semantics (idempotency, logging) match `notify`.
+ */
+export async function notifyStudent(
+  student: Pick<Student, 'phone' | 'guardianPhone'>,
+  template: TemplateKey,
+  vars: Record<string, string | number>,
+  relatedId?: string,
+  relatedLessonId?: string,
+): Promise<NotifyResult> {
+  return notify(template, contactPhoneFor(student), vars, relatedId, relatedLessonId);
 }

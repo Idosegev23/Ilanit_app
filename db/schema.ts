@@ -24,6 +24,11 @@ export const students = pgTable(
     name: text('name').notNull(),
     phone: text('phone').notNull(), // E.164
     email: text('email'),
+    // Guardian (parent) contact — for children, all outbound WhatsApp routes here.
+    guardianName: text('guardian_name'),
+    guardianPhone: text('guardian_phone'), // E.164
+    // Default receipt description line for this student (see lib/morning).
+    receiptLabel: text('receipt_label'),
     defaultPrice: integer('default_price'), // ₪
     defaultDurationMin: integer('default_duration_min').notNull().default(60),
     notes: text('notes'),
@@ -189,6 +194,15 @@ export const availabilityExceptions = pgTable('availability_exceptions', {
   endTime: time('end_time'),
 });
 
+// A week (identified by its Sunday `weekStart`, Asia/Jerusalem) is bookable via
+// personal links ONLY if a row exists here. Weeks start CLOSED; Ilanit opens
+// them manually. Recurring lessons & group sessions are NOT gated by this.
+export const openWeeks = pgTable('open_weeks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  weekStart: date('week_start').notNull().unique(), // the Sunday `yyyy-MM-dd`
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const settings = pgTable('settings', {
   id: uuid('id').primaryKey().defaultRandom(),
   businessName: text('business_name').notNull(),
@@ -341,3 +355,5 @@ export type NewGroupBilling = typeof groupBilling.$inferInsert;
 export type StudentAlias = typeof studentAliases.$inferSelect;
 export type BookingLink = typeof bookingLinks.$inferSelect;
 export type NewBookingLink = typeof bookingLinks.$inferInsert;
+export type OpenWeek = typeof openWeeks.$inferSelect;
+export type NewOpenWeek = typeof openWeeks.$inferInsert;

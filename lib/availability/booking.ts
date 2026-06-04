@@ -7,7 +7,7 @@ import { getStudent, updateStudent } from '@/lib/students';
 import { resolveBookingLink } from '@/lib/booking-links';
 import { isSlotBookable } from '@/lib/availability';
 import { createActionToken } from '@/lib/tokens';
-import { notify } from '@/lib/notifications/dispatch';
+import { notify, notifyStudent } from '@/lib/notifications/dispatch';
 import { formatILDateTime } from '@/lib/time';
 
 // Core booking service used by /api/book. The student is identified from a
@@ -161,9 +161,9 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
       lesson.id,
     );
 
-    await notify(
+    await notifyStudent(
+      student,
       'booking_pending_student',
-      student.phone,
       { studentName: student.name, datetime },
       `pending-student:${lesson.id}`,
       lesson.id,

@@ -17,6 +17,7 @@ import {
   type TimeWindow,
   type Interval,
 } from '@/lib/availability/engine';
+import { isWeekOpen, weekStartOf } from '@/lib/open-weeks';
 
 // Availability engine: turns the weekly template (minus exceptions, existing
 // lessons, calendar freeBusy, lead-time and past) into concrete bookable slots,
@@ -118,12 +119,18 @@ async function busyIntervals(dayStartMs: number, dayEndMs: number): Promise<Inte
  * and the past.
  */
 export async function availableSlots(dateISO: string): Promise<Slot[]> {
+  // 00:00 (Asia/Jerusalem) of the requested date, as a UTC instant.
+  const dayStart = parseILDateTime(dateISO, '00:00');
+
+  // Open-weeks gate: personal-link booking is only allowed in weeks Ilanit has
+  // opened. (Recurring lessons & group sessions are scheduled directly and are
+  // NOT routed through here, so they're unaffected.)
+  if (!(await isWeekOpen(dayStart))) return [];
+
   const settings = await getSettings();
   const durationMin = settings.defaultDurationMin;
   const bufferMin = settings.bufferMin;
 
-  // 00:00 (Asia/Jerusalem) of the requested date, as a UTC instant.
-  const dayStart = parseILDateTime(dateISO, '00:00');
   const dayStartMs = dayStart.getTime();
   const dayEndMs = dayStartMs + 24 * 60 * MS_PER_MIN;
   const weekday = ilWeekday(dayStart);
@@ -151,6 +158,56 @@ export async function availableSlots(dateISO: string): Promise<Slot[]> {
     endISO: new Date(s.endMs).toISOString(),
     label: slotLabel(s.startMs, s.endMs),
   }));
+}
+
+export interface WeekDay {
+  /** `yyyy-MM-dd` (Asia/Jerusalem). */
+  dateISO: string;
+  /** 0=Sunday … 6=Saturday. */
+  weekday: number;
+  /** Bookable slots for this day (empty when the week is closed). */
+  slots: Slot[];
+}
+
+export interface AvailableWeek {
+  /** The Sunday `yyyy-MM-dd` that starts this week. */
+  weekStartISO: string;
+  /** Whether Ilanit has opened this week for personal-link booking. */
+  isOpen: boolean;
+  /** Seven days, Sunday→Saturday. */
+  days: WeekDay[];
+}
+
+/**
+ * The 7-day (Sunday→Saturday, Asia/Jerusalem) view used by the week-grid booking
+ * UI. `weekStartISO` is normalized to its Sunday. When the week is not open,
+ * `isOpen` is false and every day's `slots` is empty (the gate in
+ * `availableSlots` enforces this, so callers never get bookable slots for a
+ * closed week).
+ */
+export async function availableWeek(weekStartISO: string): Promise<AvailableWeek> {
+  const sundayDate = parseILDateTime(weekStartOf(parseILDateTime(weekStartISO, '00:00')), '00:00');
+  const sundayISO = toILDateStr(sundayDate);
+  const isOpen = await isWeekOpen(sundayDate);
+
+  const dayDates: { dateISO: string; weekday: number }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(sundayDate.getTime() + i * 24 * 60 * MS_PER_MIN);
+    dayDates.push({ dateISO: toILDateStr(d), weekday: ilWeekday(d) });
+  }
+
+  // When closed, skip the per-day work entirely (slots would be empty anyway).
+  const days: WeekDay[] = isOpen
+    ? await Promise.all(
+        dayDates.map(async ({ dateISO, weekday }) => ({
+          dateISO,
+          weekday,
+          slots: await availableSlots(dateISO),
+        })),
+      )
+    : dayDates.map(({ dateISO, weekday }) => ({ dateISO, weekday, slots: [] }));
+
+  return { weekStartISO: sundayISO, isOpen, days };
 }
 
 /**
@@ -215,6 +272,9 @@ export async function isSlotBookable(startISO: string, endISO: string): Promise<
   const start = new Date(startISO);
   const end = new Date(endISO);
   if (!(start.getTime() < end.getTime())) return false;
+
+  // Open-weeks gate: the slot's week must be open for personal-link booking.
+  if (!(await isWeekOpen(start))) return false;
 
   const settings = await getSettings();
   const earliestStartMs = nowIL().getTime() + settings.leadTimeMin * MS_PER_MIN;

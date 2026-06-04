@@ -18,6 +18,22 @@ import { and, desc, eq, inArray } from 'drizzle-orm';
 
 // Shared student CRUD + the full "client file" aggregation used by /students/[id].
 
+/**
+ * The phone all outbound WhatsApp for a student should go to. For children we
+ * have the parent's number in `guardianPhone`; when present it wins, otherwise
+ * we fall back to the student's own `phone`. Always E.164.
+ *
+ * This is the single source of truth for recipient routing — booking links,
+ * reminders, payment requests, receipts and group billing must resolve the
+ * recipient through here so a child's messages reach the guardian.
+ */
+export function contactPhoneFor(
+  student: Pick<Student, 'phone' | 'guardianPhone'>,
+): string {
+  const guardian = student.guardianPhone?.trim();
+  return guardian ? guardian : student.phone;
+}
+
 /** Finds a student by E.164 phone, or null. */
 export async function findStudentByPhone(e164: string): Promise<Student | null> {
   const rows = await db.select().from(students).where(eq(students.phone, e164)).limit(1);

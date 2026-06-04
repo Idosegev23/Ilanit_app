@@ -6,7 +6,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // notify / settings / env are mocked at the module boundary.
 
 const notify = vi.fn((..._a: unknown[]) => Promise.resolve({ ok: true }));
-vi.mock('@/lib/notifications/dispatch', () => ({ notify: (...a: unknown[]) => notify(...a) }));
+// notifyStudent routes a student to the guardian phone when present, else the
+// student's own phone, then delegates to notify(template, phone, ...).
+vi.mock('@/lib/notifications/dispatch', () => ({
+  notify: (...a: unknown[]) => notify(...a),
+  notifyStudent: (
+    student: { phone: string; guardianPhone?: string | null },
+    template: string,
+    vars: unknown,
+    relatedId?: string,
+    relatedLessonId?: string,
+  ) =>
+    notify(
+      template,
+      student.guardianPhone?.trim() || student.phone,
+      vars,
+      relatedId,
+      relatedLessonId,
+    ),
+}));
 
 const getSettings = vi.fn(async () => ({
   locationAddress: 'רחוב הדקל 5, חיפה',

@@ -80,6 +80,8 @@ vi.mock('@/lib/settings', () => ({
 
 vi.mock('@/lib/students', () => ({
   getStudent: vi.fn(),
+  contactPhoneFor: (s: { phone: string; guardianPhone?: string | null }) =>
+    s.guardianPhone?.trim() || s.phone,
 }));
 
 vi.mock('@/lib/morning', () => ({

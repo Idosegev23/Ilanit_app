@@ -9,6 +9,7 @@ import { notify } from '@/lib/notifications/dispatch';
 import { formatShekels } from '@/lib/utils';
 import { formatILDateTime } from '@/lib/time';
 import { createReceipt, type ReceiptInput } from '@/lib/morning';
+import { contactPhoneFor } from '@/lib/students';
 
 // Orchestrates the "payment received → official receipt" flow for an individual
 // lesson:
@@ -78,7 +79,10 @@ export async function markLessonPaidAndIssueReceipt(
   }
 
   const clientName = student?.name ?? lesson.bookedByName ?? 'תלמיד/ה';
-  const clientPhone = student?.phone ?? lesson.bookedByPhone ?? undefined;
+  // Route to the guardian (parent) phone when the student has one.
+  const clientPhone = student
+    ? contactPhoneFor(student)
+    : (lesson.bookedByPhone ?? undefined);
 
   // Upsert the payment row to paid.
   const now = new Date();
@@ -190,7 +194,7 @@ export async function sendPaymentRequest(lessonId: string): Promise<{ ok: boolea
     const sRows = await db.select().from(students).where(eq(students.id, lesson.studentId)).limit(1);
     if (sRows[0]) {
       studentName = sRows[0].name;
-      phone = sRows[0].phone;
+      phone = contactPhoneFor(sRows[0]); // guardian phone when present
     }
   }
   if (!phone) return { ok: false, error: 'no phone for student' };

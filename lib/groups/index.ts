@@ -12,7 +12,7 @@ import {
 } from '@/db/schema';
 import { and, asc, desc, eq } from 'drizzle-orm';
 import { getSettings } from '@/lib/settings';
-import { getStudent } from '@/lib/students';
+import { getStudent, contactPhoneFor } from '@/lib/students';
 import { createReceipt } from '@/lib/morning';
 import { notify } from '@/lib/notifications/dispatch';
 import { sendFileByUrl } from '@/lib/whatsapp/provider';
@@ -238,6 +238,7 @@ export async function generateMonthlyBilling(monthISO: string): Promise<{ create
         studentId: students.id,
         name: students.name,
         phone: students.phone,
+        guardianPhone: students.guardianPhone,
       })
       .from(groupMembers)
       .innerJoin(students, eq(groupMembers.studentId, students.id))
@@ -272,10 +273,10 @@ export async function generateMonthlyBilling(monthISO: string): Promise<{ create
       created += 1;
       groupCreated += 1;
 
-      // Notify the member (idempotent via message-log keyed by billing id).
+      // Notify the member — routed to the parent's phone when set (children).
       await notify(
         'group_billing_member',
-        member.phone,
+        contactPhoneFor(member),
         {
           studentName: member.name,
           groupName: group.name,
@@ -330,7 +331,7 @@ export async function markBillingPaid(billingId: string, method?: string): Promi
   // Morning receipt → official doc + PDF on Blob.
   const receipt = await createReceipt({
     clientName: student.name,
-    clientPhone: student.phone,
+    clientPhone: contactPhoneFor(student),
     amount: billing.amount,
     description: `תשלום חודשי — קבוצת "${group.name}" (${monthLabel})`,
     method: normalizedMethod,
@@ -365,7 +366,7 @@ export async function markBillingPaid(billingId: string, method?: string): Promi
   // Send the receipt PDF as a real WhatsApp attachment to the member.
   const filename = `receipt-${receipt.docNumber}.pdf`;
   const caption = `קבלה עבור התשלום החודשי לקבוצת "${group.name}" (${monthLabel}). תודה!`;
-  const sent = await sendFileByUrl(student.phone, receipt.pdfUrl, filename, caption);
+  const sent = await sendFileByUrl(contactPhoneFor(student), receipt.pdfUrl, filename, caption);
 
   await db
     .update(receipts)
