@@ -35,6 +35,7 @@ import {
 import { ManualLessonForm } from './ManualLessonForm';
 import { RecurringForm } from './RecurringForm';
 import { LessonDialog } from './LessonDialog';
+import { WeekStrip } from './WeekStrip';
 import type { LessonRow, StudentOption, GroupOption } from './data';
 
 const FILTERS: Array<{ key: 'all' | LessonRow['status']; label: string }> = [
@@ -286,13 +287,13 @@ export function LessonsView({
         subtitle="אישור, דחייה וביטול שיעורים — ויצירת שיעורים חד-פעמיים וסדרות חוזרות."
         actions={
           <>
-            <Button variant="secondary" onClick={() => openCreate('recurring')}>
-              <Repeat className="size-4" aria-hidden="true" />
-              שיעור חוזר
-            </Button>
-            <Button onClick={() => openCreate('manual')}>
+            <Button variant="secondary" onClick={() => openCreate('manual')}>
               <Plus className="size-4" aria-hidden="true" />
               שיעור חדש
+            </Button>
+            <Button variant="gradient" onClick={() => openCreate('recurring')}>
+              <Repeat className="size-4" aria-hidden="true" />
+              הוספת שיעור קבוע (מחזורי)
             </Button>
           </>
         }
@@ -326,6 +327,40 @@ export function LessonsView({
           icon={CalendarDays}
           tone="primary"
         />
+      </div>
+
+      {/* Owner-only WEEK STRIP — open/close upcoming weeks for personal-link
+          booking. Weeks start CLOSED; Ilanit opens them manually. */}
+      <WeekStrip />
+
+      {/* Prominent primary action for existing regulars — a recurring weekly
+          series (individual). Auto-scheduled, NOT gated by open-weeks. */}
+      <div className="flex flex-col gap-4 rounded-2xl border border-primary-200 bg-gradient-tint p-5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <span
+            className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-warm text-primary-fg shadow-soft"
+            aria-hidden="true"
+          >
+            <Repeat className="size-5" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-ink">
+              הוספת שיעור קבוע (מחזורי)
+            </h2>
+            <p className="mt-0.5 text-sm text-muted">
+              לתלמידים קבועים עם שיעור שבועי — נוצרים אוטומטית ואינם תלויים בפתיחת שבוע.
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="gradient"
+          size="lg"
+          onClick={() => openCreate('recurring')}
+          className="shrink-0 max-sm:w-full"
+        >
+          <Repeat className="size-4" aria-hidden="true" />
+          הוספת שיעור קבוע
+        </Button>
       </div>
 
       {error && (
