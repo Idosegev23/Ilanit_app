@@ -14,6 +14,9 @@ import {
   Clock,
   StickyNote,
   Archive,
+  UserCog,
+  PhoneCall,
+  ReceiptText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,6 +35,9 @@ export interface StudentFormValues {
   name: string;
   phone: string;
   email: string | null;
+  guardianName: string | null;
+  guardianPhone: string | null;
+  receiptLabel: string | null;
   defaultPrice: number | null;
   defaultDurationMin: number;
   notes: string | null;
@@ -245,6 +251,50 @@ export function StudentFormDialog({
                   />
                 </Field>
 
+                {/* Guardian (parent) contact — recommended for children. When a
+                    guardian phone is set, all WhatsApp for this student goes there. */}
+                <div className="space-y-4 rounded-2xl border border-line bg-cream/40 p-4">
+                  <div className="flex items-center gap-2">
+                    <span className="flex size-7 items-center justify-center rounded-lg bg-primary-soft text-primary-600">
+                      <UserCog className="size-4" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <p className="text-sm font-semibold text-ink">פרטי הורה</p>
+                      <p className="text-xs text-muted">
+                        מומלץ לילדים — כל ההודעות (לינק, תזכורות, קבלות) יישלחו לטלפון ההורה.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Field id={`${titleId}-guardian-name`} label="שם הורה" icon={User} hint="לא חובה">
+                    <Input
+                      id={`${titleId}-guardian-name`}
+                      name="guardianName"
+                      defaultValue={student?.guardianName ?? ''}
+                      placeholder="שם ההורה"
+                      autoComplete="name"
+                    />
+                  </Field>
+
+                  <Field
+                    id={`${titleId}-guardian-phone`}
+                    label="טלפון הורה"
+                    icon={PhoneCall}
+                    hint="מומלץ לילדים"
+                  >
+                    <Input
+                      id={`${titleId}-guardian-phone`}
+                      name="guardianPhone"
+                      type="tel"
+                      dir="ltr"
+                      className="text-end"
+                      defaultValue={student?.guardianPhone ?? ''}
+                      placeholder="050-123-4567"
+                      autoComplete="tel"
+                    />
+                  </Field>
+                </div>
+
                 {/* Pricing — the canonical place to set the private-lesson price */}
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <Field
@@ -290,6 +340,20 @@ export function StudentFormDialog({
                     />
                   </Field>
                 </div>
+
+                <Field
+                  id={`${titleId}-receipt-label`}
+                  label="תיאור לקבלה (ברירת מחדל)"
+                  icon={ReceiptText}
+                  hint="לא חובה"
+                >
+                  <Input
+                    id={`${titleId}-receipt-label`}
+                    name="receiptLabel"
+                    defaultValue={student?.receiptLabel ?? ''}
+                    placeholder="למשל: שיעור פרטי / הוראה מתקנת"
+                  />
+                </Field>
 
                 <Field id={`${titleId}-notes`} label="הערות" icon={StickyNote} hint="לא חובה">
                   <Textarea

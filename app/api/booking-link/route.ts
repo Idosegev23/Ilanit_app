@@ -8,9 +8,11 @@ import { createBookingLink } from '@/lib/booking-links';
 import { notify } from '@/lib/notifications/dispatch';
 
 // Owner-only endpoint backing the "שלח לינק לתיאום" dialog. Ilanit either picks
-// an existing student ({ studentId }) or adds a new one ({ name, phone }); we
+// an existing student ({ studentId }) or adds a new one ({ name, phone } plus
+// optional guardian name/phone, receipt label and default price); we
 // find-or-create the student, mint a personalized booking link, and WhatsApp it
-// to the student's phone. Returns { ok, url }.
+// to the recipient resolved by contactPhoneFor — the guardian's phone when one
+// is set, otherwise the student's own. Returns { ok, url, sent }.
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +21,14 @@ const bodySchema = z.union([
   z.object({
     name: z.string().trim().min(1, 'יש להזין שם'),
     phone: z.string().trim().min(1, 'יש להזין טלפון'),
+    // Optional guardian (parent) contact — when a guardian phone is supplied the
+    // link (and every later message for this student) routes to the parent.
+    guardianName: z.string().trim().min(1).optional(),
+    guardianPhone: z.string().trim().min(1).optional(),
+    // Optional default receipt description for this student.
+    receiptLabel: z.string().trim().min(1).optional(),
+    // Optional default private-lesson price (integer shekels).
+    defaultPrice: z.string().trim().optional(),
   }),
 ]);
 
@@ -69,10 +79,29 @@ export async function POST(req: Request): Promise<Response> {
       const name = parsed.data.name.trim();
       let student = await findStudentByPhone(e164);
       if (!student) {
+        // Normalize the optional guardian phone (E.164); reject if malformed.
+        let guardianPhone: string | null = null;
+        if (parsed.data.guardianPhone) {
+          try {
+            guardianPhone = normalizePhoneIL(parsed.data.guardianPhone);
+          } catch {
+            return NextResponse.json(
+              { ok: false, error: 'מספר טלפון הורה לא תקין' },
+              { status: 400 },
+            );
+          }
+        }
+        const priceRaw = parsed.data.defaultPrice?.replace(/[^\d]/g, '');
+        const defaultPrice =
+          priceRaw && priceRaw !== '' ? Math.round(Number(priceRaw)) : undefined;
         const settings = await getSettings();
         student = await createStudent({
           name,
           phone: e164,
+          guardianName: parsed.data.guardianName ?? null,
+          guardianPhone,
+          receiptLabel: parsed.data.receiptLabel ?? null,
+          defaultPrice,
           defaultDurationMin: settings.defaultDurationMin,
         });
       }

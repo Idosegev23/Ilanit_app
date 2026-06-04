@@ -24,6 +24,9 @@ const EXISTING = {
   name: 'דנה לוי',
   phone: '+972501234567',
   email: null,
+  guardianName: null,
+  guardianPhone: null,
+  receiptLabel: null,
   defaultPrice: 150,
   defaultDurationMin: 60,
   notes: null,
@@ -86,6 +89,21 @@ describe('POST /api/booking-link — existing student', () => {
     expect(res.status).toBe(404);
     expect(createBookingLink).not.toHaveBeenCalled();
   });
+
+  it('routes the WhatsApp to the guardian phone when one is set', async () => {
+    vi.mocked(getStudent).mockResolvedValue({
+      ...EXISTING,
+      guardianName: 'רוני לוי',
+      guardianPhone: '+972527654321',
+    } as never);
+    const res = await POST(req({ studentId: EXISTING.id }));
+    expect(res.status).toBe(200);
+    expect(notify).toHaveBeenCalledWith(
+      'booking_link_student',
+      '+972527654321',
+      expect.objectContaining({ studentName: 'דנה לוי' }),
+    );
+  });
 });
 
 describe('POST /api/booking-link — new student', () => {
@@ -97,6 +115,52 @@ describe('POST /api/booking-link — new student', () => {
       expect.objectContaining({ name: 'יוסי כהן', phone: '+972501234567' }),
     );
     expect(createBookingLink).toHaveBeenCalledWith('new-student');
+  });
+
+  it('persists guardian fields + receipt label and routes the link to the parent', async () => {
+    vi.mocked(createStudent).mockResolvedValue({
+      ...EXISTING,
+      id: 'new-student',
+      phone: '+972501234567',
+      guardianName: 'רוני כהן',
+      guardianPhone: '+972527654321',
+      receiptLabel: 'הוראה מתקנת',
+    } as never);
+    const res = await POST(
+      req({
+        name: 'יוסי כהן',
+        phone: '050-123-4567',
+        guardianName: 'רוני כהן',
+        guardianPhone: '052-765-4321',
+        receiptLabel: 'הוראה מתקנת',
+        defaultPrice: '180',
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(createStudent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: 'יוסי כהן',
+        phone: '+972501234567',
+        guardianName: 'רוני כהן',
+        guardianPhone: '+972527654321',
+        receiptLabel: 'הוראה מתקנת',
+        defaultPrice: 180,
+      }),
+    );
+    // Link routes to the guardian (contactPhoneFor) once the student is created.
+    expect(notify).toHaveBeenCalledWith(
+      'booking_link_student',
+      '+972527654321',
+      expect.any(Object),
+    );
+  });
+
+  it('rejects an invalid guardian phone (400)', async () => {
+    const res = await POST(
+      req({ name: 'יוסי', phone: '0501234567', guardianPhone: 'nope' }),
+    );
+    expect(res.status).toBe(400);
+    expect(createStudent).not.toHaveBeenCalled();
   });
 
   it('reuses an existing student matched by phone (no create)', async () => {

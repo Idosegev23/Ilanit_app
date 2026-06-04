@@ -15,6 +15,9 @@ import {
   Users,
   Archive,
   Info,
+  UserCog,
+  PhoneCall,
+  MessageCircle,
 } from 'lucide-react';
 import { Card, CardBody } from '@/components/ui/card';
 import { Badge, StatusPill, type StatusKind } from '@/components/ui/badge';
@@ -44,6 +47,9 @@ export interface StudentFileVM {
     name: string;
     phone: string;
     email: string | null;
+    guardianName: string | null;
+    guardianPhone: string | null;
+    receiptLabel: string | null;
     defaultPrice: number | null;
     defaultDurationMin: number;
     notes: string | null;
@@ -176,6 +182,19 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
                   </a>
                 )}
               </div>
+
+              {student.guardianPhone && (
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary-soft/70 px-2.5 py-1 text-xs font-medium text-primary-600 ring-1 ring-primary-100">
+                  <MessageCircle className="size-3.5" aria-hidden="true" />
+                  <span>
+                    ההודעות נשלחות להורה
+                    {student.guardianName ? ` (${student.guardianName})` : ''}:{' '}
+                    <span dir="ltr" className="tabular-nums">
+                      {student.guardianPhone}
+                    </span>
+                  </span>
+                </p>
+              )}
             </div>
           </div>
 
@@ -330,6 +349,43 @@ function DetailsPanel({
             >
               {student.email}
             </a>
+          ) : (
+            <span className="text-muted">—</span>
+          )}
+        </DetailRow>
+        <DetailRow icon={UserCog} label="שם הורה">
+          {student.guardianName ? (
+            <span>{student.guardianName}</span>
+          ) : (
+            <span className="text-muted">—</span>
+          )}
+        </DetailRow>
+        <DetailRow icon={PhoneCall} label="טלפון הורה">
+          {student.guardianPhone ? (
+            <a
+              href={`tel:${student.guardianPhone}`}
+              dir="ltr"
+              className="rounded tabular-nums text-primary-600 underline-offset-2 transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {student.guardianPhone}
+            </a>
+          ) : (
+            <span className="text-muted">—</span>
+          )}
+        </DetailRow>
+        {student.guardianPhone && (
+          <div className="sm:col-span-2">
+            <p className="flex items-start gap-2 rounded-xl bg-primary-soft/50 px-3.5 py-2.5 text-sm text-primary-600">
+              <MessageCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+              <span>
+                כל ההודעות (לינק לתיאום, תזכורות, בקשות תשלום וקבלות) נשלחות לטלפון ההורה.
+              </span>
+            </p>
+          </div>
+        )}
+        <DetailRow icon={ReceiptText} label="תיאור לקבלה (ברירת מחדל)">
+          {student.receiptLabel ? (
+            <span>{student.receiptLabel}</span>
           ) : (
             <span className="text-muted">—</span>
           )}

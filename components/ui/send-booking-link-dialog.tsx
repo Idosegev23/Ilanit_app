@@ -13,6 +13,9 @@ import {
   Copy,
   Check,
   CircleDollarSign,
+  UserCog,
+  PhoneCall,
+  ReceiptText,
 } from 'lucide-react';
 import { Button } from './button';
 import { Input } from './input';
@@ -74,6 +77,9 @@ export function SendBookingLinkDialog({
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [name, setName] = React.useState('');
   const [phone, setPhone] = React.useState('');
+  const [guardianName, setGuardianName] = React.useState('');
+  const [guardianPhone, setGuardianPhone] = React.useState('');
+  const [receiptLabel, setReceiptLabel] = React.useState('');
   const [defaultPrice, setDefaultPrice] = React.useState('');
 
   const [submitting, setSubmitting] = React.useState(false);
@@ -95,6 +101,9 @@ export function SendBookingLinkDialog({
     setSelectedId(null);
     setName('');
     setPhone('');
+    setGuardianName('');
+    setGuardianPhone('');
+    setReceiptLabel('');
     setDefaultPrice('');
     setError(null);
     setResultUrl(null);
@@ -179,6 +188,12 @@ export function SendBookingLinkDialog({
         return;
       }
       body = { name: name.trim(), phone: phone.trim() };
+      // Optional guardian (parent) contact — when a guardian phone is set the
+      // booking link (and all later messages) routes to the parent.
+      if (guardianName.trim()) body.guardianName = guardianName.trim();
+      if (guardianPhone.trim()) body.guardianPhone = guardianPhone.trim();
+      // Optional default receipt description for this student.
+      if (receiptLabel.trim()) body.receiptLabel = receiptLabel.trim();
       // Optional default private-lesson price (integer shekels). Sent as a hint
       // to the booking-link endpoint; ignored if it doesn't consume the field.
       const priceRaw = defaultPrice.replace(/[^\d]/g, '');
@@ -477,6 +492,72 @@ export function SendBookingLinkDialog({
                         autoComplete="tel"
                       />
                     </div>
+
+                    {/* Guardian (parent) contact — when a guardian phone is set
+                        the link (and all later messages) goes to the parent. */}
+                    <div className="space-y-3 rounded-2xl border border-line bg-cream/40 p-3.5">
+                      <div className="flex items-center gap-2">
+                        <span className="flex size-7 items-center justify-center rounded-lg bg-primary-soft text-primary-600">
+                          <UserCog className="size-4" aria-hidden="true" />
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold text-ink">פרטי הורה</p>
+                          <p className="text-xs text-muted">מומלץ לילדים — הלינק יישלח לטלפון ההורה.</p>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <Label htmlFor="link-guardian-name" className="flex items-center gap-1.5">
+                            <UserCog className="size-3.5 text-muted" aria-hidden="true" />
+                            שם הורה
+                          </Label>
+                          <span className="text-xs text-muted">לא חובה</span>
+                        </div>
+                        <Input
+                          id="link-guardian-name"
+                          value={guardianName}
+                          onChange={(e) => setGuardianName(e.target.value)}
+                          placeholder="שם ההורה"
+                          autoComplete="name"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <Label htmlFor="link-guardian-phone" className="flex items-center gap-1.5">
+                            <PhoneCall className="size-3.5 text-muted" aria-hidden="true" />
+                            טלפון הורה
+                          </Label>
+                          <span className="text-xs text-muted">מומלץ לילדים</span>
+                        </div>
+                        <Input
+                          id="link-guardian-phone"
+                          type="tel"
+                          dir="ltr"
+                          className="text-end"
+                          value={guardianPhone}
+                          onChange={(e) => setGuardianPhone(e.target.value)}
+                          placeholder="050-123-4567"
+                          autoComplete="tel"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label htmlFor="link-receipt-label" className="flex items-center gap-1.5">
+                          <ReceiptText className="size-3.5 text-muted" aria-hidden="true" />
+                          תיאור לקבלה (ברירת מחדל)
+                        </Label>
+                        <span className="text-xs text-muted">לא חובה</span>
+                      </div>
+                      <Input
+                        id="link-receipt-label"
+                        value={receiptLabel}
+                        onChange={(e) => setReceiptLabel(e.target.value)}
+                        placeholder="למשל: שיעור פרטי / הוראה מתקנת"
+                      />
+                    </div>
+
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between gap-2">
                         <Label htmlFor="link-price" className="flex items-center gap-1.5">

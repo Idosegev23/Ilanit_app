@@ -81,11 +81,29 @@ export async function createStudentAction(form: FormData): Promise<StudentAction
   const email = str(form, 'email') || null;
   const notes = str(form, 'notes') || null;
 
+  // Guardian (parent) contact — recommended for children. When present, all
+  // outbound WhatsApp for this student routes to the guardian (contactPhoneFor).
+  const guardianName = str(form, 'guardianName') || null;
+  let guardianPhone: string | null = null;
+  const guardianPhoneRaw = str(form, 'guardianPhone');
+  if (guardianPhoneRaw) {
+    try {
+      guardianPhone = normalizePhoneIL(guardianPhoneRaw);
+    } catch {
+      return { ok: false, error: 'מספר טלפון הורה לא תקין' };
+    }
+  }
+
+  const receiptLabel = str(form, 'receiptLabel') || null;
+
   try {
     const student = await createStudent({
       name,
       phone,
       email,
+      guardianName,
+      guardianPhone,
+      receiptLabel,
       defaultPrice: price,
       defaultDurationMin: durationMin(form, 'defaultDurationMin', 60),
       notes,
@@ -131,11 +149,26 @@ export async function updateStudentAction(form: FormData): Promise<StudentAction
   const price = optionalIntShekels(form, 'defaultPrice');
   if (price === undefined) return { ok: false, error: 'מחיר לא תקין' };
 
+  // Guardian (parent) contact — when present, all outbound WhatsApp for this
+  // student routes to the guardian (contactPhoneFor).
+  let guardianPhone: string | null = null;
+  const guardianPhoneRaw = str(form, 'guardianPhone');
+  if (guardianPhoneRaw) {
+    try {
+      guardianPhone = normalizePhoneIL(guardianPhoneRaw);
+    } catch {
+      return { ok: false, error: 'מספר טלפון הורה לא תקין' };
+    }
+  }
+
   try {
     await updateStudent(id, {
       name,
       phone,
       email: str(form, 'email') || null,
+      guardianName: str(form, 'guardianName') || null,
+      guardianPhone,
+      receiptLabel: str(form, 'receiptLabel') || null,
       defaultPrice: price,
       defaultDurationMin: durationMin(form, 'defaultDurationMin', current.defaultDurationMin),
       notes: str(form, 'notes') || null,
