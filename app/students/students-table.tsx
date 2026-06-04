@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { formatShekels, cn } from '@/lib/utils';
 import { StudentFormDialog } from './student-form-dialog';
+import { ScheduleLessonDialog } from './schedule-lesson-dialog';
 
 // Client directory: a stat summary band, a live search field, and a premium
 // table (avatar initials, phone, private-lesson price). Server data is passed in
@@ -150,10 +151,13 @@ export function StudentsTable({ students, settingsDefaultPrice }: StudentsTableP
         <Card className="overflow-hidden">
           <ul className="divide-y divide-line">
             {filtered.map((s) => (
-              <li key={s.id}>
+              <li
+                key={s.id}
+                className="group flex items-center gap-2 px-2 py-1.5 transition-colors duration-150 hover:bg-primary-50/60 sm:gap-3 sm:px-3"
+              >
                 <Link
                   href={`/students/${s.id}`}
-                  className="group flex items-center gap-3 px-4 py-3.5 transition-colors duration-150 hover:bg-primary-50/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:gap-4 sm:px-5"
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary sm:gap-4 sm:px-2"
                 >
                   <span
                     aria-hidden="true"
@@ -196,11 +200,28 @@ export function StudentsTable({ students, settingsDefaultPrice }: StudentsTableP
                       <span className="text-sm text-muted">ללא מחיר</span>
                     )}
                   </div>
+                </Link>
 
-                  <ChevronLeft
-                    className="size-5 shrink-0 text-muted transition-transform duration-150 group-hover:text-primary-600 motion-safe:group-hover:-translate-x-0.5"
-                    aria-hidden="true"
-                  />
+                {/* Primary admin action: Ilanit sets the lesson herself. */}
+                <ScheduleLessonDialog
+                  student={{
+                    id: s.id,
+                    name: s.name,
+                    defaultPrice: s.defaultPrice,
+                    defaultDurationMin: s.defaultDurationMin,
+                  }}
+                  settingsDefaultPrice={settingsDefaultPrice}
+                  triggerVariant="primary"
+                  triggerSize="sm"
+                  triggerClassName="shrink-0"
+                />
+
+                <Link
+                  href={`/students/${s.id}`}
+                  aria-label={`פתיחת תיק ${s.name}`}
+                  className="flex size-9 shrink-0 items-center justify-center rounded-xl text-muted transition-colors duration-150 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  <ChevronLeft className="size-5" aria-hidden="true" />
                 </Link>
               </li>
             ))}

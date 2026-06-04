@@ -160,6 +160,25 @@ export async function availableSlots(dateISO: string): Promise<Slot[]> {
   }));
 }
 
+/**
+ * Lightweight double-booking check for ADMIN (owner) scheduling. Unlike
+ * `isSlotBookable`, this is NOT gated by open-weeks, lead-time, or the weekly
+ * template — Ilanit can schedule whenever she likes. It only reports whether the
+ * slot OVERLAPS an existing pending/confirmed lesson or a calendar busy block,
+ * so the UI can warn before letting her proceed anyway. A calendar lookup
+ * failure degrades to the lesson-based busy set (same as `busyIntervals`).
+ */
+export async function hasSlotConflict(startISO: string, endISO: string): Promise<boolean> {
+  const start = new Date(startISO);
+  const end = new Date(endISO);
+  if (!(start.getTime() < end.getTime())) return false;
+
+  const dateISO = toILDateStr(start);
+  const dayStart = parseILDateTime(dateISO, '00:00');
+  const busy = await busyIntervals(dayStart.getTime(), dayStart.getTime() + 24 * 60 * MS_PER_MIN);
+  return busy.some((b) => start.getTime() < b.endMs && b.startMs < end.getTime());
+}
+
 export interface WeekDay {
   /** `yyyy-MM-dd` (Asia/Jerusalem). */
   dateISO: string;

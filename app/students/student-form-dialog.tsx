@@ -17,12 +17,15 @@ import {
   UserCog,
   PhoneCall,
   ReceiptText,
+  CalendarPlus,
+  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { createStudentAction, updateStudentAction } from './actions';
+import { ScheduleLessonDialog, type ScheduleStudentInfo } from './schedule-lesson-dialog';
 
 // Create / edit dialog for a student record. The "מחיר לשיעור פרטי (₪)" field
 // (students.defaultPrice, integer shekels) lives here as the canonical place to
@@ -69,6 +72,11 @@ export function StudentFormDialog({
   const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  // After a NEW student is created we offer "קבע שיעור עכשיו" — a smooth
+  // add→schedule hand-off. `justCreated` holds the new student so the colocated
+  // ScheduleLessonDialog (opened via `scheduleOpen`) can be pre-filled.
+  const [justCreated, setJustCreated] = React.useState<ScheduleStudentInfo | null>(null);
+  const [scheduleOpen, setScheduleOpen] = React.useState(false);
   const titleId = React.useId();
 
   const panelRef = React.useRef<HTMLDivElement>(null);
@@ -77,7 +85,11 @@ export function StudentFormDialog({
     if (pending) return;
     setOpen(false);
     setError(null);
-  }, [pending]);
+    setJustCreated(null);
+    // A create that ended at the "schedule now?" offer still wrote a student —
+    // refresh the route so the directory reflects it even if she skips scheduling.
+    router.refresh();
+  }, [pending, router]);
 
   // Close on Escape + trap Tab focus inside the dialog so keyboard users can't
   // tab out into the page behind the scrim.
@@ -132,6 +144,19 @@ export function StudentFormDialog({
         : await createStudentAction(formData);
       if (!result.ok) {
         setError(result.error ?? 'אירעה שגיאה');
+        return;
+      }
+      if (!isEdit && result.id) {
+        // Add→schedule hand-off: surface the "קבע שיעור עכשיו" offer in-place
+        // using the values she just typed (price/duration default the dialog).
+        const priceRaw = String(formData.get('defaultPrice') ?? '').replace(/[^\d]/g, '');
+        const durationRaw = String(formData.get('defaultDurationMin') ?? '').replace(/[^\d]/g, '');
+        setJustCreated({
+          id: result.id,
+          name: String(formData.get('name') ?? '').trim(),
+          defaultPrice: priceRaw ? Number(priceRaw) : null,
+          defaultDurationMin: durationRaw ? Number(durationRaw) : 60,
+        });
         return;
       }
       setOpen(false);
@@ -209,6 +234,39 @@ export function StudentFormDialog({
               </div>
             </div>
 
+            {justCreated ? (
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
+                <div className="flex items-start gap-3 rounded-2xl bg-success-soft px-4 py-4 text-success">
+                  <CheckCircle2 className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
+                  <div className="min-w-0">
+                    <p className="font-semibold">{justCreated.name} נוסף/ה למאגר</p>
+                    <p className="mt-0.5 text-sm text-success/90">
+                      אפשר לקבוע שיעור עכשיו, או לסיים ולקבוע מאוחר יותר.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={close}
+                    className="sm:flex-1"
+                  >
+                    סיום
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="gradient"
+                    onClick={() => setScheduleOpen(true)}
+                    className="sm:flex-[2]"
+                  >
+                    <CalendarPlus className="size-4" aria-hidden="true" />
+                    קבע שיעור עכשיו
+                  </Button>
+                </div>
+              </div>
+            ) : (
             <form action={onSubmit} className="flex min-h-0 flex-1 flex-col">
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
                 {isEdit && <input type="hidden" name="id" value={student!.id} />}
@@ -408,8 +466,29 @@ export function StudentFormDialog({
                 </Button>
               </div>
             </form>
+            )}
           </div>
         </div>
+      )}
+
+      {/* Add→schedule hand-off: controlled schedule dialog for the new student.
+          Closing it ends the whole create flow (refresh + reset). */}
+      {justCreated && (
+        <ScheduleLessonDialog
+          student={justCreated}
+          settingsDefaultPrice={settingsDefaultPrice}
+          open={scheduleOpen}
+          hideTrigger
+          onOpenChange={(next) => {
+            setScheduleOpen(next);
+            if (!next) {
+              // She finished (or dismissed) scheduling — tidy up the create dialog.
+              setOpen(false);
+              setJustCreated(null);
+              router.refresh();
+            }
+          }}
+        />
       )}
     </>
   );

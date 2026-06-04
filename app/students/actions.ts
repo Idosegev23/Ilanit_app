@@ -1,7 +1,10 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { eq } from 'drizzle-orm';
 import { auth } from '@/auth';
+import { db } from '@/lib/db';
+import { lessons } from '@/db/schema';
 import { normalizePhoneIL } from '@/lib/utils';
 import {
   createStudent,
@@ -9,6 +12,11 @@ import {
   findStudentByPhone,
   getStudent,
 } from '@/lib/students';
+import { getSettings } from '@/lib/settings';
+import { nowIL, parseILDateTime } from '@/lib/time';
+import { insertEvent } from '@/lib/google-calendar';
+import { hasSlotConflict } from '@/lib/availability';
+import { createSeries } from '@/lib/recurrence';
 
 // Server actions for the Students UI. The directory + client-file pages stay
 // server components and post through here. Money is integer shekels; phones are
@@ -180,5 +188,201 @@ export async function updateStudentAction(form: FormData): Promise<StudentAction
   } catch (err) {
     console.error('[students] update failed:', err);
     return { ok: false, error: 'עדכון התלמיד נכשל' };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN scheduling — Ilanit adds/owns a student and SETS their lesson herself.
+// This is the "she just sets it" path: lessons are created status='confirmed'
+// and the Google Calendar event is inserted IMMEDIATELY. It is deliberately NOT
+// the student self-booking flow — there is no booking link, no pending-approval
+// step, and it is NOT gated by open-weeks. Double-booking is only WARNED about
+// (via checkSlotConflictAction) so the owner can override and proceed anyway.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Weekday (0=Sunday … 6=Saturday) of a `yyyy-MM-dd` string, TZ-safe. */
+function weekdayOfDateStr(dateStr: string): number {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+export interface ScheduleResult {
+  ok: boolean;
+  error?: string;
+  /** Number of lessons created (1 for one-off, N for a series). */
+  count?: number;
+  /** True when the slot overlapped an existing lesson / calendar busy block. */
+  conflict?: boolean;
+}
+
+/**
+ * Warns about a double-booking for an admin-chosen slot WITHOUT blocking it.
+ * `date` = `yyyy-MM-dd`, `time` = `HH:mm` (Asia/Jerusalem); duration in minutes.
+ * Returns `{ conflict }`; never throws to the UI (errors degrade to no-conflict).
+ */
+export async function checkSlotConflictAction(
+  date: string,
+  time: string,
+  durationMin: number,
+): Promise<{ conflict: boolean; error?: string }> {
+  if (!(await requireOwner())) return { conflict: false, error: 'אין הרשאה' };
+  if (!date || !time) return { conflict: false };
+  const minutes = Number.isFinite(durationMin) && durationMin > 0 ? durationMin : 60;
+  try {
+    const startsAt = parseILDateTime(date, time);
+    const endsAt = new Date(startsAt.getTime() + minutes * 60 * 1000);
+    const conflict = await hasSlotConflict(startsAt.toISOString(), endsAt.toISOString());
+    return { conflict };
+  } catch (err) {
+    console.error('[students] conflict check failed:', err);
+    return { conflict: false };
+  }
+}
+
+/**
+ * ADMIN one-off scheduler. Creates ONE confirmed individual lesson for an
+ * existing student and inserts the Google Calendar event immediately (location
+ * from settings, attendee = student/guardian email when present, default
+ * reminders). Bypasses open-weeks + approval. Money is integer shekels.
+ */
+export async function scheduleStudentLesson(form: FormData): Promise<ScheduleResult> {
+  if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+
+  const studentId = str(form, 'studentId');
+  if (!studentId) return { ok: false, error: 'מזהה תלמיד חסר' };
+
+  const student = await getStudent(studentId);
+  if (!student) return { ok: false, error: 'התלמיד לא נמצא' };
+
+  const dateStr = str(form, 'date');
+  const timeStr = str(form, 'time');
+  if (!dateStr) return { ok: false, error: 'יש לבחור תאריך' };
+  if (!timeStr) return { ok: false, error: 'יש לבחור שעה' };
+
+  const settings = await getSettings();
+  const minutes = durationMin(form, 'durationMin', student.defaultDurationMin || settings.defaultDurationMin);
+
+  // Price: explicit override → student default → settings default → null.
+  const priceOverride = optionalIntShekels(form, 'price');
+  if (priceOverride === undefined) return { ok: false, error: 'מחיר לא תקין' };
+  const price =
+    priceOverride !== null
+      ? priceOverride
+      : (student.defaultPrice ?? settings.defaultPrivatePrice ?? null);
+
+  try {
+    const startsAt = parseILDateTime(dateStr, timeStr);
+    const endsAt = new Date(startsAt.getTime() + minutes * 60 * 1000);
+    const location = settings.locationAddress || null;
+    // Email goes to the guardian when set (children), else the student.
+    const attendeeEmail = student.email ?? undefined;
+
+    const inserted = await db
+      .insert(lessons)
+      .values({
+        type: 'individual',
+        source: 'manual',
+        studentId: student.id,
+        startsAt,
+        endsAt,
+        status: 'confirmed',
+        needsMatch: false,
+        price,
+        location,
+        bookedByName: student.name,
+        bookedByPhone: student.phone,
+        notes: str(form, 'notes') || null,
+        confirmedAt: nowIL(),
+      })
+      .returning();
+    const lesson = inserted[0];
+
+    const evt = await insertEvent({
+      summary: `שיעור – ${student.name}`,
+      startISO: startsAt.toISOString(),
+      endISO: endsAt.toISOString(),
+      location: location ?? undefined,
+      attendeeEmail,
+      extendedPrivate: { type: 'individual', studentId: student.id },
+    });
+
+    await db.update(lessons).set({ googleEventId: evt.id }).where(eq(lessons.id, lesson.id));
+
+    revalidatePath('/lessons');
+    revalidatePath('/students');
+    revalidatePath(`/students/${student.id}`);
+    return { ok: true, count: 1 };
+  } catch (err) {
+    console.error('[students] schedule lesson failed:', err);
+    return { ok: false, error: err instanceof Error ? err.message : 'יצירת השיעור נכשלה' };
+  }
+}
+
+/**
+ * ADMIN weekly-recurring scheduler. Delegates to lib/recurrence.createSeries,
+ * which persists a confirmed series + a single Google recurring event. Bypasses
+ * open-weeks + approval. The weekday is derived from the chosen start date so
+ * the owner can "pick a date and repeat weekly" without a separate weekday box.
+ */
+export async function scheduleStudentSeries(form: FormData): Promise<ScheduleResult> {
+  if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+
+  const studentId = str(form, 'studentId');
+  if (!studentId) return { ok: false, error: 'מזהה תלמיד חסר' };
+
+  const student = await getStudent(studentId);
+  if (!student) return { ok: false, error: 'התלמיד לא נמצא' };
+
+  const timeStr = str(form, 'time');
+  if (!timeStr) return { ok: false, error: 'יש לבחור שעה' };
+
+  // weekday: either an explicit 0-6 field, or derived from a chosen start date.
+  const weekdayRaw = str(form, 'weekday');
+  const dateStr = str(form, 'date');
+  let weekday: number;
+  if (weekdayRaw !== '') {
+    weekday = Number(weekdayRaw);
+  } else if (dateStr) {
+    weekday = weekdayOfDateStr(dateStr);
+  } else {
+    return { ok: false, error: 'יש לבחור יום בשבוע' };
+  }
+  if (!Number.isInteger(weekday) || weekday < 0 || weekday > 6) {
+    return { ok: false, error: 'יום בשבוע לא תקין' };
+  }
+
+  const settings = await getSettings();
+  const minutes = durationMin(form, 'durationMin', student.defaultDurationMin || settings.defaultDurationMin);
+
+  const priceOverride = optionalIntShekels(form, 'price');
+  if (priceOverride === undefined) return { ok: false, error: 'מחיר לא תקין' };
+  // createSeries falls back to the student default itself; pass an override only
+  // when the owner typed one.
+  const price = priceOverride !== null ? priceOverride : undefined;
+
+  const horizonRaw = str(form, 'horizonDays').replace(/[^\d]/g, '');
+  const horizonDays = horizonRaw ? Number(horizonRaw) : settings.bookingHorizonDays;
+
+  try {
+    const res = await createSeries({
+      kind: 'individual',
+      studentId: student.id,
+      weekday,
+      startTime: timeStr,
+      durationMin: minutes,
+      price,
+      horizonDays,
+    });
+
+    revalidatePath('/lessons');
+    revalidatePath('/students');
+    revalidatePath(`/students/${student.id}`);
+    if (res.count === 0) {
+      return { ok: true, count: 0, error: 'לא נוצרו שיעורים בטווח שנבחר' };
+    }
+    return { ok: true, count: res.count };
+  } catch (err) {
+    console.error('[students] schedule series failed:', err);
+    return { ok: false, error: err instanceof Error ? err.message : 'יצירת הסדרה נכשלה' };
   }
 }

@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/table';
 import { formatShekels, cn } from '@/lib/utils';
 import { StudentFormDialog } from '../student-form-dialog';
+import { ScheduleLessonDialog } from '../schedule-lesson-dialog';
 
 // Tabbed client file. The page (RSC) pre-aggregates + pre-formats the data into
 // plain serializable view-models; this client component renders the profile hero
@@ -123,12 +124,26 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
             לרשימת התלמידים
           </Button>
         </Link>
-        <StudentFormDialog
-          student={student}
-          settingsDefaultPrice={file.settingsDefaultPrice}
-          triggerVariant="secondary"
-          triggerSize="md"
-        />
+        <div className="flex items-center gap-2">
+          <StudentFormDialog
+            student={student}
+            settingsDefaultPrice={file.settingsDefaultPrice}
+            triggerVariant="secondary"
+            triggerSize="md"
+          />
+          {/* Primary admin action: Ilanit sets a lesson for this student herself. */}
+          <ScheduleLessonDialog
+            student={{
+              id: student.id,
+              name: student.name,
+              defaultPrice: student.defaultPrice,
+              defaultDurationMin: student.defaultDurationMin,
+            }}
+            settingsDefaultPrice={file.settingsDefaultPrice}
+            triggerVariant="gradient"
+            triggerSize="md"
+          />
+        </div>
       </div>
 
       {/* ── Profile hero ── */}
