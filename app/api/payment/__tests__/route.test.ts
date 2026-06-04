@@ -35,8 +35,10 @@ beforeEach(() => {
 });
 
 describe('POST /api/payment', () => {
-  it('paid → consumes token then issues receipt with integer amount + method', async () => {
-    const res = await POST(req({ token: 'tok', decision: 'paid', amount: 120, method: 'bit' }));
+  it('paid → consumes token then issues receipt with integer amount + method + description', async () => {
+    const res = await POST(
+      req({ token: 'tok', decision: 'paid', amount: 120, method: 'bit', description: 'חוג' }),
+    );
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toMatchObject({ ok: true, decision: 'paid', docNumber: '1042', sent: true });
@@ -44,6 +46,7 @@ describe('POST /api/payment', () => {
       lessonId: 'lesson-1',
       amount: 120,
       method: 'bit',
+      description: 'חוג',
     });
   });
 
@@ -51,6 +54,27 @@ describe('POST /api/payment', () => {
     await POST(req({ token: 'tok', decision: 'paid', amount: 119.6, method: 'cash' }));
     expect(markLessonPaidAndIssueReceipt).toHaveBeenCalledWith(
       expect.objectContaining({ amount: 120 }),
+    );
+  });
+
+  it('defaults the description when omitted and trims/caps free text', async () => {
+    await POST(req({ token: 'tok', decision: 'paid', amount: 100, method: 'cash' }));
+    expect(markLessonPaidAndIssueReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({ description: 'שיעור פרטי' }),
+    );
+
+    vi.clearAllMocks();
+    vi.mocked(consumeActionToken).mockResolvedValue({ type: 'payment', lessonId: 'lesson-1' });
+    vi.mocked(markLessonPaidAndIssueReceipt).mockResolvedValue({
+      ok: true,
+      docNumber: '1043',
+      sent: true,
+    });
+    await POST(
+      req({ token: 'tok', decision: 'paid', amount: 100, method: 'cash', description: '   ' }),
+    );
+    expect(markLessonPaidAndIssueReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({ description: 'שיעור פרטי' }),
     );
   });
 

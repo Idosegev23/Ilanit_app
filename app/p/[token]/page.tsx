@@ -99,7 +99,11 @@ export default async function PaymentPage({
         ) : null}
       </dl>
 
-      <PaymentForm token={token} suggestedAmount={view.amount} />
+      <PaymentForm
+        token={token}
+        suggestedAmount={view.amount}
+        defaultDescription={view.receiptLabel}
+      />
     </AuthLayout>
   );
 }

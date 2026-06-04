@@ -29,9 +29,15 @@ const METHODS: { value: Method; label: string; icon: LucideIcon }[] = [
   { value: 'other', label: 'אחר', icon: Wallet },
 ];
 
+// Quick presets for the receipt description line; Ilanit can also type freely.
+const RECEIPT_PRESETS = ['שיעור פרטי', 'חוג', 'הוראה מתקנת'] as const;
+const DEFAULT_RECEIPT_LABEL = 'שיעור פרטי';
+
 interface Props {
   token: string;
   suggestedAmount: number;
+  /** Default receipt description for this student (students.receiptLabel). */
+  defaultDescription?: string | null;
 }
 
 type Phase = 'choose' | 'paid' | 'done-paid' | 'done-request';
@@ -41,10 +47,12 @@ type Phase = 'choose' | 'paid' | 'done-paid' | 'done-request';
  * editing the (integer-shekel) amount and selecting a payment method, then post
  * to /api/payment. Money is always whole shekels — the input rejects decimals.
  */
-export function PaymentForm({ token, suggestedAmount }: Props) {
+export function PaymentForm({ token, suggestedAmount, defaultDescription }: Props) {
+  const initialDescription = defaultDescription?.trim() || DEFAULT_RECEIPT_LABEL;
   const [phase, setPhase] = useState<Phase>('choose');
   const [amount, setAmount] = useState<number>(suggestedAmount > 0 ? suggestedAmount : 0);
   const [method, setMethod] = useState<Method>('bit');
+  const [description, setDescription] = useState<string>(initialDescription);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<string>('');
 
@@ -52,9 +60,16 @@ export function PaymentForm({ token, suggestedAmount }: Props) {
     setSubmitting(true);
     setMessage('');
     try {
+      const trimmedDescription = description.trim();
       const payload =
         decision === 'paid'
-          ? { token, decision, amount: Math.round(amount), method }
+          ? {
+              token,
+              decision,
+              amount: Math.round(amount),
+              method,
+              description: trimmedDescription || DEFAULT_RECEIPT_LABEL,
+            }
           : { token, decision };
       const res = await fetch('/api/payment', {
         method: 'POST',
@@ -195,6 +210,44 @@ export function PaymentForm({ token, suggestedAmount }: Props) {
           לקבלה: {formatShekels(roundedAmount)}
         </p>
       </div>
+
+      <fieldset className="space-y-2">
+        <legend className="mb-2 block text-sm font-medium text-ink">תיאור לקבלה</legend>
+        <div className="flex flex-wrap gap-2">
+          {RECEIPT_PRESETS.map((preset) => {
+            const selected = description.trim() === preset;
+            return (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setDescription(preset)}
+                aria-pressed={selected}
+                className={cn(
+                  'inline-flex min-h-11 items-center rounded-xl border px-3.5 py-2 text-sm font-medium transition-[background-color,border-color,color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+                  selected
+                    ? 'border-primary bg-primary text-primary-fg shadow-card'
+                    : 'border-line bg-surface text-ink hover:border-primary-200 hover:bg-primary-50',
+                )}
+              >
+                {preset}
+              </button>
+            );
+          })}
+        </div>
+        <Label htmlFor="receipt-description" className="sr-only">
+          תיאור חופשי לקבלה
+        </Label>
+        <Input
+          id="receipt-description"
+          type="text"
+          value={description}
+          maxLength={120}
+          placeholder="תיאור חופשי לקבלה"
+          onChange={(e) => setDescription(e.target.value)}
+          className="text-ink"
+        />
+        <p className="text-xs text-muted">השורה שתופיע בקבלה. אפשר לבחור מהקיצורים או להקליד חופשי.</p>
+      </fieldset>
 
       <fieldset className="space-y-2">
         <legend className="mb-2 block text-sm font-medium text-ink">אמצעי תשלום</legend>

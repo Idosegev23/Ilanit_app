@@ -26,6 +26,11 @@ export interface MarkPaidInput {
   lessonId: string;
   amount: number; // ₪ integer
   method: PaymentMethod;
+  /**
+   * Receipt description line chosen by Ilanit (presets or free text). When
+   * omitted, falls back to the student's default label / a sensible default.
+   */
+  description?: string;
 }
 
 export interface MarkPaidResult {
@@ -107,8 +112,12 @@ export async function markLessonPaidAndIssueReceipt(
     await db.update(lessons).set({ status: 'completed' }).where(eq(lessons.id, lessonId));
   }
 
-  // Issue the official Morning receipt.
-  const description = `שיעור פרטי – ${formatILDateTime(lesson.startsAt)}`;
+  // Issue the official Morning receipt. The description line is, in priority
+  // order: the text Ilanit chose on the action page → the student's default
+  // receipt label → a sensible default; the lesson date is appended for context.
+  const baseDescription =
+    input.description?.trim() || student?.receiptLabel?.trim() || 'שיעור פרטי';
+  const description = `${baseDescription} – ${formatILDateTime(lesson.startsAt)}`;
   const receiptInput: ReceiptInput = {
     clientName,
     clientPhone,

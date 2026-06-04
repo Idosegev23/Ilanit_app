@@ -99,7 +99,12 @@ const LESSON = {
   bookedByName: 'Booked Name',
   bookedByPhone: '+972500000000',
 };
-const STUDENT = { id: 'student-1', name: 'דנה כהן', phone: '+972501234567' };
+const STUDENT = {
+  id: 'student-1',
+  name: 'דנה כהן',
+  phone: '+972501234567',
+  receiptLabel: null as string | null,
+};
 
 beforeEach(() => {
   state.lesson = { ...LESSON };
@@ -180,6 +185,33 @@ describe('markLessonPaidAndIssueReceipt', () => {
       status: 'created',
     });
     expect(state.updates.some((u) => u.table === 'receipts' && (u.set as { status?: string }).status === 'sent')).toBe(true);
+  });
+
+  it('uses the chosen description for the Morning receipt (with the lesson date appended)', async () => {
+    await markLessonPaidAndIssueReceipt({
+      lessonId: 'lesson-1',
+      amount: 120,
+      method: 'bit',
+      description: 'הוראה מתקנת',
+    });
+    expect(createReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({ description: expect.stringContaining('הוראה מתקנת') }),
+    );
+  });
+
+  it("falls back to the student's receiptLabel when no description is provided", async () => {
+    state.student = { ...STUDENT, receiptLabel: 'חוג מתמטיקה' };
+    await markLessonPaidAndIssueReceipt({ lessonId: 'lesson-1', amount: 120, method: 'bit' });
+    expect(createReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({ description: expect.stringContaining('חוג מתמטיקה') }),
+    );
+  });
+
+  it('falls back to the default description when neither description nor receiptLabel exist', async () => {
+    await markLessonPaidAndIssueReceipt({ lessonId: 'lesson-1', amount: 120, method: 'bit' });
+    expect(createReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({ description: expect.stringContaining('שיעור פרטי') }),
+    );
   });
 
   it('updates an existing payment row instead of inserting a new one', async () => {

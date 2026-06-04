@@ -18,6 +18,7 @@ export interface PaymentTokenView {
   amount: number; // ₪ integer (suggested)
   location: string | null;
   alreadyPaid: boolean;
+  receiptLabel: string | null; // default receipt description for this student
 }
 
 /**
@@ -50,13 +51,21 @@ export async function peekPaymentToken(raw: string): Promise<PaymentTokenView | 
   if (!lesson) return null;
 
   let studentName = lesson.bookedByName ?? 'תלמיד/ה';
+  let receiptLabel: string | null = null;
   if (lesson.studentId) {
     const sRows = await db
-      .select({ name: students.name, defaultPrice: students.defaultPrice })
+      .select({
+        name: students.name,
+        defaultPrice: students.defaultPrice,
+        receiptLabel: students.receiptLabel,
+      })
       .from(students)
       .where(eq(students.id, lesson.studentId))
       .limit(1);
-    if (sRows[0]) studentName = sRows[0].name;
+    if (sRows[0]) {
+      studentName = sRows[0].name;
+      receiptLabel = sRows[0].receiptLabel;
+    }
   }
 
   return {
@@ -66,5 +75,6 @@ export async function peekPaymentToken(raw: string): Promise<PaymentTokenView | 
     amount: lesson.price ?? 0,
     location: lesson.location,
     alreadyPaid: lesson.status === 'completed',
+    receiptLabel,
   };
 }

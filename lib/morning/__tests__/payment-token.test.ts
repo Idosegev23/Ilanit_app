@@ -55,7 +55,7 @@ beforeEach(() => {
     location: 'רחוב הרצל 1',
     bookedByName: 'Booked',
   };
-  state.student = { name: 'דנה כהן', defaultPrice: 130 };
+  state.student = { name: 'דנה כהן', defaultPrice: 130, receiptLabel: 'הוראה מתקנת' };
 });
 
 describe('peekPaymentToken', () => {
@@ -67,6 +67,13 @@ describe('peekPaymentToken', () => {
     expect(view!.amount).toBe(120);
     expect(view!.location).toBe('רחוב הרצל 1');
     expect(view!.alreadyPaid).toBe(false);
+    expect(view!.receiptLabel).toBe('הוראה מתקנת');
+  });
+
+  it('surfaces a null receiptLabel when the student has none', async () => {
+    state.student = { name: 'דנה כהן', defaultPrice: 130, receiptLabel: null };
+    const view = await peekPaymentToken(RAW);
+    expect(view!.receiptLabel).toBeNull();
   });
 
   it('returns null for an empty token', async () => {

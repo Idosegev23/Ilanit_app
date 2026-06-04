@@ -15,7 +15,13 @@ interface PaymentBody {
   decision?: 'paid' | 'request';
   amount?: number;
   method?: string;
+  description?: string;
 }
+
+// Receipt description line is free text; cap length and fall back to a sensible
+// default so the Morning document always has a usable description.
+const MAX_DESCRIPTION_LEN = 120;
+const DEFAULT_DESCRIPTION = 'שיעור פרטי';
 
 /**
  * Handles the WhatsApp-link → web action for a lesson payment.
@@ -43,6 +49,7 @@ export async function POST(req: Request): Promise<Response> {
   // so a bad request can be retried with the same link).
   let amount = 0;
   let method: PaymentMethod = 'other';
+  let description = DEFAULT_DESCRIPTION;
   if (decision === 'paid') {
     amount = Math.round(Number(body.amount));
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -55,6 +62,8 @@ export async function POST(req: Request): Promise<Response> {
       return NextResponse.json({ ok: false, error: 'invalid payment method' }, { status: 400 });
     }
     method = body.method as PaymentMethod;
+    const trimmed = typeof body.description === 'string' ? body.description.trim() : '';
+    description = (trimmed || DEFAULT_DESCRIPTION).slice(0, MAX_DESCRIPTION_LEN);
   }
 
   // Single-use token consumption (atomic). Must be a 'payment' token.
@@ -72,6 +81,7 @@ export async function POST(req: Request): Promise<Response> {
         lessonId: consumed.lessonId,
         amount,
         method,
+        description,
       });
       if (!result.ok) {
         return NextResponse.json({ ok: false, error: result.error }, { status: 502 });
