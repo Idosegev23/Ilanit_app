@@ -12,12 +12,23 @@ import {
 } from '@/db/schema';
 import { and, asc, desc, eq } from 'drizzle-orm';
 import { getSettings } from '@/lib/settings';
-import { getStudent, contactPhoneFor } from '@/lib/students';
+import {
+  getStudent,
+  contactPhoneFor,
+  createStudent,
+  findStudentByPhone,
+} from '@/lib/students';
 import { createReceipt } from '@/lib/morning';
 import { notify } from '@/lib/notifications/dispatch';
 import { sendFileByUrl } from '@/lib/whatsapp/provider';
 import { env } from '@/lib/env';
 import { toILMonthStr } from '@/lib/groups/month';
+import { createSeries } from '@/lib/recurrence';
+
+/** Default receipt description for a group payment: "חוג {group name}". */
+export function groupReceiptLabel(groupName: string): string {
+  return `חוג ${groupName.trim()}`;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Learning groups: group CRUD, membership management, prepaid monthly billing,
@@ -84,6 +95,46 @@ export async function createGroup(input: CreateGroupInput): Promise<Group> {
   return inserted[0];
 }
 
+export interface WeeklyScheduleInput {
+  weekday: number; // 0 = Sunday … 6 = Saturday (Asia/Jerusalem)
+  startTime: string; // HH:mm wall clock
+  durationMin: number;
+  /** How many days forward to generate sessions; defaults to settings horizon. */
+  horizonDays?: number;
+}
+
+export interface CreateGroupWithScheduleResult {
+  group: Group;
+  /** Number of recurring group sessions generated (0 if no schedule given). */
+  sessionsCreated: number;
+}
+
+/**
+ * Creates a group and — when a weekly schedule is supplied — its recurring
+ * weekly group sessions (`recurrences kind=group`, auto-scheduled and NOT gated
+ * by open-weeks). This is the prominent "קבוצה חדשה" onboarding for regulars who
+ * already meet on a fixed weekly slot. The schedule is optional; without it this
+ * behaves exactly like `createGroup`.
+ */
+export async function createGroupWithSchedule(
+  input: CreateGroupInput,
+  schedule?: WeeklyScheduleInput,
+): Promise<CreateGroupWithScheduleResult> {
+  const group = await createGroup(input);
+  if (!schedule) return { group, sessionsCreated: 0 };
+
+  const settings = await getSettings();
+  const { count } = await createSeries({
+    kind: 'group',
+    groupId: group.id,
+    weekday: schedule.weekday,
+    startTime: schedule.startTime,
+    durationMin: schedule.durationMin,
+    horizonDays: schedule.horizonDays ?? settings.bookingHorizonDays,
+  });
+  return { group, sessionsCreated: count };
+}
+
 export type UpdateGroupPatch = Partial<{
   name: string;
   monthlyPrice: number;
@@ -130,8 +181,15 @@ export async function updateGroup(id: string, patch: UpdateGroupPatch): Promise<
 export interface GroupMemberRow {
   membershipId: string;
   studentId: string;
+  /** The child's name (the student record represents the child). */
   name: string;
   phone: string;
+  /** Parent (guardian) name when set — the contact for this child. */
+  guardianName: string | null;
+  /** Parent (guardian) phone when set — where all outbound WhatsApp goes. */
+  guardianPhone: string | null;
+  /** Resolved recipient phone: guardian when present, else the student phone. */
+  contactPhone: string;
   active: boolean;
   joinedAt: Date;
 }
@@ -147,6 +205,8 @@ export async function listMembers(
       studentId: students.id,
       name: students.name,
       phone: students.phone,
+      guardianName: students.guardianName,
+      guardianPhone: students.guardianPhone,
       active: groupMembers.active,
       joinedAt: groupMembers.joinedAt,
     })
@@ -159,7 +219,12 @@ export async function listMembers(
         .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.active, true)))
         .orderBy(asc(students.name));
 
-  return rows;
+  // Resolve the contact phone (parent when present) once, here, so callers
+  // (roster, member list) all show/route to the same recipient.
+  return rows.map((r) => ({
+    ...r,
+    contactPhone: contactPhoneFor({ phone: r.phone, guardianPhone: r.guardianPhone }),
+  }));
 }
 
 /**
@@ -188,6 +253,50 @@ export async function addMember(groupId: string, studentId: string): Promise<Gro
     .values({ groupId, studentId, active: true })
     .returning();
   return inserted[0];
+}
+
+export interface AddChildMemberInput {
+  /** The child's name — the student record represents the child. */
+  childName: string;
+  /** Parent (guardian) phone — the contact for this child (E.164). */
+  guardianPhone: string;
+  /** Optional parent (guardian) name. */
+  guardianName?: string;
+}
+
+/**
+ * Adds a NEW child to a group: creates the student record (the child) with the
+ * parent's contact captured in the guardian fields, then enrols them. The
+ * guardian phone becomes the routing target for all of the child's outbound
+ * WhatsApp (`contactPhoneFor`). If a student already uses the guardian phone as
+ * their own `phone` we reuse that record (the phone column is unique), so the
+ * child's own `phone` defaults to the guardian phone until set otherwise.
+ *
+ * Returns the resulting (group, student) membership.
+ */
+export async function addChildMember(
+  groupId: string,
+  input: AddChildMemberInput,
+): Promise<GroupMember> {
+  const childName = input.childName.trim();
+  const guardianPhone = input.guardianPhone.trim();
+  const guardianName = input.guardianName?.trim() || null;
+  if (!childName) throw new Error('child name is required');
+  if (!guardianPhone) throw new Error('guardian phone is required');
+
+  // The child's own `phone` defaults to the guardian phone (phone is unique and
+  // notNull); guardian fields carry the parent contact used for routing.
+  let student = await findStudentByPhone(guardianPhone);
+  if (!student) {
+    student = await createStudent({
+      name: childName,
+      phone: guardianPhone,
+      guardianName,
+      guardianPhone,
+    });
+  }
+
+  return addMember(groupId, student.id);
 }
 
 /**
@@ -307,8 +416,16 @@ export async function generateMonthlyBilling(monthISO: string): Promise<{ create
  * Blob), records a `receipts` row linked to the billing, sends the PDF to the
  * member as a WhatsApp attachment, and links the receipt back onto the billing.
  * Idempotent: a billing row already `paid` is a no-op.
+ *
+ * The receipt description line is editable in the roster: an explicit
+ * `description` wins; otherwise it defaults to the student's `receiptLabel`,
+ * else "חוג {group name}". The recipient is the parent (`contactPhoneFor`).
  */
-export async function markBillingPaid(billingId: string, method?: string): Promise<void> {
+export async function markBillingPaid(
+  billingId: string,
+  method?: string,
+  description?: string,
+): Promise<void> {
   const rows = await db
     .select()
     .from(groupBilling)
@@ -328,12 +445,16 @@ export async function markBillingPaid(billingId: string, method?: string): Promi
   const docType = settings.morningDocType ?? 'receipt';
   const monthLabel = toILMonthStr(billing.month);
 
+  // Receipt description: explicit edit → student default → "חוג {group name}".
+  const receiptDescription =
+    description?.trim() || student.receiptLabel?.trim() || groupReceiptLabel(group.name);
+
   // Morning receipt → official doc + PDF on Blob.
   const receipt = await createReceipt({
     clientName: student.name,
     clientPhone: contactPhoneFor(student),
     amount: billing.amount,
-    description: `תשלום חודשי — קבוצת "${group.name}" (${monthLabel})`,
+    description: receiptDescription,
     method: normalizedMethod,
   });
 
@@ -398,11 +519,13 @@ export interface RosterEntry {
   name: string;
   status: string;
   amount: number;
+  /** The student's default receipt description, if set (else null). */
+  receiptLabel: string | null;
 }
 
 /**
  * Returns the billing roster for a group in a month: one entry per billed
- * member with their payment status and amount.
+ * member with their payment status, amount, and default receipt label.
  */
 export async function rosterFor(groupId: string, monthISO: string): Promise<RosterEntry[]> {
   const month = normalizeMonth(monthISO);
@@ -413,6 +536,7 @@ export async function rosterFor(groupId: string, monthISO: string): Promise<Rost
       name: students.name,
       status: groupBilling.status,
       amount: groupBilling.amount,
+      receiptLabel: students.receiptLabel,
     })
     .from(groupBilling)
     .innerJoin(students, eq(groupBilling.studentId, students.id))

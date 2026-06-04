@@ -26,10 +26,11 @@ import {
   TableCell,
   TableNumCell,
 } from '@/components/ui/table';
-import { getGroup, rosterFor } from '@/lib/groups';
+import { getGroup, rosterFor, groupReceiptLabel } from '@/lib/groups';
 import { formatShekels } from '@/lib/utils';
 import { toILMonthStr } from '@/lib/groups/month';
 import { markPaidAction, markUnpaidAction } from '@/app/groups/actions';
+import { ReceiptDescriptionField } from './receipt-description-field';
 
 // Monthly billing roster for a group: Ilanit marks each member paid / unpaid.
 // Marking paid issues a Morning receipt (PDF) and sends it as a WhatsApp
@@ -223,30 +224,43 @@ export default async function GroupBillingRosterPage({
                       ) : (
                         <form
                           action={markPaidAction}
-                          className="flex flex-wrap items-center justify-end gap-2"
+                          className="flex flex-col items-stretch gap-2.5 lg:items-end"
                         >
                           <input type="hidden" name="billingId" value={r.billingId} />
                           <input type="hidden" name="groupId" value={id} />
                           <input type="hidden" name="month" value={month} />
-                          <label htmlFor={`method-${r.billingId}`} className="sr-only">
-                            אמצעי תשלום עבור {r.name}
-                          </label>
-                          <Select
-                            id={`method-${r.billingId}`}
-                            name="method"
-                            defaultValue="bit"
-                            className="w-auto text-sm"
-                          >
-                            {METHODS.map((m) => (
-                              <option key={m.value} value={m.value}>
-                                {m.label}
-                              </option>
-                            ))}
-                          </Select>
-                          <Button type="submit" size="md">
-                            <Receipt className="size-4" aria-hidden="true" />
-                            סמני כשולם + קבלה
-                          </Button>
+                          {/* Editable receipt description — presets + free text.
+                             Defaults to the student's receiptLabel, else
+                             "חוג {group name}". */}
+                          <ReceiptDescriptionField
+                            id={`desc-${r.billingId}`}
+                            defaultValue={r.receiptLabel?.trim() || groupReceiptLabel(group.name)}
+                            ariaLabel={`תיאור הקבלה עבור ${r.name}`}
+                          />
+                          <div className="flex flex-wrap items-center justify-end gap-2">
+                            <label
+                              htmlFor={`method-${r.billingId}`}
+                              className="sr-only"
+                            >
+                              אמצעי תשלום עבור {r.name}
+                            </label>
+                            <Select
+                              id={`method-${r.billingId}`}
+                              name="method"
+                              defaultValue="bit"
+                              className="w-auto text-sm"
+                            >
+                              {METHODS.map((m) => (
+                                <option key={m.value} value={m.value}>
+                                  {m.label}
+                                </option>
+                              ))}
+                            </Select>
+                            <Button type="submit" size="md">
+                              <Receipt className="size-4" aria-hidden="true" />
+                              סמני כשולם + קבלה
+                            </Button>
+                          </div>
                         </form>
                       )}
                     </TableCell>
@@ -260,8 +274,9 @@ export default async function GroupBillingRosterPage({
             <p className="mt-4 flex items-start gap-2 rounded-xl bg-accent-soft px-3.5 py-3 text-xs leading-relaxed text-accent-text">
               <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               <span>
-                סימון &quot;שולם&quot; מפיק קבלה רשמית (Morning) ושולח אותה אוטומטית
-                לחברה בוואטסאפ. ניתן לבטל סימון אם נעשתה טעות.
+                סימון &quot;שולם&quot; מפיק קבלה רשמית (Morning) עם תיאור הקבלה
+                שבחרת ושולח אותה אוטומטית להורה בוואטסאפ. ניתן לבטל סימון אם נעשתה
+                טעות.
               </span>
             </p>
           )}

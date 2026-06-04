@@ -75,13 +75,20 @@ vi.mock('@/lib/settings', () => ({
   getSettings: vi.fn(async () => ({
     morningDocType: 'receipt',
     businessName: 'אילנית',
+    bookingHorizonDays: 14,
   })),
 }));
 
 vi.mock('@/lib/students', () => ({
   getStudent: vi.fn(),
+  findStudentByPhone: vi.fn(async () => null),
+  createStudent: vi.fn(),
   contactPhoneFor: (s: { phone: string; guardianPhone?: string | null }) =>
     s.guardianPhone?.trim() || s.phone,
+}));
+
+vi.mock('@/lib/recurrence', () => ({
+  createSeries: vi.fn(async () => ({ count: 4 })),
 }));
 
 vi.mock('@/lib/morning', () => ({
@@ -105,16 +112,21 @@ vi.mock('@/lib/env', () => ({
 
 import {
   createGroup,
+  createGroupWithSchedule,
+  groupReceiptLabel,
   updateGroup,
   addMember,
+  addChildMember,
   removeMember,
+  listMembers,
   generateMonthlyBilling,
   markBillingPaid,
   markBillingUnpaid,
   rosterFor,
 } from '@/lib/groups';
-import { getStudent } from '@/lib/students';
+import { getStudent, findStudentByPhone, createStudent } from '@/lib/students';
 import { createReceipt } from '@/lib/morning';
+import { createSeries } from '@/lib/recurrence';
 import { notify } from '@/lib/notifications/dispatch';
 import { sendFileByUrl } from '@/lib/whatsapp/provider';
 
@@ -154,6 +166,118 @@ describe('createGroup', () => {
     await expect(createGroup({ name: 'a', monthlyPrice: -1, location: 'x' })).rejects.toThrow(
       /non-negative/,
     );
+  });
+});
+
+describe('groupReceiptLabel', () => {
+  it('builds "חוג {group name}" trimming the name', () => {
+    expect(groupReceiptLabel('  מתמטיקה  ')).toBe('חוג מתמטיקה');
+  });
+});
+
+describe('createGroupWithSchedule', () => {
+  it('creates the group only when no schedule is given', async () => {
+    dbMock.insertResults.push([{ id: 'g1', name: 'g' }]);
+    const res = await createGroupWithSchedule({ name: 'g', monthlyPrice: 100, location: 'x' });
+    expect(res.group.id).toBe('g1');
+    expect(res.sessionsCreated).toBe(0);
+    expect(createSeries).not.toHaveBeenCalled();
+  });
+
+  it('creates a kind=group weekly series when a schedule is given', async () => {
+    dbMock.insertResults.push([{ id: 'g1', name: 'g' }]);
+    const res = await createGroupWithSchedule(
+      { name: 'g', monthlyPrice: 100, location: 'x' },
+      { weekday: 2, startTime: '16:00', durationMin: 45 },
+    );
+    expect(res.sessionsCreated).toBe(4);
+    expect(createSeries).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'group',
+        groupId: 'g1',
+        weekday: 2,
+        startTime: '16:00',
+        durationMin: 45,
+        horizonDays: 14, // falls back to settings.bookingHorizonDays
+      }),
+    );
+  });
+});
+
+describe('addChildMember', () => {
+  it('creates the child student with guardian fields, then enrols them', async () => {
+    vi.mocked(findStudentByPhone).mockResolvedValue(null);
+    vi.mocked(createStudent).mockResolvedValue({ id: 's-new' } as never);
+    // addMember: existing membership lookup → none, then insert
+    dbMock.selectResults.push([]);
+    dbMock.insertResults.push([{ id: 'm1', groupId: 'g1', studentId: 's-new', active: true }]);
+
+    const m = await addChildMember('g1', {
+      childName: '  דנה  ',
+      guardianPhone: '+972500000009',
+      guardianName: '  רותי  ',
+    });
+
+    expect(createStudent).toHaveBeenCalledWith({
+      name: 'דנה',
+      phone: '+972500000009',
+      guardianName: 'רותי',
+      guardianPhone: '+972500000009',
+    });
+    expect(m.id).toBe('m1');
+    expect(dbMock.inserted[0].values).toMatchObject({ studentId: 's-new', active: true });
+  });
+
+  it('reuses an existing student that already owns the guardian phone', async () => {
+    vi.mocked(findStudentByPhone).mockResolvedValue({ id: 's-existing' } as never);
+    dbMock.selectResults.push([]); // membership lookup → none
+    dbMock.insertResults.push([{ id: 'm2', studentId: 's-existing', active: true }]);
+
+    const m = await addChildMember('g1', {
+      childName: 'יואב',
+      guardianPhone: '+972500000010',
+    });
+    expect(createStudent).not.toHaveBeenCalled();
+    expect(m.id).toBe('m2');
+  });
+
+  it('rejects a missing child name or guardian phone', async () => {
+    await expect(
+      addChildMember('g1', { childName: '  ', guardianPhone: '+972500000001' }),
+    ).rejects.toThrow(/child name is required/);
+    await expect(
+      addChildMember('g1', { childName: 'דנה', guardianPhone: '  ' }),
+    ).rejects.toThrow(/guardian phone is required/);
+  });
+});
+
+describe('listMembers', () => {
+  it('resolves contactPhone to the guardian phone when present', async () => {
+    dbMock.selectResults.push([
+      {
+        membershipId: 'm1',
+        studentId: 's1',
+        name: 'דנה',
+        phone: '+972500000001',
+        guardianName: 'רותי',
+        guardianPhone: '+972500000099',
+        active: true,
+        joinedAt: new Date(),
+      },
+      {
+        membershipId: 'm2',
+        studentId: 's2',
+        name: 'יוסי',
+        phone: '+972500000002',
+        guardianName: null,
+        guardianPhone: null,
+        active: true,
+        joinedAt: new Date(),
+      },
+    ]);
+    const rows = await listMembers('g1');
+    expect(rows[0].contactPhone).toBe('+972500000099'); // guardian wins
+    expect(rows[1].contactPhone).toBe('+972500000002'); // falls back to phone
   });
 });
 
@@ -330,6 +454,93 @@ describe('markBillingPaid', () => {
     expect(sentUpdate).toBeTruthy();
   });
 
+  it('defaults the receipt description to "חוג {group name}" when none given', async () => {
+    dbMock.selectResults.push([
+      { id: 'b1', groupId: 'g1', studentId: 's1', month: '2026-06-01', amount: 300, status: 'due' },
+    ]);
+    dbMock.selectResults.push([{ id: 'g1', name: 'מתמטיקה' }]);
+    vi.mocked(getStudent).mockResolvedValue({
+      id: 's1',
+      name: 'דנה',
+      phone: '+972500000001',
+      receiptLabel: null,
+    } as never);
+    vi.mocked(createReceipt).mockResolvedValue({ docId: 'd', docNumber: '1', pdfUrl: 'https://blob/x.pdf' });
+    dbMock.insertResults.push([{ id: 'r1' }]);
+
+    await markBillingPaid('b1', 'bit');
+    expect(createReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({ description: 'חוג מתמטיקה' }),
+    );
+  });
+
+  it('prefers the student receiptLabel over the group default', async () => {
+    dbMock.selectResults.push([
+      { id: 'b1', groupId: 'g1', studentId: 's1', month: '2026-06-01', amount: 300, status: 'due' },
+    ]);
+    dbMock.selectResults.push([{ id: 'g1', name: 'מתמטיקה' }]);
+    vi.mocked(getStudent).mockResolvedValue({
+      id: 's1',
+      name: 'דנה',
+      phone: '+972500000001',
+      receiptLabel: 'הוראה מתקנת',
+    } as never);
+    vi.mocked(createReceipt).mockResolvedValue({ docId: 'd', docNumber: '1', pdfUrl: 'https://blob/x.pdf' });
+    dbMock.insertResults.push([{ id: 'r1' }]);
+
+    await markBillingPaid('b1', 'bit');
+    expect(createReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({ description: 'הוראה מתקנת' }),
+    );
+  });
+
+  it('uses an explicit description over both defaults', async () => {
+    dbMock.selectResults.push([
+      { id: 'b1', groupId: 'g1', studentId: 's1', month: '2026-06-01', amount: 300, status: 'due' },
+    ]);
+    dbMock.selectResults.push([{ id: 'g1', name: 'מתמטיקה' }]);
+    vi.mocked(getStudent).mockResolvedValue({
+      id: 's1',
+      name: 'דנה',
+      phone: '+972500000001',
+      receiptLabel: 'הוראה מתקנת',
+    } as never);
+    vi.mocked(createReceipt).mockResolvedValue({ docId: 'd', docNumber: '1', pdfUrl: 'https://blob/x.pdf' });
+    dbMock.insertResults.push([{ id: 'r1' }]);
+
+    await markBillingPaid('b1', 'bit', '  חוג קיץ מיוחד  ');
+    expect(createReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({ description: 'חוג קיץ מיוחד' }),
+    );
+  });
+
+  it('routes the receipt to the guardian phone when present', async () => {
+    dbMock.selectResults.push([
+      { id: 'b1', groupId: 'g1', studentId: 's1', month: '2026-06-01', amount: 300, status: 'due' },
+    ]);
+    dbMock.selectResults.push([{ id: 'g1', name: 'מתמטיקה' }]);
+    vi.mocked(getStudent).mockResolvedValue({
+      id: 's1',
+      name: 'דנה',
+      phone: '+972500000001',
+      guardianPhone: '+972500000099',
+      receiptLabel: null,
+    } as never);
+    vi.mocked(createReceipt).mockResolvedValue({ docId: 'd', docNumber: '1', pdfUrl: 'https://blob/x.pdf' });
+    dbMock.insertResults.push([{ id: 'r1' }]);
+
+    await markBillingPaid('b1', 'bit');
+    expect(createReceipt).toHaveBeenCalledWith(
+      expect.objectContaining({ clientPhone: '+972500000099' }),
+    );
+    expect(sendFileByUrl).toHaveBeenCalledWith(
+      '+972500000099',
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+    );
+  });
+
   it('is idempotent: a billing already paid does nothing external', async () => {
     dbMock.selectResults.push([{ id: 'b1', status: 'paid' }]);
     await markBillingPaid('b1');
@@ -379,13 +590,18 @@ describe('markBillingUnpaid', () => {
 });
 
 describe('rosterFor', () => {
-  it('returns billed members with status + amount', async () => {
+  it('returns billed members with status + amount + receiptLabel', async () => {
     dbMock.selectResults.push([
-      { billingId: 'b1', studentId: 's1', name: 'דנה', status: 'paid', amount: 300 },
-      { billingId: 'b2', studentId: 's2', name: 'יוסי', status: 'due', amount: 300 },
+      { billingId: 'b1', studentId: 's1', name: 'דנה', status: 'paid', amount: 300, receiptLabel: 'חוג מתמטיקה' },
+      { billingId: 'b2', studentId: 's2', name: 'יוסי', status: 'due', amount: 300, receiptLabel: null },
     ]);
     const roster = await rosterFor('g1', '2026-06');
     expect(roster).toHaveLength(2);
-    expect(roster[0]).toMatchObject({ studentId: 's1', status: 'paid', amount: 300 });
+    expect(roster[0]).toMatchObject({
+      studentId: 's1',
+      status: 'paid',
+      amount: 300,
+      receiptLabel: 'חוג מתמטיקה',
+    });
   });
 });

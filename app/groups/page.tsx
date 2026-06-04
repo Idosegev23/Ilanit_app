@@ -8,12 +8,15 @@ import {
   Layers,
   ArrowLeft,
   Wallet,
+  CalendarClock,
+  Clock,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { PageHeader } from '@/components/ui/page-header';
@@ -21,6 +24,17 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { listGroups } from '@/lib/groups';
 import { formatShekels } from '@/lib/utils';
 import { createGroupAction } from '@/app/groups/actions';
+
+// Sunday→Saturday weekday options (0 = Sunday), matching lib/time + recurrence.
+const WEEKDAYS: Array<{ value: number; label: string }> = [
+  { value: 0, label: 'ראשון' },
+  { value: 1, label: 'שני' },
+  { value: 2, label: 'שלישי' },
+  { value: 3, label: 'רביעי' },
+  { value: 4, label: 'חמישי' },
+  { value: 5, label: 'שישי' },
+  { value: 6, label: 'שבת' },
+];
 
 // Groups overview: list of learning groups + a form to create a new one.
 export const dynamic = 'force-dynamic';
@@ -42,6 +56,14 @@ export default async function GroupsPage() {
         eyebrow="חיוב חודשי"
         title="קבוצות למידה"
         subtitle="ניהול קבוצות, חברוֹת והחיוב החודשי החוזר — במקום אחד."
+        actions={
+          <Link href="#new-group">
+            <Button size="lg">
+              <Plus className="size-4" aria-hidden="true" />
+              קבוצה חדשה
+            </Button>
+          </Link>
+        }
       />
 
       {/* Overview hero — aggregate KPIs so the page never opens on a void. */}
@@ -196,7 +218,9 @@ export default async function GroupsPage() {
                 </span>
                 <div>
                   <h2 className="text-lg font-semibold leading-tight">קבוצה חדשה</h2>
-                  <p className="text-sm text-white/90">הגדירי קבוצה וחיוב חודשי</p>
+                  <p className="text-sm text-white/90">
+                    הגדירי קבוצה, חיוב חודשי ומפגש שבועי קבוע
+                  </p>
                 </div>
               </div>
             </div>
@@ -272,6 +296,63 @@ export default async function GroupsPage() {
                     placeholder="פרטים נוספים"
                   />
                 </div>
+
+                {/* Optional weekly recurring session — for groups that already
+                   meet on a fixed weekly slot. When filled, the group's weekly
+                   sessions are generated automatically (not gated by open-weeks). */}
+                <fieldset className="space-y-3 rounded-2xl border border-line bg-cream/40 p-4">
+                  <legend className="flex items-center gap-1.5 px-1 text-sm font-medium text-ink">
+                    <CalendarClock
+                      className="size-4 text-primary-600"
+                      aria-hidden="true"
+                    />
+                    מפגש שבועי קבוע (אופציונלי)
+                  </legend>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="weekday">יום בשבוע</Label>
+                      <Select id="weekday" name="weekday" defaultValue="">
+                        <option value="">ללא</option>
+                        {WEEKDAYS.map((d) => (
+                          <option key={d.value} value={d.value}>
+                            {d.label}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="startTime" className="flex items-center gap-1.5">
+                        <Clock className="size-3.5 text-muted" aria-hidden="true" />
+                        שעת התחלה
+                      </Label>
+                      <Input
+                        id="startTime"
+                        name="startTime"
+                        type="time"
+                        dir="ltr"
+                        className="text-end tabular-nums"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="durationMin">משך מפגש (דק׳)</Label>
+                    <Input
+                      id="durationMin"
+                      name="durationMin"
+                      type="number"
+                      inputMode="numeric"
+                      min="1"
+                      step="5"
+                      dir="ltr"
+                      className="text-end tabular-nums"
+                      placeholder="60"
+                    />
+                  </div>
+                  <p className="text-xs text-muted">
+                    אם תמלאי יום ושעה — ייווצרו מפגשים שבועיים קבועים ביומן אוטומטית.
+                  </p>
+                </fieldset>
+
                 {/* Solid terracotta (white-on-#b5471f = 5.4:1, AA) rather than
                    the warm-gradient variant, whose honey/peach midpoint drops
                    white text below AA on a wide button. */}
