@@ -59,6 +59,9 @@ vi.mock('@/lib/google-calendar', () => ({
 vi.mock('@/lib/ai/parse-lesson', () => ({
   parseLessonTitle: (...a: unknown[]) => mocks.parseLessonTitle(...a),
 }));
+vi.mock('@/lib/notifications/dispatch', () => ({
+  notifyStudent: vi.fn(async () => ({ ok: true })),
+}));
 
 vi.mock('@/lib/db', () => ({
   db: {

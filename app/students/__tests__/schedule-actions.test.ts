@@ -100,6 +100,12 @@ vi.mock('@/lib/recurrence', () => ({
   createSeries: (input: unknown) => createSeries(input),
 }));
 
+// Schedule confirmations route through notifyStudent — stub it so no WhatsApp.
+const notifyStudent = vi.hoisted(() => vi.fn(async (..._a: unknown[]) => ({ ok: true })));
+vi.mock('@/lib/notifications/dispatch', () => ({
+  notifyStudent: (...a: unknown[]) => notifyStudent(...a),
+}));
+
 import {
   scheduleStudentLesson,
   scheduleStudentSeries,

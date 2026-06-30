@@ -13,10 +13,11 @@ import {
   getStudent,
 } from '@/lib/students';
 import { getSettings } from '@/lib/settings';
-import { nowIL, parseILDateTime } from '@/lib/time';
+import { nowIL, parseILDateTime, formatILDateTime } from '@/lib/time';
 import { insertEvent } from '@/lib/google-calendar';
 import { hasSlotConflict } from '@/lib/availability';
 import { createSeries } from '@/lib/recurrence';
+import { notifyStudent } from '@/lib/notifications/dispatch';
 
 // Server actions for the Students UI. The directory + client-file pages stay
 // server components and post through here. Money is integer shekels; phones are
@@ -308,6 +309,19 @@ export async function scheduleStudentLesson(form: FormData): Promise<ScheduleRes
 
     await db.update(lessons).set({ googleEventId: evt.id }).where(eq(lessons.id, lesson.id));
 
+    // Confirm to the recipient (the parent when a guardian phone is set) that
+    // Ilanit scheduled the lesson. Non-fatal — never blocks the schedule.
+    try {
+      await notifyStudent(student, 'booking_approved_student', {
+        studentName: student.name,
+        datetime: formatILDateTime(startsAt),
+        location: location ?? '',
+        calendarUrl: evt.htmlLink ?? '',
+      });
+    } catch (err) {
+      console.error('[students] schedule confirmation failed:', err);
+    }
+
     revalidatePath('/lessons');
     revalidatePath('/students');
     revalidatePath(`/students/${student.id}`);
@@ -373,6 +387,21 @@ export async function scheduleStudentSeries(form: FormData): Promise<ScheduleRes
       price,
       horizonDays,
     });
+
+    // Confirm the recurring lesson to the recipient (parent when set), using the
+    // first occurrence as the reference date. Non-fatal.
+    if (res.firstStartsAt) {
+      try {
+        await notifyStudent(student, 'booking_approved_student', {
+          studentName: student.name,
+          datetime: formatILDateTime(res.firstStartsAt),
+          location: settings.locationAddress ?? '',
+          calendarUrl: '',
+        });
+      } catch (err) {
+        console.error('[students] series confirmation failed:', err);
+      }
+    }
 
     revalidatePath('/lessons');
     revalidatePath('/students');

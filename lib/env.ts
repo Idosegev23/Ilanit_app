@@ -39,6 +39,12 @@ const envSchema = z.object({
   // ── Cron / Blob ──
   CRON_SECRET: z.string().min(16),
   BLOB_READ_WRITE_TOKEN: z.string().min(1),
+
+  // ── Collection (payment-chasing) engine ──
+  // 'true' lets the collection engine send WhatsApp messages (after-lesson
+  // "paid?" prompts, overdue-debt reminders, monthly group billing). Default
+  // OFF — Ilanit asked to silence all collection messages for now.
+  COLLECTION_ENABLED: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -67,4 +73,14 @@ export function env(): Env {
 /** Test-only helper to reset the cache between runs. */
 export function resetEnvCache(): void {
   cached = null;
+}
+
+/**
+ * Whether the payment-collection engine ("מנוע גבייה") may send WhatsApp
+ * messages. Default OFF; flip by setting COLLECTION_ENABLED=true in the
+ * environment. Read straight from process.env (not the validated env()) so it
+ * works without the full config present — and so a missing value is simply OFF.
+ */
+export function collectionEnabled(): boolean {
+  return process.env.COLLECTION_ENABLED === 'true';
 }

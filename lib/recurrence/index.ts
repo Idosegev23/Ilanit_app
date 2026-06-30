@@ -102,7 +102,7 @@ function occurrenceStarts(
  */
 export async function createSeries(
   input: CreateSeriesInput,
-): Promise<{ count: number }> {
+): Promise<{ count: number; firstStartsAt?: Date }> {
   const { kind, weekday, startTime, durationMin, horizonDays } = input;
 
   if (weekday < 0 || weekday > 6 || !Number.isInteger(weekday)) {
@@ -218,7 +218,7 @@ export async function createSeries(
     await db.insert(lessons).values(lessonRows);
   }
 
-  return { count: lessonRows.length };
+  return { count: lessonRows.length, firstStartsAt: lessonRows[0]?.startsAt };
 }
 
 /**

@@ -6,7 +6,7 @@
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
-import { lessons } from '@/db/schema';
+import { lessons, type Student } from '@/db/schema';
 import { and, eq, isNull, isNotNull } from 'drizzle-orm';
 import {
   getStudent,
@@ -15,11 +15,12 @@ import {
   findOrCreateStudentByName,
 } from '@/lib/students';
 import { getSettings } from '@/lib/settings';
-import { nowIL, parseILDateTime } from '@/lib/time';
+import { nowIL, parseILDateTime, formatILDateTime } from '@/lib/time';
 import { normalizePhoneIL } from '@/lib/utils';
 import { insertEvent, getEvent } from '@/lib/google-calendar';
 import { cancelOne, createSeries } from '@/lib/recurrence';
 import { parseLessonTitle } from '@/lib/ai/parse-lesson';
+import { notifyStudent } from '@/lib/notifications/dispatch';
 
 export interface ActionResult {
   ok: boolean;
@@ -47,8 +48,9 @@ export async function approveLesson(lessonId: string): Promise<ActionResult> {
 
     let attendeeEmail: string | undefined;
     let studentName = lesson.bookedByName ?? '';
+    let student: Student | null = null;
     if (lesson.studentId) {
-      const student = await getStudent(lesson.studentId);
+      student = await getStudent(lesson.studentId);
       if (student) {
         attendeeEmail = student.email ?? undefined;
         studentName = student.name;
@@ -75,6 +77,21 @@ export async function approveLesson(lessonId: string): Promise<ActionResult> {
       .update(lessons)
       .set({ status: 'confirmed', confirmedAt: nowIL(), googleEventId: evt.id })
       .where(eq(lessons.id, lessonId));
+
+    // Confirm to the recipient (the parent when a guardian phone is set) that the
+    // lesson was approved. Group sessions have no studentId → no message here.
+    if (student) {
+      try {
+        await notifyStudent(student, 'booking_approved_student', {
+          studentName: student.name,
+          datetime: formatILDateTime(lesson.startsAt),
+          location: lesson.location ?? '',
+          calendarUrl: evt.htmlLink ?? '',
+        });
+      } catch (err) {
+        console.error('[lessons] approve confirmation failed:', err);
+      }
+    }
 
     revalidatePath('/lessons');
     return { ok: true };

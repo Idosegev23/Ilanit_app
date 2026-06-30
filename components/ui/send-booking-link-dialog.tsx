@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import {
   Send,
   X,
@@ -246,13 +247,14 @@ export function SendBookingLinkDialog({
         {triggerLabel}
       </Button>
 
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="send-link-title"
-        >
+      {open && typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="send-link-title"
+          >
           <button
             type="button"
             aria-label="סגור"
@@ -605,8 +607,9 @@ export function SendBookingLinkDialog({
               </form>
             )}
           </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
     </>
   );
 }
