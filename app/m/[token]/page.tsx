@@ -80,7 +80,7 @@ export default async function AssignPage({
             students={students.map((s) => ({
               id: s.id,
               name: s.name,
-              phone: s.phone,
+              phone: s.phone ?? '',
             }))}
           />
         </div>

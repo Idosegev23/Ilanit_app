@@ -31,7 +31,7 @@ export function contactPhoneFor(
   student: Pick<Student, 'phone' | 'guardianPhone'>,
 ): string {
   const guardian = student.guardianPhone?.trim();
-  return guardian ? guardian : student.phone;
+  return guardian ? guardian : (student.phone ?? '');
 }
 
 /** Finds a student by E.164 phone, or null. */
@@ -69,7 +69,7 @@ export async function findOrCreateStudentByName(
   const existing = candidates.find((s) => normalizeName(s.name) === target);
   if (existing) return { student: existing, created: false };
 
-  const data: NewStudent = { name: cleaned, phone: '' };
+  const data: NewStudent = { name: cleaned, phone: null };
   const label = receiptLabel?.trim();
   if (label) data.receiptLabel = label;
   const created = await createStudent(data);

@@ -15,7 +15,7 @@ export default async function StudentsPage() {
   const rows: StudentRow[] = students.map((s) => ({
     id: s.id,
     name: s.name,
-    phone: s.phone,
+    phone: s.phone ?? '',
     defaultPrice: s.defaultPrice,
     defaultDurationMin: s.defaultDurationMin,
     email: s.email,

@@ -151,7 +151,7 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
       env().ILANIT_PHONE,
       {
         studentName: student.name,
-        phone: student.phone,
+        phone: student.phone ?? '',
         datetime,
         price: price ?? 0,
         notes: req.notes?.trim() ?? '',

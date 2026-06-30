@@ -302,6 +302,7 @@ export async function listMembers(
   // (roster, member list) all show/route to the same recipient.
   return rows.map((r) => ({
     ...r,
+    phone: r.phone ?? '',
     contactPhone: contactPhoneFor({ phone: r.phone, guardianPhone: r.guardianPhone }),
   }));
 }

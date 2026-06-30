@@ -36,6 +36,13 @@
       "when": 1782833492678,
       "tag": "0004_safe_darwin",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782848819565,
+      "tag": "0005_jittery_machine_man",
+      "breakpoints": true
     }
   ]
 }

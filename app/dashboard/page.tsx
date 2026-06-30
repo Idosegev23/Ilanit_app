@@ -332,7 +332,7 @@ export default async function DashboardPage() {
   const dialogStudents: BookingLinkStudent[] = studentRows.map((s) => ({
     id: s.id,
     name: s.name,
-    phone: s.phone,
+    phone: s.phone ?? '',
   }));
 
   return (

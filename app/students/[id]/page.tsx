@@ -34,7 +34,7 @@ export default async function StudentFilePage({
     student: {
       id: student.id,
       name: student.name,
-      phone: student.phone,
+      phone: student.phone ?? '',
       email: student.email,
       guardianName: student.guardianName,
       guardianPhone: student.guardianPhone,

@@ -331,7 +331,7 @@ export default async function GroupDetailPage({
               addableStudents={addableStudents.map((s) => ({
                 id: s.id,
                 name: s.name,
-                phone: s.phone,
+                phone: s.phone ?? '',
               }))}
             />
           </CardContent>

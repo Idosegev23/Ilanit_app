@@ -22,7 +22,7 @@ export const students = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     name: text('name').notNull(),
-    phone: text('phone').notNull(), // E.164
+    phone: text('phone'), // E.164 — nullable: AI/calendar-created students have no phone yet (multiple NULLs allowed by the unique index)
     email: text('email'),
     // Guardian (parent) contact — for children, all outbound WhatsApp routes here.
     guardianName: text('guardian_name'),
