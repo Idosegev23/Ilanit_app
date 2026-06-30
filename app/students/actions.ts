@@ -18,6 +18,7 @@ import { insertEvent } from '@/lib/google-calendar';
 import { hasSlotConflict } from '@/lib/availability';
 import { createSeries } from '@/lib/recurrence';
 import { notifyStudent } from '@/lib/notifications/dispatch';
+import { addToCalendarUrl } from '@/lib/calendar-link';
 
 // Server actions for the Students UI. The directory + client-file pages stay
 // server components and post through here. Money is integer shekels; phones are
@@ -316,7 +317,12 @@ export async function scheduleStudentLesson(form: FormData): Promise<ScheduleRes
         studentName: student.name,
         datetime: formatILDateTime(startsAt),
         location: location ?? '',
-        calendarUrl: evt.htmlLink ?? '',
+        calendarUrl: addToCalendarUrl({
+          title: 'שיעור עם אילנית',
+          start: startsAt,
+          end: endsAt,
+          location,
+        }),
       });
     } catch (err) {
       console.error('[students] schedule confirmation failed:', err);
@@ -396,7 +402,12 @@ export async function scheduleStudentSeries(form: FormData): Promise<ScheduleRes
           studentName: student.name,
           datetime: formatILDateTime(res.firstStartsAt),
           location: settings.locationAddress ?? '',
-          calendarUrl: '',
+          calendarUrl: addToCalendarUrl({
+            title: 'שיעור עם אילנית',
+            start: res.firstStartsAt,
+            end: new Date(res.firstStartsAt.getTime() + minutes * 60 * 1000),
+            location: settings.locationAddress ?? null,
+          }),
         });
       } catch (err) {
         console.error('[students] series confirmation failed:', err);

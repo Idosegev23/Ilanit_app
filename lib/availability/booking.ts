@@ -3,7 +3,8 @@ import { lessons, type Lesson, type Student } from '@/db/schema';
 import { and, eq, lt, gt, inArray } from 'drizzle-orm';
 import { env } from '@/lib/env';
 import { getSettings } from '@/lib/settings';
-import { getStudent, updateStudent } from '@/lib/students';
+import { getStudent, updateStudent, findStudentByPhone } from '@/lib/students';
+import { normalizePhoneIL } from '@/lib/utils';
 import { resolveBookingLink } from '@/lib/booking-links';
 import { isSlotBookable } from '@/lib/availability';
 import { createActionToken } from '@/lib/tokens';
@@ -25,9 +26,15 @@ export interface BookRequest {
   token: string;
   startISO: string;
   endISO: string;
-  /** Optional email for the calendar invite. */
+  /** Optional email — only when the student wants email/calendar reminders. */
   email?: string;
   notes?: string;
+  // ── Recipient-supplied details, for a GENERIC invite where the student is a
+  //    blank placeholder (no phone). Required (name + phone) in that case. ──
+  name?: string;
+  phone?: string;
+  guardianName?: string;
+  guardianPhone?: string;
 }
 
 export type BookResult =
@@ -87,6 +94,61 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
   let student: Student | null = await getStudent(resolved.studentId);
   if (!student) {
     return { ok: false, error: 'invalid_token', message: 'התלמיד לא נמצא' };
+  }
+
+  // 1b) Generic invite: the placeholder student has no phone. The recipient
+  // supplies their own details now — persist them (or reuse an existing student
+  // that already owns the phone) before booking.
+  if (!student.phone) {
+    const name = req.name?.trim();
+    const phoneRaw = req.phone?.trim();
+    if (!name) {
+      return { ok: false, error: 'invalid_input', message: 'יש להזין שם מלא' };
+    }
+    if (!phoneRaw) {
+      return { ok: false, error: 'invalid_input', message: 'יש להזין מספר טלפון' };
+    }
+    let phone: string;
+    try {
+      phone = normalizePhoneIL(phoneRaw);
+    } catch {
+      return { ok: false, error: 'invalid_input', message: 'מספר טלפון לא תקין' };
+    }
+    let guardianPhone: string | null = null;
+    if (req.guardianPhone?.trim()) {
+      try {
+        guardianPhone = normalizePhoneIL(req.guardianPhone.trim());
+      } catch {
+        return { ok: false, error: 'invalid_input', message: 'מספר טלפון הורה לא תקין' };
+      }
+    }
+    const guardianName = req.guardianName?.trim() || null;
+
+    try {
+      const existing = await findStudentByPhone(phone);
+      if (existing && existing.id !== student.id) {
+        // The phone already belongs to a real student — book under them and fill
+        // any blanks rather than creating a duplicate.
+        const patch: Partial<Omit<Student, 'id' | 'createdAt'>> = {};
+        if (!existing.name?.trim()) patch.name = name;
+        if (guardianName && !existing.guardianName) patch.guardianName = guardianName;
+        if (guardianPhone && !existing.guardianPhone) patch.guardianPhone = guardianPhone;
+        if (email && !existing.email) patch.email = email;
+        student =
+          Object.keys(patch).length > 0 ? await updateStudent(existing.id, patch) : existing;
+      } else {
+        student = await updateStudent(student.id, {
+          name,
+          phone,
+          guardianName,
+          guardianPhone,
+          ...(email ? { email } : {}),
+        });
+      }
+    } catch (err) {
+      console.error('[booking] failed to save recipient details:', err);
+      return { ok: false, error: 'internal', message: 'שגיאה בשמירת הפרטים' };
+    }
   }
 
   // 2) re-check the slot (template + exceptions + freeBusy + lead-time + past)

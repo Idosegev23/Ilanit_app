@@ -1,35 +1,25 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/auth';
-import { normalizePhoneIL } from '@/lib/utils';
 import { getSettings } from '@/lib/settings';
-import { findStudentByPhone, createStudent, getStudent, contactPhoneFor } from '@/lib/students';
+import { createStudent, getStudent, contactPhoneFor } from '@/lib/students';
 import { createBookingLink } from '@/lib/booking-links';
 import { notify } from '@/lib/notifications/dispatch';
 
-// Owner-only endpoint backing the "שלח לינק לתיאום" dialog. Ilanit either picks
-// an existing student ({ studentId }) or adds a new one ({ name, phone } plus
-// optional guardian name/phone, receipt label and default price); we
-// find-or-create the student, mint a personalized booking link, and WhatsApp it
-// to the recipient resolved by contactPhoneFor — the guardian's phone when one
-// is set, otherwise the student's own. Returns { ok, url, sent }.
+// Owner-only endpoint backing the "שלח לינק לתיאום" dialog. Two modes:
+//   { studentId }    → mint a personal link for an EXISTING student and WhatsApp
+//                      it to the recipient (guardian phone when set).
+//   { newInvite }    → a GENERIC invite: Ilanit fills nothing. We create a blank
+//                      placeholder student (no phone) + a link; the RECIPIENT
+//                      fills in all their details (name, phone, parent, email)
+//                      when they open it. Nothing is sent — Ilanit shares the URL.
+// Returns { ok, url, sent }.
 
 export const dynamic = 'force-dynamic';
 
 const bodySchema = z.union([
   z.object({ studentId: z.string().uuid('מזהה תלמיד לא תקין') }),
-  z.object({
-    name: z.string().trim().min(1, 'יש להזין שם'),
-    phone: z.string().trim().min(1, 'יש להזין טלפון'),
-    // Optional guardian (parent) contact — when a guardian phone is supplied the
-    // link (and every later message for this student) routes to the parent.
-    guardianName: z.string().trim().min(1).optional(),
-    guardianPhone: z.string().trim().min(1).optional(),
-    // Optional default receipt description for this student.
-    receiptLabel: z.string().trim().min(1).optional(),
-    // Optional default private-lesson price (integer shekels).
-    defaultPrice: z.string().trim().optional(),
-  }),
+  z.object({ newInvite: z.literal(true) }),
 ]);
 
 export async function POST(req: Request): Promise<Response> {
@@ -55,10 +45,11 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  // ── Resolve the student (existing by id, or find-or-create by phone) ──
+  // ── Resolve the student: existing by id, or a fresh placeholder for a generic
+  //    invite the recipient completes themselves. ──
   let studentId: string;
   let studentName: string;
-  let studentPhone: string;
+  let studentPhone: string | null;
 
   try {
     if ('studentId' in parsed.data) {
@@ -70,48 +61,21 @@ export async function POST(req: Request): Promise<Response> {
       studentName = student.name;
       studentPhone = contactPhoneFor(student); // guardian phone when present
     } else {
-      let e164: string;
-      try {
-        e164 = normalizePhoneIL(parsed.data.phone);
-      } catch {
-        return NextResponse.json({ ok: false, error: 'מספר טלפון לא תקין' }, { status: 400 });
-      }
-      const name = parsed.data.name.trim();
-      let student = await findStudentByPhone(e164);
-      if (!student) {
-        // Normalize the optional guardian phone (E.164); reject if malformed.
-        let guardianPhone: string | null = null;
-        if (parsed.data.guardianPhone) {
-          try {
-            guardianPhone = normalizePhoneIL(parsed.data.guardianPhone);
-          } catch {
-            return NextResponse.json(
-              { ok: false, error: 'מספר טלפון הורה לא תקין' },
-              { status: 400 },
-            );
-          }
-        }
-        const priceRaw = parsed.data.defaultPrice?.replace(/[^\d]/g, '');
-        const defaultPrice =
-          priceRaw && priceRaw !== '' ? Math.round(Number(priceRaw)) : undefined;
-        const settings = await getSettings();
-        student = await createStudent({
-          name,
-          phone: e164,
-          guardianName: parsed.data.guardianName ?? null,
-          guardianPhone,
-          receiptLabel: parsed.data.receiptLabel ?? null,
-          defaultPrice,
-          defaultDurationMin: settings.defaultDurationMin,
-        });
-      }
-      studentId = student.id;
-      studentName = student.name;
-      studentPhone = contactPhoneFor(student); // guardian phone when present
+      // Generic invite — no details from Ilanit. The placeholder carries no phone
+      // (nullable) until the recipient fills it in on the booking page.
+      const settings = await getSettings();
+      const placeholder = await createStudent({
+        name: 'תלמיד/ה חדש/ה',
+        phone: null,
+        defaultDurationMin: settings.defaultDurationMin,
+      });
+      studentId = placeholder.id;
+      studentName = placeholder.name;
+      studentPhone = null; // nothing to WhatsApp — Ilanit shares the link herself
     }
   } catch (err) {
     console.error('[booking-link] failed to resolve student:', err);
-    return NextResponse.json({ ok: false, error: 'שגיאה באיתור התלמיד' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: 'שגיאה ביצירת ההזמנה' }, { status: 500 });
   }
 
   // ── Mint the personalized link ──
@@ -124,19 +88,20 @@ export async function POST(req: Request): Promise<Response> {
     return NextResponse.json({ ok: false, error: 'שגיאה ביצירת הקישור' }, { status: 500 });
   }
 
-  // ── WhatsApp the link to the student (best-effort: report a soft failure but
-  //    still return the URL so Ilanit can copy/share it manually). ──
-  let sent = true;
-  try {
-    const result = await notify(
-      'booking_link_student',
-      studentPhone,
-      { studentName, bookingUrl: url },
-    );
-    sent = result.ok;
-  } catch (err) {
-    console.error('[booking-link] WhatsApp send failed (link kept):', err);
-    sent = false;
+  // ── WhatsApp the link only when we have a recipient phone (existing student).
+  //    A generic invite has no phone — Ilanit copies/shares the URL herself. ──
+  let sent = false;
+  if (studentPhone) {
+    try {
+      const result = await notify('booking_link_student', studentPhone, {
+        studentName,
+        bookingUrl: url,
+      });
+      sent = result.ok;
+    } catch (err) {
+      console.error('[booking-link] WhatsApp send failed (link kept):', err);
+      sent = false;
+    }
   }
 
   return NextResponse.json({ ok: true, url, sent });

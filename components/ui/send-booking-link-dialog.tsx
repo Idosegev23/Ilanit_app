@@ -13,20 +13,20 @@ import {
   AlertCircle,
   Copy,
   Check,
-  CircleDollarSign,
-  UserCog,
-  PhoneCall,
-  ReceiptText,
+  Link2,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from './button';
 import { Input } from './input';
 import { Label } from './label';
 import { cn } from '@/lib/utils';
 
-// Popup for the owner ("שלח לינק לתיאום"): choose an EXISTING student (search +
-// select) or add a NEW one (name + phone) → POST /api/booking-link → a success
-// state showing the personal link was sent, with a copy button. RTL Hebrew,
-// design-system primitives, lucide icons, focus-visible, 44px targets.
+// Popup for the owner ("שלח לינק לתיאום"). Two paths:
+//   • "תלמיד קיים" — pick an existing student → WhatsApp them their personal link.
+//   • "הזמנה חדשה" — create a GENERIC invite link with NO fields. Ilanit copies /
+//     shares it; the recipient opens it and fills in ALL their own details (name,
+//     phone, parent, optional email) before picking a slot.
+// RTL Hebrew, design-system primitives, lucide icons, focus-visible, 44px targets.
 
 export interface BookingLinkStudent {
   id: string;
@@ -76,17 +76,13 @@ export function SendBookingLinkDialog({
 
   const [query, setQuery] = React.useState('');
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
-  const [name, setName] = React.useState('');
-  const [phone, setPhone] = React.useState('');
-  const [guardianName, setGuardianName] = React.useState('');
-  const [guardianPhone, setGuardianPhone] = React.useState('');
-  const [receiptLabel, setReceiptLabel] = React.useState('');
-  const [defaultPrice, setDefaultPrice] = React.useState('');
 
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [resultUrl, setResultUrl] = React.useState<string | null>(null);
   const [resultSent, setResultSent] = React.useState(true);
+  /** Which tab produced the current result (so success copy can adapt). */
+  const [resultTab, setResultTab] = React.useState<Tab>('existing');
   const [copied, setCopied] = React.useState(false);
 
   const filtered = React.useMemo(() => {
@@ -100,15 +96,10 @@ export function SendBookingLinkDialog({
   const reset = React.useCallback(() => {
     setQuery('');
     setSelectedId(null);
-    setName('');
-    setPhone('');
-    setGuardianName('');
-    setGuardianPhone('');
-    setReceiptLabel('');
-    setDefaultPrice('');
     setError(null);
     setResultUrl(null);
     setResultSent(true);
+    setResultTab('existing');
     setCopied(false);
     setSubmitting(false);
     setTab(students.length > 0 ? 'existing' : 'new');
@@ -172,7 +163,7 @@ export function SendBookingLinkDialog({
     e.preventDefault();
     setError(null);
 
-    let body: Record<string, string>;
+    let body: Record<string, unknown>;
     if (tab === 'existing') {
       if (!selectedId) {
         setError('יש לבחור תלמיד מהרשימה');
@@ -180,34 +171,11 @@ export function SendBookingLinkDialog({
       }
       body = { studentId: selectedId };
     } else {
-      if (!name.trim()) {
-        setError('יש להזין שם');
-        return;
-      }
-      if (!phone.trim()) {
-        setError('יש להזין מספר טלפון');
-        return;
-      }
-      body = { name: name.trim(), phone: phone.trim() };
-      // Optional guardian (parent) contact — when a guardian phone is set the
-      // booking link (and all later messages) routes to the parent.
-      if (guardianName.trim()) body.guardianName = guardianName.trim();
-      if (guardianPhone.trim()) body.guardianPhone = guardianPhone.trim();
-      // Optional default receipt description for this student.
-      if (receiptLabel.trim()) body.receiptLabel = receiptLabel.trim();
-      // Optional default private-lesson price (integer shekels). Sent as a hint
-      // to the booking-link endpoint; ignored if it doesn't consume the field.
-      const priceRaw = defaultPrice.replace(/[^\d]/g, '');
-      if (priceRaw !== '') {
-        const n = Number(priceRaw);
-        if (!Number.isFinite(n) || n < 0) {
-          setError('מחיר לא תקין');
-          return;
-        }
-        body.defaultPrice = String(Math.round(n));
-      }
+      // Generic invite — no fields; the recipient fills everything themselves.
+      body = { newInvite: true };
     }
 
+    const submittedTab = tab;
     setSubmitting(true);
     try {
       const res = await fetch('/api/booking-link', {
@@ -222,6 +190,7 @@ export function SendBookingLinkDialog({
       }
       setResultUrl(json.url as string);
       setResultSent(json.sent !== false);
+      setResultTab(submittedTab);
     } catch {
       setError('שגיאה ביצירת הקישור');
     } finally {
@@ -239,6 +208,8 @@ export function SendBookingLinkDialog({
       // clipboard unavailable — no-op
     }
   }
+
+  const isInviteResult = resultTab === 'new';
 
   return (
     <>
@@ -281,7 +252,7 @@ export function SendBookingLinkDialog({
                     <h2 id="send-link-title" className="text-lg font-bold text-white">
                       שליחת לינק לתיאום
                     </h2>
-                    <p className="text-sm text-white/80">לינק אישי לתיאום שיעור בוואטסאפ</p>
+                    <p className="text-sm text-white/80">לינק אישי לתיאום שיעור</p>
                   </div>
                 </div>
                 <button
@@ -303,12 +274,18 @@ export function SendBookingLinkDialog({
                 </span>
                 <div className="space-y-1">
                   <h3 className="text-base font-semibold text-ink">
-                    {resultSent ? 'הלינק נשלח בוואטסאפ!' : 'הלינק נוצר'}
+                    {isInviteResult
+                      ? 'קישור ההזמנה מוכן'
+                      : resultSent
+                        ? 'הלינק נשלח בוואטסאפ!'
+                        : 'הלינק נוצר'}
                   </h3>
                   <p className="text-sm text-muted">
-                    {resultSent
-                      ? 'התלמיד/ה קיבל/ה הודעת וואטסאפ עם הלינק האישי לתיאום.'
-                      : 'שליחת הוואטסאפ נכשלה — אפשר להעתיק את הלינק ולשלוח ידנית.'}
+                    {isInviteResult
+                      ? 'העתיקי ושלחי את הקישור למוזמן/ת — הוא/היא ימלא/תמלא את כל הפרטים ויבחר/תבחר מועד. הבקשה תגיע אלייך לאישור.'
+                      : resultSent
+                        ? 'התלמיד/ה קיבל/ה הודעת וואטסאפ עם הלינק האישי לתיאום.'
+                        : 'שליחת הוואטסאפ נכשלה — אפשר להעתיק את הלינק ולשלוח ידנית.'}
                   </p>
                 </div>
                 <div className="flex w-full items-center gap-2 rounded-2xl border border-line bg-surface-2/60 p-2 ps-3">
@@ -326,7 +303,7 @@ export function SendBookingLinkDialog({
                 </div>
                 <div className="flex w-full flex-col gap-2 pt-1 sm:flex-row">
                   <Button type="button" variant="secondary" className="sm:flex-1" onClick={reset}>
-                    שליחה לתלמיד נוסף
+                    יצירת קישור נוסף
                   </Button>
                   <Button type="button" className="sm:flex-1" onClick={closeDialog}>
                     סגירה
@@ -339,7 +316,7 @@ export function SendBookingLinkDialog({
                 {/* Tabs */}
                 <div
                   role="tablist"
-                  aria-label="בחירת סוג תלמיד"
+                  aria-label="בחירת סוג קישור"
                   className="grid grid-cols-2 gap-1.5 rounded-2xl border border-line bg-surface-2/50 p-1.5 shadow-soft"
                 >
                   <button
@@ -376,7 +353,7 @@ export function SendBookingLinkDialog({
                     )}
                   >
                     <UserPlus className="size-4" aria-hidden="true" />
-                    תלמיד חדש
+                    הזמנה חדשה
                   </button>
                 </div>
 
@@ -411,7 +388,7 @@ export function SendBookingLinkDialog({
                             <SearchX className="size-5" aria-hidden="true" />
                           </span>
                           <p className="text-sm font-medium text-ink">לא נמצאו תלמידים</p>
-                          <p className="text-xs text-muted">נסי שם או מספר טלפון אחר, או הוסיפי תלמיד/ה חדש/ה.</p>
+                          <p className="text-xs text-muted">נסי שם או מספר טלפון אחר, או צרי הזמנה חדשה.</p>
                         </div>
                       ) : (
                         <ul className="space-y-1">
@@ -464,122 +441,25 @@ export function SendBookingLinkDialog({
                   </div>
                 )}
 
-                {/* New student */}
+                {/* New invite — no fields; the recipient fills everything. */}
                 {tab === 'new' && (
                   <div className="space-y-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="link-name" required>
-                        שם מלא
-                      </Label>
-                      <Input
-                        id="link-name"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="שם התלמיד/ה"
-                        autoComplete="name"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="link-phone" required>
-                        טלפון
-                      </Label>
-                      <Input
-                        id="link-phone"
-                        type="tel"
-                        dir="ltr"
-                        className="text-end"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value)}
-                        placeholder="050-123-4567"
-                        autoComplete="tel"
-                      />
-                    </div>
-
-                    {/* Guardian (parent) contact — when a guardian phone is set
-                        the link (and all later messages) goes to the parent. */}
-                    <div className="space-y-3 rounded-2xl border border-line bg-cream/40 p-3.5">
-                      <div className="flex items-center gap-2">
-                        <span className="flex size-7 items-center justify-center rounded-lg bg-primary-soft text-primary-600">
-                          <UserCog className="size-4" aria-hidden="true" />
-                        </span>
-                        <div>
-                          <p className="text-sm font-semibold text-ink">פרטי הורה</p>
-                          <p className="text-xs text-muted">מומלץ לילדים — הלינק יישלח לטלפון ההורה.</p>
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <Label htmlFor="link-guardian-name" className="flex items-center gap-1.5">
-                            <UserCog className="size-3.5 text-muted" aria-hidden="true" />
-                            שם הורה
-                          </Label>
-                          <span className="text-xs text-muted">לא חובה</span>
-                        </div>
-                        <Input
-                          id="link-guardian-name"
-                          value={guardianName}
-                          onChange={(e) => setGuardianName(e.target.value)}
-                          placeholder="שם ההורה"
-                          autoComplete="name"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between gap-2">
-                          <Label htmlFor="link-guardian-phone" className="flex items-center gap-1.5">
-                            <PhoneCall className="size-3.5 text-muted" aria-hidden="true" />
-                            טלפון הורה
-                          </Label>
-                          <span className="text-xs text-muted">מומלץ לילדים</span>
-                        </div>
-                        <Input
-                          id="link-guardian-phone"
-                          type="tel"
-                          dir="ltr"
-                          className="text-end"
-                          value={guardianPhone}
-                          onChange={(e) => setGuardianPhone(e.target.value)}
-                          placeholder="050-123-4567"
-                          autoComplete="tel"
-                        />
+                    <div className="flex items-start gap-3 rounded-2xl border border-line bg-cream/40 p-4">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-600">
+                        <Link2 className="size-5" aria-hidden="true" />
+                      </span>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-ink">קישור הזמנה חדש</p>
+                        <p className="text-sm leading-relaxed text-muted">
+                          לא צריך למלא כלום. צרי קישור ושלחי אותו למי שתרצי (וואטסאפ / SMS) —
+                          התלמיד/ה פותח/ת אותו, ממלא/ת בעצמו/ה את כל הפרטים (שם, טלפון, פרטי הורה)
+                          ובוחר/ת מועד. הבקשה תגיע אלייך לאישור.
+                        </p>
                       </div>
                     </div>
-
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <Label htmlFor="link-receipt-label" className="flex items-center gap-1.5">
-                          <ReceiptText className="size-3.5 text-muted" aria-hidden="true" />
-                          תיאור לקבלה (ברירת מחדל)
-                        </Label>
-                        <span className="text-xs text-muted">לא חובה</span>
-                      </div>
-                      <Input
-                        id="link-receipt-label"
-                        value={receiptLabel}
-                        onChange={(e) => setReceiptLabel(e.target.value)}
-                        placeholder="למשל: שיעור פרטי / הוראה מתקנת"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <Label htmlFor="link-price" className="flex items-center gap-1.5">
-                          <CircleDollarSign className="size-3.5 text-muted" aria-hidden="true" />
-                          מחיר לשיעור פרטי (₪)
-                        </Label>
-                        <span className="text-xs text-muted">לא חובה</span>
-                      </div>
-                      <Input
-                        id="link-price"
-                        type="number"
-                        inputMode="numeric"
-                        min={0}
-                        step={1}
-                        dir="ltr"
-                        className="text-end tabular-nums"
-                        value={defaultPrice}
-                        onChange={(e) => setDefaultPrice(e.target.value)}
-                        placeholder="150"
-                      />
+                    <div className="flex items-center gap-2 rounded-xl bg-primary-50 px-3.5 py-2.5 text-xs text-primary-600">
+                      <Sparkles className="size-4 shrink-0" aria-hidden="true" />
+                      <span>אימייל הוא רשות — רק אם התלמיד/ה רוצה תזכורות גם במייל.</span>
                     </div>
                   </div>
                 )}
@@ -600,8 +480,18 @@ export function SendBookingLinkDialog({
                     ביטול
                   </Button>
                   <Button type="submit" loading={submitting} className="sm:flex-[2]">
-                    <Send className="size-4" aria-hidden="true" />
-                    {submitting ? 'שולח…' : 'שליחת הלינק'}
+                    {tab === 'new' ? (
+                      <Link2 className="size-4" aria-hidden="true" />
+                    ) : (
+                      <Send className="size-4" aria-hidden="true" />
+                    )}
+                    {submitting
+                      ? tab === 'new'
+                        ? 'יוצר…'
+                        : 'שולח…'
+                      : tab === 'new'
+                        ? 'צור קישור הזמנה'
+                        : 'שליחת הלינק'}
                   </Button>
                 </div>
               </form>

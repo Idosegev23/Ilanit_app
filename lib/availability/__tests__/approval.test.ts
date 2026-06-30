@@ -149,9 +149,10 @@ describe('decideLesson — approve', () => {
     expect(confirm).toMatchObject({ status: 'confirmed', googleEventId: 'gcal-1' });
     expect(confirm?.confirmedAt).toBeInstanceOf(Date);
 
-    // student notified with the calendar link
+    // student notified with an "add to calendar" Google Calendar template link
     const approved = mocks.notify.mock.calls.find((c) => c[0] === 'booking_approved_student');
-    expect(approved?.[2]).toMatchObject({ location: 'רחוב הדקל 1', calendarUrl: 'https://cal/evt' });
+    expect(approved?.[2]).toMatchObject({ location: 'רחוב הדקל 1' });
+    expect(String(approved?.[2]?.calendarUrl)).toContain('calendar.google.com/calendar/render');
   });
 
   it('refuses approval when the slot is no longer free', async () => {

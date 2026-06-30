@@ -106,80 +106,29 @@ describe('POST /api/booking-link — existing student', () => {
   });
 });
 
-describe('POST /api/booking-link — new student', () => {
-  it('creates the student (normalized phone) then mints + sends the link', async () => {
-    const res = await POST(req({ name: 'יוסי כהן', phone: '050-123-4567' }));
-    expect(res.status).toBe(200);
-    expect((await res.json())).toMatchObject({ ok: true, url: 'https://ilanit.test/book/raw-token' });
-    expect(createStudent).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'יוסי כהן', phone: '+972501234567' }),
-    );
-    expect(createBookingLink).toHaveBeenCalledWith('new-student');
-  });
-
-  it('persists guardian fields + receipt label and routes the link to the parent', async () => {
+describe('POST /api/booking-link — generic invite', () => {
+  it('creates a blank placeholder (no phone) + link, sends nothing', async () => {
     vi.mocked(createStudent).mockResolvedValue({
       ...EXISTING,
       id: 'new-student',
-      phone: '+972501234567',
-      guardianName: 'רוני כהן',
-      guardianPhone: '+972527654321',
-      receiptLabel: 'הוראה מתקנת',
+      name: 'תלמיד/ה חדש/ה',
+      phone: null,
     } as never);
-    const res = await POST(
-      req({
-        name: 'יוסי כהן',
-        phone: '050-123-4567',
-        guardianName: 'רוני כהן',
-        guardianPhone: '052-765-4321',
-        receiptLabel: 'הוראה מתקנת',
-        defaultPrice: '180',
-      }),
-    );
+    const res = await POST(req({ newInvite: true }));
     expect(res.status).toBe(200);
-    expect(createStudent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        name: 'יוסי כהן',
-        phone: '+972501234567',
-        guardianName: 'רוני כהן',
-        guardianPhone: '+972527654321',
-        receiptLabel: 'הוראה מתקנת',
-        defaultPrice: 180,
-      }),
-    );
-    // Link routes to the guardian (contactPhoneFor) once the student is created.
-    expect(notify).toHaveBeenCalledWith(
-      'booking_link_student',
-      '+972527654321',
-      expect.any(Object),
-    );
+    const json = await res.json();
+    expect(json).toMatchObject({ ok: true, url: 'https://ilanit.test/book/raw-token', sent: false });
+    // The placeholder is created without a phone (recipient fills it in later).
+    expect(createStudent).toHaveBeenCalledWith(expect.objectContaining({ phone: null }));
+    expect(createBookingLink).toHaveBeenCalledWith('new-student');
+    // No phone → nothing to WhatsApp.
+    expect(notify).not.toHaveBeenCalled();
   });
 
-  it('rejects an invalid guardian phone (400)', async () => {
-    const res = await POST(
-      req({ name: 'יוסי', phone: '0501234567', guardianPhone: 'nope' }),
-    );
-    expect(res.status).toBe(400);
-    expect(createStudent).not.toHaveBeenCalled();
-  });
-
-  it('reuses an existing student matched by phone (no create)', async () => {
-    vi.mocked(findStudentByPhone).mockResolvedValue(EXISTING as never);
-    const res = await POST(req({ name: 'דנה', phone: '0501234567' }));
-    expect(res.status).toBe(200);
-    expect(createStudent).not.toHaveBeenCalled();
-    expect(createBookingLink).toHaveBeenCalledWith(EXISTING.id);
-  });
-
-  it('rejects an invalid phone (400)', async () => {
-    const res = await POST(req({ name: 'דנה', phone: 'abc' }));
+  it('rejects an unknown body shape (400)', async () => {
+    const res = await POST(req({ foo: 'bar' }));
     expect(res.status).toBe(400);
     expect(createBookingLink).not.toHaveBeenCalled();
-  });
-
-  it('rejects a missing name (400)', async () => {
-    const res = await POST(req({ phone: '0501234567' }));
-    expect(res.status).toBe(400);
   });
 });
 

@@ -75,8 +75,11 @@ export default async function TokenBookPage({
     >
       <TokenBookingForm
         token={token}
+        needsDetails={!student.phone}
         studentName={student.name}
         studentEmail={student.email}
+        studentGuardianName={student.guardianName}
+        studentGuardianPhone={student.guardianPhone}
         initialWeek={initialWeek}
       />
     </AuthLayout>

@@ -10,6 +10,7 @@ import { insertEvent } from '@/lib/google-calendar';
 import { notify } from '@/lib/notifications/dispatch';
 import { hasSlotConflict } from '@/lib/availability';
 import { formatILDateTime } from '@/lib/time';
+import { addToCalendarUrl } from '@/lib/calendar-link';
 
 // Approval service used by /a/[token] + /api/approve. Approving inserts the
 // lesson into Google Calendar (inviting the student if they have an email),
@@ -154,7 +155,6 @@ async function approveLesson(data: LessonWithStudent): Promise<ApproveResult> {
 
   const location = lesson.location ?? settings.locationAddress ?? '';
   let googleEventId: string;
-  let htmlLink: string | undefined;
   try {
     const event = await insertEvent({
       summary: `שיעור – ${data.studentName}`,
@@ -169,7 +169,6 @@ async function approveLesson(data: LessonWithStudent): Promise<ApproveResult> {
       },
     });
     googleEventId = event.id;
-    htmlLink = event.htmlLink;
   } catch (err) {
     console.error('[approval] insertEvent failed:', err);
     return { ok: false, error: 'internal', message: 'שגיאה בהוספה ליומן Google' };
@@ -194,7 +193,12 @@ async function approveLesson(data: LessonWithStudent): Promise<ApproveResult> {
           studentName: data.studentName,
           datetime: formatILDateTime(lesson.startsAt),
           location,
-          calendarUrl: htmlLink ?? '',
+          calendarUrl: addToCalendarUrl({
+            title: 'שיעור עם אילנית',
+            start: lesson.startsAt,
+            end: lesson.endsAt,
+            location,
+          }),
         },
         `approved:${lesson.id}`,
         lesson.id,

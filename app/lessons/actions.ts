@@ -21,6 +21,7 @@ import { insertEvent, getEvent } from '@/lib/google-calendar';
 import { cancelOne, createSeries } from '@/lib/recurrence';
 import { parseLessonTitle } from '@/lib/ai/parse-lesson';
 import { notifyStudent } from '@/lib/notifications/dispatch';
+import { addToCalendarUrl } from '@/lib/calendar-link';
 
 export interface ActionResult {
   ok: boolean;
@@ -86,7 +87,12 @@ export async function approveLesson(lessonId: string): Promise<ActionResult> {
           studentName: student.name,
           datetime: formatILDateTime(lesson.startsAt),
           location: lesson.location ?? '',
-          calendarUrl: evt.htmlLink ?? '',
+          calendarUrl: addToCalendarUrl({
+            title: 'שיעור עם אילנית',
+            start: lesson.startsAt,
+            end: lesson.endsAt,
+            location: lesson.location,
+          }),
         });
       } catch (err) {
         console.error('[lessons] approve confirmation failed:', err);

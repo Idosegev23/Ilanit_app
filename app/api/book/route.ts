@@ -26,6 +26,11 @@ export async function POST(req: Request) {
     startISO: str(body.startISO),
     endISO: str(body.endISO),
     notes: str(body.notes) || undefined,
+    // Recipient-supplied details (generic invite — placeholder student).
+    name: str(body.name) || undefined,
+    phone: str(body.phone) || undefined,
+    guardianName: str(body.guardianName) || undefined,
+    guardianPhone: str(body.guardianPhone) || undefined,
   };
 
   const result = await bookLesson(input);

@@ -44,8 +44,16 @@ interface Slot {
 interface TokenBookingFormProps {
   token: string;
   studentName: string;
+  /**
+   * True for a GENERIC invite — the student is a blank placeholder, so the
+   * recipient must fill in their own name/phone (and optional parent + email)
+   * before booking. False when Ilanit sent a known student their personal link.
+   */
+  needsDetails?: boolean;
   /** Pre-fills the email field when the student already has one on file. */
   studentEmail?: string | null;
+  studentGuardianName?: string | null;
+  studentGuardianPhone?: string | null;
   /** Week view resolved server-side (already jumped to the nearest open week). */
   initialWeek: BookingWeekView;
 }
@@ -113,7 +121,10 @@ type Phase = 'pick' | 'confirm' | 'done';
 export function TokenBookingForm({
   token,
   studentName,
+  needsDetails = false,
   studentEmail,
+  studentGuardianName,
+  studentGuardianPhone,
   initialWeek,
 }: TokenBookingFormProps) {
   const [view, setView] = React.useState<BookingWeekView>(initialWeek);
@@ -125,10 +136,19 @@ export function TokenBookingForm({
   const [selectedDateISO, setSelectedDateISO] = React.useState<string | null>(null);
 
   const [phase, setPhase] = React.useState<Phase>('pick');
+  // Recipient-supplied details (generic invite). Prefilled from the student when
+  // known (existing student re-using a link), empty for a fresh invite.
+  const [name, setName] = React.useState(needsDetails ? '' : studentName);
+  const [phone, setPhone] = React.useState('');
+  const [guardianName, setGuardianName] = React.useState(studentGuardianName ?? '');
+  const [guardianPhone, setGuardianPhone] = React.useState(studentGuardianPhone ?? '');
   const [email, setEmail] = React.useState(studentEmail ?? '');
   const [notes, setNotes] = React.useState('');
   const [submitting, setSubmitting] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+
+  // Identity shown in the header: a fresh invite has no real name yet.
+  const headerName = needsDetails ? 'תיאום שיעור' : studentName;
 
   const { week, firstWeekStart, lastWeekStart } = view;
   const sundayISO = week.days[0]?.dateISO ?? week.weekStartISO;
@@ -177,6 +197,16 @@ export function TokenBookingForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!selected) return;
+    if (needsDetails) {
+      if (!name.trim()) {
+        setFormError('יש להזין שם מלא');
+        return;
+      }
+      if (!phone.trim()) {
+        setFormError('יש להזין מספר טלפון');
+        return;
+      }
+    }
     setSubmitting(true);
     setFormError(null);
     try {
@@ -189,6 +219,14 @@ export function TokenBookingForm({
           notes: notes.trim() || undefined,
           startISO: selected.startISO,
           endISO: selected.endISO,
+          ...(needsDetails
+            ? {
+                name: name.trim(),
+                phone: phone.trim(),
+                guardianName: guardianName.trim() || undefined,
+                guardianPhone: guardianPhone.trim() || undefined,
+              }
+            : {}),
         }),
       });
       const json = await res.json();
@@ -271,9 +309,9 @@ export function TokenBookingForm({
           </span>
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-wide text-accent-text">
-              קביעת שיעור עבור
+              {needsDetails ? 'קביעת שיעור עם אילנית' : 'קביעת שיעור עבור'}
             </p>
-            <p className="truncate text-lg font-bold text-ink">{studentName}</p>
+            <p className="truncate text-lg font-bold text-ink">{headerName}</p>
           </div>
           <Sparkles
             className="ms-auto size-5 shrink-0 text-primary-300"
@@ -304,9 +342,72 @@ export function TokenBookingForm({
               </div>
             </div>
 
+            {needsDetails && (
+              <div className="space-y-4 rounded-2xl border border-line bg-surface-2/40 p-4">
+                <p className="text-sm font-semibold text-ink">הפרטים שלכם</p>
+                <div className="space-y-1.5">
+                  <Label htmlFor="book-name" required>
+                    שם מלא
+                  </Label>
+                  <Input
+                    id="book-name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="שם התלמיד/ה"
+                    autoComplete="name"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="book-phone" required>
+                    טלפון
+                  </Label>
+                  <Input
+                    id="book-phone"
+                    type="tel"
+                    dir="ltr"
+                    className="text-end"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="050-123-4567"
+                    autoComplete="tel"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="book-guardian-name">
+                    שם הורה <span className="font-normal text-accent-text">(לילדים)</span>
+                  </Label>
+                  <Input
+                    id="book-guardian-name"
+                    value={guardianName}
+                    onChange={(e) => setGuardianName(e.target.value)}
+                    placeholder="שם ההורה"
+                    autoComplete="name"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="book-guardian-phone">
+                    טלפון הורה <span className="font-normal text-accent-text">(לילדים)</span>
+                  </Label>
+                  <Input
+                    id="book-guardian-phone"
+                    type="tel"
+                    dir="ltr"
+                    className="text-end"
+                    value={guardianPhone}
+                    onChange={(e) => setGuardianPhone(e.target.value)}
+                    placeholder="050-123-4567"
+                    autoComplete="tel"
+                  />
+                  <p className="text-xs leading-relaxed text-muted">
+                    אם מדובר בילד/ה — העדכונים יישלחו לטלפון ההורה.
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-1.5">
               <Label htmlFor="book-email">
-                אימייל <span className="font-normal text-accent-text">(מומלץ)</span>
+                אימייל <span className="font-normal text-accent-text">(לא חובה)</span>
               </Label>
               <Input
                 id="book-email"
@@ -320,7 +421,7 @@ export function TokenBookingForm({
                 aria-describedby="book-email-help"
               />
               <p id="book-email-help" className="text-xs leading-relaxed text-muted">
-                אם תזינו אימייל, השיעור ייכנס אוטומטית ליומן Google שלכם.
+                רק אם תרצו לקבל תזכורות גם במייל — והשיעור ייכנס אוטומטית ליומן Google שלכם.
               </p>
             </div>
 
