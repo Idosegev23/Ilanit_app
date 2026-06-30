@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { availability, availabilityExceptions, lessons } from '@/db/schema';
-import { and, eq, gte, inArray, lt } from 'drizzle-orm';
+import { and, eq, gte, inArray, lt, ne } from 'drizzle-orm';
 import { getSettings } from '@/lib/settings';
 import { freeBusy } from '@/lib/google-calendar';
 import {
@@ -81,7 +81,11 @@ async function exceptionFor(
  * plus the calendar's freeBusy for the same window. Calendar errors degrade
  * gracefully (we keep the lesson-based busy set) so booking still works.
  */
-async function busyIntervals(dayStartMs: number, dayEndMs: number): Promise<Interval[]> {
+async function busyIntervals(
+  dayStartMs: number,
+  dayEndMs: number,
+  excludeLessonId?: string,
+): Promise<Interval[]> {
   const dayStart = new Date(dayStartMs);
   const dayEnd = new Date(dayEndMs);
 
@@ -93,6 +97,9 @@ async function busyIntervals(dayStartMs: number, dayEndMs: number): Promise<Inte
         inArray(lessons.status, ['pending', 'confirmed']),
         lt(lessons.startsAt, dayEnd),
         gte(lessons.endsAt, dayStart),
+        // Exclude a specific lesson (the one being approved): a pending lesson
+        // already holds its own slot here, so without this it self-collides.
+        excludeLessonId ? ne(lessons.id, excludeLessonId) : undefined,
       ),
     );
 
@@ -168,14 +175,22 @@ export async function availableSlots(dateISO: string): Promise<Slot[]> {
  * so the UI can warn before letting her proceed anyway. A calendar lookup
  * failure degrades to the lesson-based busy set (same as `busyIntervals`).
  */
-export async function hasSlotConflict(startISO: string, endISO: string): Promise<boolean> {
+export async function hasSlotConflict(
+  startISO: string,
+  endISO: string,
+  excludeLessonId?: string,
+): Promise<boolean> {
   const start = new Date(startISO);
   const end = new Date(endISO);
   if (!(start.getTime() < end.getTime())) return false;
 
   const dateISO = toILDateStr(start);
   const dayStart = parseILDateTime(dateISO, '00:00');
-  const busy = await busyIntervals(dayStart.getTime(), dayStart.getTime() + 24 * 60 * MS_PER_MIN);
+  const busy = await busyIntervals(
+    dayStart.getTime(),
+    dayStart.getTime() + 24 * 60 * MS_PER_MIN,
+    excludeLessonId,
+  );
   return busy.some((b) => start.getTime() < b.endMs && b.startMs < end.getTime());
 }
 

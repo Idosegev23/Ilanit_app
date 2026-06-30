@@ -11,7 +11,7 @@ const state = vi.hoisted(() => ({
     sPhone: string | null;
     sEmail: string | null;
   },
-  bookable: true,
+  conflict: false,
   updated: [] as Array<Record<string, unknown>>,
 }));
 
@@ -30,7 +30,7 @@ const mocks = vi.hoisted(() => ({
       _relatedLessonId?: string,
     ) => ({ ok: true }),
   ),
-  isSlotBookable: vi.fn(async () => state.bookable),
+  hasSlotConflict: vi.fn(async () => state.conflict),
   getSettings: vi.fn(async () => ({ locationAddress: 'רחוב הדקל 1' })),
   createBookingLink: vi.fn(async (studentId: string) => ({
     token: 'rebook-token',
@@ -44,7 +44,7 @@ vi.mock('@/lib/booking-links', () => ({ createBookingLink: mocks.createBookingLi
 vi.mock('@/lib/google-calendar', () => ({ insertEvent: mocks.insertEvent }));
 vi.mock('@/lib/notifications/dispatch', () => ({ notify: mocks.notify }));
 vi.mock('@/lib/settings', () => ({ getSettings: mocks.getSettings }));
-vi.mock('@/lib/availability', () => ({ isSlotBookable: mocks.isSlotBookable }));
+vi.mock('@/lib/availability', () => ({ hasSlotConflict: mocks.hasSlotConflict }));
 vi.mock('@/lib/env', () => ({ env: () => ({ NEXT_PUBLIC_APP_URL: 'https://ilanit.test' }) }));
 
 vi.mock('drizzle-orm', () => ({ eq: () => ({}) }));
@@ -97,7 +97,7 @@ function pendingLesson(overrides: Record<string, unknown> = {}) {
 beforeEach(() => {
   state.consumed = { type: 'approve', lessonId: 'lesson-1' };
   state.lessonRow = pendingLesson();
-  state.bookable = true;
+  state.conflict = false;
   state.updated = [];
   Object.values(mocks).forEach((m) => m.mockClear());
   mocks.insertEvent.mockResolvedValue({ id: 'gcal-1', htmlLink: 'https://cal/evt' });
@@ -155,7 +155,7 @@ describe('decideLesson — approve', () => {
   });
 
   it('refuses approval when the slot is no longer free', async () => {
-    state.bookable = false;
+    state.conflict = true;
     const res = await decideLesson('tok', 'approve');
     expect(res).toMatchObject({ ok: false, error: 'slot_taken' });
     expect(mocks.insertEvent).not.toHaveBeenCalled();

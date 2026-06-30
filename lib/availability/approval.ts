@@ -8,7 +8,7 @@ import { consumeActionToken } from '@/lib/tokens';
 import { createBookingLink } from '@/lib/booking-links';
 import { insertEvent } from '@/lib/google-calendar';
 import { notify } from '@/lib/notifications/dispatch';
-import { isSlotBookable } from '@/lib/availability';
+import { hasSlotConflict } from '@/lib/availability';
 import { formatILDateTime } from '@/lib/time';
 
 // Approval service used by /a/[token] + /api/approve. Approving inserts the
@@ -137,9 +137,18 @@ async function approveLesson(data: LessonWithStudent): Promise<ApproveResult> {
   const { lesson } = data;
   const settings = await getSettings();
 
-  // re-check the slot is still free at approval time (calendar may have changed)
-  const stillFree = await isSlotBookable(lesson.startsAt.toISOString(), lesson.endsAt.toISOString());
-  if (!stillFree) {
+  // Re-check for a genuine double-booking at approval time (the calendar may
+  // have changed since the student requested the slot). Owner approval is NOT
+  // subject to the student-booking soft gates (open-week, lead-time, weekly
+  // template) — Ilanit may approve whenever she likes. Crucially we EXCLUDE this
+  // pending lesson: it already holds its own slot in busyIntervals, so a plain
+  // re-check would always see it as a self-collision and refuse every approval.
+  const conflict = await hasSlotConflict(
+    lesson.startsAt.toISOString(),
+    lesson.endsAt.toISOString(),
+    lesson.id,
+  );
+  if (conflict) {
     return { ok: false, error: 'slot_taken', message: 'המועד כבר אינו פנוי ביומן' };
   }
 
