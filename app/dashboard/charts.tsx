@@ -27,29 +27,29 @@ import type {
 // the DOM). Hebrew labels; ₪ formatting via the shared util. Empty datasets
 // render a friendly RTL placeholder rather than a blank canvas.
 //
-// Colors use the warm "terracotta / honey" design-system palette (resolved
-// hexes — SVG fills need literal values, not CSS vars). Charts lean on warm
-// gradient fills + muted, horizontal-only gridlines so the data leads and the
-// chrome recedes (trend-emphasis, gridline-subtle).
-const PRIMARY = '#b5471f'; // terracotta 500
-const ACCENT = '#d98a2c'; // honey 500
-// Terracotta → honey → peach ramp for categorical bars (all ≥3:1 against white).
-const BAR_PALETTE = ['#b5471f', '#c2531f', '#d98a2c', '#e09a72', '#eebda1'];
-const GRID = '#f0e6da'; // softened border-line (recedes behind data)
-const AXIS = '#6e5f54'; // muted text
+// Colors use the calm "sage-teal / sand" design-system palette (resolved hexes
+// — SVG fills need literal values, not CSS vars). Charts lean on soft gradient
+// fills + muted, horizontal-only gridlines so the data leads and the chrome
+// recedes (trend-emphasis, gridline-subtle).
+const PRIMARY = '#2f7a6e'; // sage-teal 500
+const ACCENT = '#c2913f'; // sand-honey
+// Teal → sage → sand ramp for categorical bars (calm, ≥3:1 against white).
+const BAR_PALETTE = ['#2f7a6e', '#418a7c', '#6aa99a', '#c2913f', '#d6ad62'];
+const GRID = '#e8e4d9'; // softened border-line (recedes behind data)
+const AXIS = '#5c665f'; // muted text
 const CHART_H = 248;
 
 const AXIS_TICK = { fontSize: 12, fill: AXIS, fontWeight: 500 } as const;
 
 const TOOLTIP_STYLE = {
   borderRadius: 14,
-  border: '1px solid #ecdfd2',
-  boxShadow: '0 20px 48px -12px rgba(70,40,25,.28)',
+  border: '1px solid #e5e2d8',
+  boxShadow: '0 24px 56px -16px rgba(28,48,43,.26)',
   fontSize: 13,
   padding: '8px 12px',
 } as const;
-const TOOLTIP_LABEL_STYLE = { color: '#2b211c', fontWeight: 600 } as const;
-const TOOLTIP_ITEM_STYLE = { color: '#6e5f54' } as const;
+const TOOLTIP_LABEL_STYLE = { color: '#222826', fontWeight: 600 } as const;
+const TOOLTIP_ITEM_STYLE = { color: '#5c665f' } as const;
 
 function ChartEmpty({ label }: { label: string }) {
   return (
@@ -125,7 +125,7 @@ export function LessonsPerWeekChart({ data }: { data: LessonsPerWeekPoint[] }) {
         <defs>
           <linearGradient id="lessonsBar" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={ACCENT} stopOpacity={1} />
-            <stop offset="100%" stopColor="#f0b27a" stopOpacity={0.85} />
+            <stop offset="100%" stopColor="#d6ad62" stopOpacity={0.85} />
           </linearGradient>
         </defs>
         <CartesianGrid strokeDasharray="2 6" stroke={GRID} vertical={false} />
@@ -142,7 +142,7 @@ export function LessonsPerWeekChart({ data }: { data: LessonsPerWeekPoint[] }) {
           contentStyle={TOOLTIP_STYLE}
           labelStyle={TOOLTIP_LABEL_STYLE}
           itemStyle={TOOLTIP_ITEM_STYLE}
-          cursor={{ fill: '#fdefe6', radius: 6 }}
+          cursor={{ fill: '#e8f2ee', radius: 6 }}
           formatter={(value: number) => [value, 'שיעורים']}
           labelFormatter={(l) => `שבוע ${l}`}
         />
@@ -173,7 +173,7 @@ export function OccupancyTrendChart({ data }: { data: WeekdayDistributionPoint[]
           contentStyle={TOOLTIP_STYLE}
           labelStyle={TOOLTIP_LABEL_STYLE}
           itemStyle={TOOLTIP_ITEM_STYLE}
-          cursor={{ fill: '#fdefe6', radius: 6 }}
+          cursor={{ fill: '#e8f2ee', radius: 6 }}
           formatter={(value: number) => [value, 'שיעורים']}
           labelFormatter={(l) => `יום ${l}`}
         />
@@ -219,7 +219,7 @@ export function TopStudentsChart({ data }: { data: TopStudentPoint[] }) {
           contentStyle={TOOLTIP_STYLE}
           labelStyle={TOOLTIP_LABEL_STYLE}
           itemStyle={TOOLTIP_ITEM_STYLE}
-          cursor={{ fill: '#fdefe6', radius: 6 }}
+          cursor={{ fill: '#e8f2ee', radius: 6 }}
           formatter={(value: number, key) =>
             key === 'revenue' ? [formatShekels(value), 'הכנסה'] : [value, 'שיעורים']
           }

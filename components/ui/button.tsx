@@ -16,20 +16,20 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          'bg-primary text-primary-fg shadow-card hover:bg-primary-600 hover:-translate-y-px hover:shadow-pop',
-        // Warm gradient CTA — for hero / standout primary actions.
+          'bg-primary text-primary-fg shadow-[0_8px_20px_-8px_rgba(var(--shadow-tint),0.45),inset_0_1px_0_rgba(255,255,255,0.18)] hover:bg-primary-600 hover:-translate-y-px hover:shadow-pop active:translate-y-0',
+        // Calm teal gradient CTA — safe contrast (white text ≥4.5:1) for hero actions.
         gradient:
-          'bg-gradient-warm text-primary-fg shadow-card hover:-translate-y-px hover:shadow-pop hover:brightness-[1.03]',
+          'bg-gradient-cta text-primary-fg shadow-[0_8px_20px_-8px_rgba(var(--shadow-tint),0.45),inset_0_1px_0_rgba(255,255,255,0.18)] hover:-translate-y-px hover:shadow-pop hover:brightness-[1.05] active:translate-y-0',
         secondary:
-          'border border-line bg-surface text-ink shadow-soft hover:bg-primary-50 hover:border-primary-200',
+          'border border-line bg-surface text-ink shadow-soft hover:bg-primary-50 hover:border-primary-200 hover:-translate-y-px active:translate-y-0',
         ghost: 'text-ink hover:bg-primary-50',
-        danger: 'bg-danger text-white shadow-soft hover:brightness-95',
+        danger: 'bg-danger text-white shadow-[0_8px_20px_-8px_rgba(188,59,51,0.45),inset_0_1px_0_rgba(255,255,255,0.16)] hover:brightness-95 hover:-translate-y-px active:translate-y-0',
         // Back-compat aliases
         default:
-          'bg-primary text-primary-fg shadow-card hover:bg-primary-600 hover:-translate-y-px hover:shadow-pop',
+          'bg-primary text-primary-fg shadow-[0_8px_20px_-8px_rgba(var(--shadow-tint),0.45),inset_0_1px_0_rgba(255,255,255,0.18)] hover:bg-primary-600 hover:-translate-y-px hover:shadow-pop active:translate-y-0',
         outline:
-          'border border-line bg-surface text-ink shadow-soft hover:bg-primary-50 hover:border-primary-200',
-        destructive: 'bg-danger text-white shadow-soft hover:brightness-95',
+          'border border-line bg-surface text-ink shadow-soft hover:bg-primary-50 hover:border-primary-200 hover:-translate-y-px active:translate-y-0',
+        destructive: 'bg-danger text-white shadow-[0_8px_20px_-8px_rgba(188,59,51,0.45),inset_0_1px_0_rgba(255,255,255,0.16)] hover:brightness-95 hover:-translate-y-px active:translate-y-0',
       },
       size: {
         sm: 'h-9 rounded-lg px-3 text-sm',

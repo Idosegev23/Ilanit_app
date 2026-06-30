@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import type { CSSProperties } from 'react';
 import {
   Wallet,
   CalendarCheck,
@@ -61,14 +62,16 @@ const PERIOD_DAYS = 30;
 function KpiRow({ kpis }: { kpis: DashboardKpis }) {
   const totalLessons = Object.values(kpis.lessonsByStatus).reduce((s, n) => s + n, 0);
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+    <div className="stagger grid grid-cols-2 gap-4 lg:grid-cols-5">
       <StatCard
+        style={{ '--i': 0 } as CSSProperties}
         label="הכנסות (30 ימים)"
         value={formatShekels(kpis.revenue)}
         icon={Wallet}
         tone="primary"
       />
       <StatCard
+        style={{ '--i': 1 } as CSSProperties}
         label="שיעורים"
         value={totalLessons}
         hint={lessonsByStatusSummary(kpis.lessonsByStatus)}
@@ -76,18 +79,21 @@ function KpiRow({ kpis }: { kpis: DashboardKpis }) {
         tone="accent"
       />
       <StatCard
+        style={{ '--i': 2 } as CSSProperties}
         label="אחוז תפוסה"
         value={`${kpis.occupancyPct}%`}
         icon={Gauge}
         tone="success"
       />
       <StatCard
+        style={{ '--i': 3 } as CSSProperties}
         label="תלמידים פעילים"
         value={kpis.activeStudents}
         icon={Users}
         tone="primary"
       />
       <StatCard
+        style={{ '--i': 4 } as CSSProperties}
         label="חובות פתוחים"
         value={formatShekels(kpis.outstandingAmount)}
         hint={`${kpis.outstandingCount} תשלומים`}
@@ -350,32 +356,32 @@ export default async function DashboardPage() {
         />
         <span
           aria-hidden="true"
-          className="blob -bottom-20 end-[-30px] size-64 bg-[#9a5e12]/45"
+          className="blob -bottom-20 end-[-30px] size-64 bg-[#1f5249]/50"
         />
         {/*
-          Contrast scrim — the 135deg warm ramp brightens toward the bottom-end
-          (honey → peach) where bare white text drops to ~1.9–2.8:1 (AA fail).
-          The text column is anchored at the inline-start (visual right in RTL),
-          so we darken the start band + bottom with a deep warm-brown ink scrim.
-          After compositing, white body text clears ≥4.5:1 at any card width.
+          Contrast scrim — the 135deg calm ramp brightens toward the bottom-end
+          (sage → sand) where bare white text drops below AA. The text column is
+          anchored at the inline-start (visual right in RTL), so we darken the
+          start band + bottom with a deep-teal ink scrim. After compositing,
+          white body text clears ≥4.5:1 at any card width.
         */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_left,rgba(43,20,12,0.5)_0%,rgba(43,20,12,0.46)_50%,rgba(43,20,12,0.1)_82%,rgba(43,20,12,0)_100%)]"
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_left,rgba(18,48,43,0.52)_0%,rgba(18,48,43,0.48)_50%,rgba(18,48,43,0.1)_82%,rgba(18,48,43,0)_100%)]"
         />
         <CardContent className="relative z-10 flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
           <div className="flex items-start gap-4">
-            <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-primary-fg shadow-[0_8px_24px_-8px_rgba(43,20,12,0.5)] ring-1 ring-white/40 backdrop-blur-sm">
+            <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-primary-fg shadow-[0_8px_24px_-8px_rgba(18,48,43,0.5)] ring-1 ring-white/40 backdrop-blur-sm">
               <Send className="size-6" aria-hidden="true" />
             </span>
             <div className="max-w-md">
               <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary-fg/80">
                 פעולה מהירה
               </p>
-              <h2 className="text-2xl font-bold leading-tight drop-shadow-[0_1px_2px_rgba(43,20,12,0.3)]">
+              <h2 className="text-2xl font-bold leading-tight drop-shadow-[0_1px_2px_rgba(18,48,43,0.35)]">
                 שליחת לינק לתיאום
               </h2>
-              <p className="mt-2 text-sm font-medium leading-relaxed text-primary-fg drop-shadow-[0_1px_3px_rgba(43,20,12,0.45)]">
+              <p className="mt-2 text-sm font-medium leading-relaxed text-primary-fg drop-shadow-[0_1px_3px_rgba(18,48,43,0.5)]">
                 בחרי תלמיד/ה (או הוסיפי חדש/ה) ונשלח לו/ה לינק אישי לתיאום שיעור בוואטסאפ —
                 הדרך המהירה למלא את הלו&quot;ז.
               </p>

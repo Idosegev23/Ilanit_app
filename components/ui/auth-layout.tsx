@@ -110,10 +110,11 @@ export function AuthLayout({
             </p>
 
             {list.length > 0 && (
-              <ul className="mt-9 space-y-3.5">
-                {list.map(({ icon: Icon, label }) => (
+              <ul className="stagger mt-9 space-y-3.5">
+                {list.map(({ icon: Icon, label }, i) => (
                   <li
                     key={label}
+                    style={{ ['--i' as string]: i + 2 } as React.CSSProperties}
                     className="flex items-center gap-3 text-white"
                   >
                     <span

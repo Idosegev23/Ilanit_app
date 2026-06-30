@@ -325,9 +325,9 @@ export default async function GroupsPage() {
                    weekly group series (not gated by open-weeks). */}
                 <WeeklySlotsField />
 
-                {/* Solid terracotta (white-on-#b5471f = 5.4:1, AA) rather than
-                   the warm-gradient variant, whose honey/peach midpoint drops
-                   white text below AA on a wide button. */}
+                {/* Solid sage-teal (white-on-#2f7a6e = 5.08:1, AA). The default
+                   primary variant is always solid, so contrast holds at any
+                   button width. */}
                 <Button type="submit" size="lg" className="w-full">
                   <Plus className="size-4" aria-hidden="true" />
                   צרי קבוצה

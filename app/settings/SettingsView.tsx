@@ -181,8 +181,8 @@ export function SettingsView({
             </span>
           </div>
 
-          {/* Copy lives in its own dark-terracotta scrim → guaranteed contrast. */}
-          <div className="mt-5 max-w-2xl rounded-2xl bg-[#3a1709]/60 p-5 ring-1 ring-white/10 backdrop-blur-[2px]">
+          {/* Copy lives in its own deep-teal scrim → guaranteed contrast. */}
+          <div className="mt-5 max-w-2xl rounded-2xl bg-[#12302b]/60 p-5 ring-1 ring-white/10 backdrop-blur-[2px]">
             <p className="text-xs font-bold tracking-wide text-white">
               תצוגה מהירה של ההגדרות
             </p>

@@ -42,7 +42,7 @@ export function StatCard({
 }: StatCardProps) {
   const DeltaIcon = deltaDirection === 'down' ? ArrowDownRight : ArrowUpRight;
   return (
-    <Card className={cn('overflow-hidden', className)} {...props}>
+    <Card className={cn('hover-lift overflow-hidden', className)} {...props}>
       {/* tinted sheen at the top edge */}
       <div className="bg-gradient-tint px-5 pt-5">
         <div className="flex items-start justify-between gap-3">
@@ -50,7 +50,7 @@ export function StatCard({
           {Icon && (
             <span
               className={cn(
-                'flex size-10 shrink-0 items-center justify-center rounded-xl shadow-soft',
+                'flex size-10 shrink-0 items-center justify-center rounded-xl shadow-soft ring-1 ring-inset ring-white/60',
                 TONE_CHIP[tone],
               )}
             >

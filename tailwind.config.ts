@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 
-// Ilanit design system — "Warm & Personal" (Soft UI Evolution).
-// Palette = terracotta / peach / cream. Every color is exposed BOTH as a
+// Ilanit design system v3 — "Calm Sage & Sand" (restful Soft UI).
+// Palette = sage-teal / sand / cream. Every color is exposed BOTH as a
 // Tailwind color AND backed by a CSS var (--color-*) defined in globals.css,
 // so the theme can be retinted in one place.
 const config: Config = {
@@ -90,10 +90,13 @@ const config: Config = {
         full: '9999px',
       },
       boxShadow: {
-        // Warm-tinted, present-but-soft elevation scale (v2 = richer).
-        soft: '0 1px 2px rgba(70,40,25,0.05), 0 2px 8px rgba(70,40,25,0.07)',
-        card: '0 8px 28px -8px rgba(70,40,25,0.18)',
-        pop: '0 20px 48px -12px rgba(70,40,25,0.28)',
+        // Cool-neutral, airy elevation scale (v3). Tinted to the sage-teal ink
+        // (--shadow-tint) so shadows read as part of the palette, not muddy gray.
+        soft: '0 1px 2px rgba(var(--shadow-tint),0.04), 0 2px 8px rgba(var(--shadow-tint),0.06)',
+        card: '0 6px 24px -10px rgba(var(--shadow-tint),0.16), 0 2px 6px -3px rgba(var(--shadow-tint),0.08)',
+        pop: '0 24px 56px -16px rgba(var(--shadow-tint),0.26)',
+        // Inner top highlight for "lifted glass" surfaces (subtle edge refraction).
+        edge: 'inset 0 1px 0 rgba(255,255,255,0.6)',
       },
       fontSize: {
         // Warm type scale (px → rem). base = 16.
