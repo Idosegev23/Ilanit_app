@@ -1,13 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { UserCheck, AlertTriangle, Sparkles } from 'lucide-react';
+import { UserCheck, AlertTriangle, Sparkles, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { LessonDialog } from './LessonDialog';
 import { suggestStudentIdForTitle } from '@/lib/match-student';
-import { assignStudentToLesson } from './actions';
+import { assignStudentToLesson, createAndAssignStudentToLesson } from './actions';
 import type { StudentOption } from './data';
 
 // Inline assign dialog for a needs_match (calendar-imported) lesson. Shows the
@@ -74,6 +74,26 @@ export function AssignStudentDialog({
     onClose();
   }
 
+  // When no existing student matches the title, offer to create one from the
+  // title and assign it in a single step (reuses the find-or-create helper).
+  const createName = (eventTitle ?? '').trim();
+  const showCreate = !suggestedName && createName.length > 0;
+
+  async function createAndAssign() {
+    if (!lessonId || !createName) return;
+    setBusy(true);
+    setError(null);
+    const res = await createAndAssignStudentToLesson(lessonId, createName);
+    if (!res.ok) {
+      setError(res.error ?? 'שגיאה ביצירת ושיוך התלמיד/ה');
+      setBusy(false);
+      return;
+    }
+    setBusy(false);
+    onAssigned();
+    onClose();
+  }
+
   return (
     <LessonDialog
       open={open}
@@ -101,6 +121,24 @@ export function AssignStudentDialog({
               הצעה אוטומטית לפי הכותרת:{' '}
               <span className="font-semibold text-primary-600">{suggestedName}</span>
             </span>
+          </div>
+        )}
+
+        {showCreate && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-accent/30 bg-accent-soft/40 px-3 py-2.5 text-sm text-ink">
+            <span className="min-w-0 flex-1">
+              לא נמצא תלמיד/ה תואם/ת לכותרת. אפשר ליצור חדש/ה ולשייך מיד.
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              disabled={busy}
+              onClick={createAndAssign}
+            >
+              <UserPlus className="size-4" aria-hidden="true" />
+              צור ושייך: {createName}
+            </Button>
           </div>
         )}
 

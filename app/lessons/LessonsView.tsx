@@ -20,6 +20,7 @@ import {
   UserCheck,
   UserPlus,
   RefreshCw,
+  Wand2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ import {
   rejectLesson,
   cancelLesson,
   backfillImportedTitles,
+  aiResolveImports,
   type ActionResult,
 } from './actions';
 import { ManualLessonForm } from './ManualLessonForm';
@@ -278,6 +280,7 @@ export function LessonsView({
   const [formKey, setFormKey] = React.useState(0);
   const [assignTarget, setAssignTarget] = React.useState<LessonRow | null>(null);
   const [backfilling, setBackfilling] = React.useState(false);
+  const [aiResolving, setAiResolving] = React.useState(false);
   const [notice, setNotice] = React.useState<string | null>(null);
   const [, startTransition] = React.useTransition();
 
@@ -341,6 +344,27 @@ export function LessonsView({
     });
   }
 
+  function handleAiResolve() {
+    setError(null);
+    setNotice(null);
+    setAiResolving(true);
+    startTransition(async () => {
+      const res = await aiResolveImports();
+      if (!res.ok) {
+        setError(res.error ?? 'שגיאה בזיהוי האוטומטי');
+      } else {
+        const parts = [
+          `שויכו ${res.assigned ?? 0} שיעורים`,
+          `נוצרו ${res.createdStudents ?? 0} תלמידים`,
+          `דולגו ${res.skippedNonLesson ?? 0} אישיים`,
+        ];
+        if (res.errors && res.errors > 0) parts.push(`${res.errors} שגיאות`);
+        setNotice(parts.join(' · '));
+      }
+      setAiResolving(false);
+    });
+  }
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -349,6 +373,16 @@ export function LessonsView({
         subtitle="אישור, דחייה וביטול שיעורים — ויצירת שיעורים חד-פעמיים וסדרות חוזרות."
         actions={
           <>
+            <Button
+              variant="primary"
+              onClick={handleAiResolve}
+              loading={aiResolving}
+              disabled={aiResolving}
+              title="זיהוי אוטומטי של תלמיד ומקצוע מכותרת היומן, יצירת תלמידים חדשים ושיוך — באמצעות AI"
+            >
+              <Wand2 className="size-4" aria-hidden="true" />
+              זיהוי ושיוך אוטומטי (AI)
+            </Button>
             <Button
               variant="ghost"
               onClick={handleBackfill}

@@ -29,10 +29,26 @@ export interface CalendarScanResult {
   paymentPrompts: number;
   needsMatchCreated: number;
   groupSkipped: number;
+  /** Non-teaching events skipped (Preply / all-day markers / personal). */
+  nonTeachingSkipped: number;
 }
 
 function actionBase(): string {
   return env().NEXT_PUBLIC_APP_URL.replace(/\/+$/, '');
+}
+
+/**
+ * True for an event that is NOT one of Ilanit's teaching lessons and must never
+ * be imported:
+ *   - anything mentioning "Preply" (the family's OWN online lessons), OR
+ *   - an all-day event / marker (graduation parties, errands, day-markers).
+ * The Preply check is case-insensitive across summary/description/location.
+ */
+export function isNonTeachingEvent(event: EndedEvent): boolean {
+  if (event.allDay) return true;
+  const haystack = `${event.summary ?? ''} ${event.description ?? ''} ${event.location ?? ''}`.toLowerCase();
+  if (haystack.includes('preply')) return true;
+  return false;
 }
 
 /**
@@ -54,6 +70,7 @@ export async function runCalendarScan(
     paymentPrompts: 0,
     needsMatchCreated: 0,
     groupSkipped: 0,
+    nonTeachingSkipped: 0,
   };
 
   if (events.length === 0) return result;
@@ -73,6 +90,15 @@ export async function runCalendarScan(
     // Group sessions never trigger a payment prompt — mark + skip.
     if (event.type === 'group') {
       result.groupSkipped++;
+      continue;
+    }
+
+    // Non-teaching events (Preply online lessons of the family, all-day markers
+    // / personal events) are never imported — don't create a lesson, don't
+    // prompt. The only exception is an event already represented by a lesson
+    // row, which we still let fall through so an existing lesson isn't stranded.
+    if (isNonTeachingEvent(event) && !lessonByEventId.has(event.id)) {
+      result.nonTeachingSkipped++;
       continue;
     }
 

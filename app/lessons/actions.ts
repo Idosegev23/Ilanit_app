@@ -8,12 +8,18 @@ import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { lessons } from '@/db/schema';
 import { and, eq, isNull, isNotNull } from 'drizzle-orm';
-import { getStudent, findStudentByPhone, createStudent } from '@/lib/students';
+import {
+  getStudent,
+  findStudentByPhone,
+  createStudent,
+  findOrCreateStudentByName,
+} from '@/lib/students';
 import { getSettings } from '@/lib/settings';
 import { nowIL, parseILDateTime } from '@/lib/time';
 import { normalizePhoneIL } from '@/lib/utils';
 import { insertEvent, getEvent } from '@/lib/google-calendar';
 import { cancelOne, createSeries } from '@/lib/recurrence';
+import { parseLessonTitle } from '@/lib/ai/parse-lesson';
 
 export interface ActionResult {
   ok: boolean;
@@ -283,6 +289,51 @@ export async function assignStudentToLesson(
   }
 }
 
+/**
+ * Creates (or reuses, by normalized name) a student from a title/parsed name and
+ * binds a needs_match calendar-imported lesson to them. Owner-only. Powers the
+ * "צור ושייך" affordance in the single-lesson assign dialog when no existing
+ * student matches the title. Snapshots the price like assignStudentToLesson.
+ */
+export async function createAndAssignStudentToLesson(
+  lessonId: string,
+  name: string,
+): Promise<ActionResult> {
+  try {
+    if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+    if (!lessonId) return { ok: false, error: 'חסר מזהה שיעור' };
+    const cleaned = name.trim();
+    if (!cleaned) return { ok: false, error: 'יש להזין שם תלמיד/ה' };
+
+    const rows = await db.select().from(lessons).where(eq(lessons.id, lessonId)).limit(1);
+    const lesson = rows[0];
+    if (!lesson) return { ok: false, error: 'שיעור לא נמצא' };
+    if (!lesson.needsMatch) return { ok: false, error: 'השיעור כבר שויך' };
+
+    const settings = await getSettings();
+    const { student } = await findOrCreateStudentByName(cleaned);
+    const snapshotPrice =
+      lesson.price == null ? (student.defaultPrice ?? settings.defaultPrivatePrice ?? null) : null;
+
+    await db
+      .update(lessons)
+      .set({
+        studentId: student.id,
+        needsMatch: false,
+        ...(snapshotPrice != null ? { price: snapshotPrice } : {}),
+      })
+      .where(eq(lessons.id, lesson.id));
+
+    revalidatePath('/lessons');
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'שגיאה ביצירת ושיוך התלמיד/ה',
+    };
+  }
+}
+
 export interface BackfillResult extends ActionResult {
   updated?: number;
   scanned?: number;
@@ -329,6 +380,125 @@ export async function backfillImportedTitles(): Promise<BackfillResult> {
     return {
       ok: false,
       error: err instanceof Error ? err.message : 'שגיאה ברענון הכותרות',
+    };
+  }
+}
+
+export interface AiResolveResult extends ActionResult {
+  /** Lessons bound to a student. */
+  assigned?: number;
+  /** New students auto-created from a parsed title. */
+  createdStudents?: number;
+  /** Imports detected as personal/Preply and cancelled (not lessons). */
+  skippedNonLesson?: number;
+  /** Titles that failed to parse/assign (the batch continues regardless). */
+  errors?: number;
+}
+
+/** Small concurrency cap so the OpenAI rate limit isn't hammered. */
+const AI_RESOLVE_CONCURRENCY = 3;
+
+/**
+ * AI auto-resolution of calendar-imported lessons. Owner-only. For every
+ * `needs_match` `calendar_import` lesson that has a title (bookedByName) and no
+ * studentId yet:
+ *   - "preply" title → treat as not-a-lesson → cancel.
+ *   - else parse the title with OpenAI. isLesson===false → cancel.
+ *   - isLesson with a studentName → find-or-create the student by normalized
+ *     name (receiptLabel = subject when present), bind the lesson (studentId,
+ *     clear needs_match), snapshot the price from student.defaultPrice ??
+ *     settings.defaultPrivatePrice when the lesson price is null, and set
+ *     notes = subject.
+ * Each lesson is wrapped in try/catch so one failure never aborts the batch.
+ * Idempotent: cancelled / already-assigned lessons fall out of the query.
+ */
+export async function aiResolveImports(): Promise<AiResolveResult> {
+  try {
+    if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+
+    const pending = await db
+      .select()
+      .from(lessons)
+      .where(
+        and(
+          eq(lessons.source, 'calendar_import'),
+          eq(lessons.needsMatch, true),
+          isNull(lessons.studentId),
+          isNotNull(lessons.bookedByName),
+        ),
+      );
+
+    const settings = await getSettings();
+    const fallbackPrice = settings.defaultPrivatePrice ?? null;
+
+    let assigned = 0;
+    let createdStudents = 0;
+    let skippedNonLesson = 0;
+    let errors = 0;
+
+    async function resolveOne(lesson: (typeof pending)[number]): Promise<void> {
+      const title = (lesson.bookedByName ?? '').trim();
+      if (!title) return;
+      try {
+        // Preply events are the family's own — never Ilanit's lesson.
+        if (title.toLowerCase().includes('preply')) {
+          await db
+            .update(lessons)
+            .set({ status: 'cancelled', needsMatch: false, cancelledAt: nowIL() })
+            .where(eq(lessons.id, lesson.id));
+          skippedNonLesson++;
+          return;
+        }
+
+        const parsed = await parseLessonTitle(title);
+
+        if (!parsed.isLesson || !parsed.studentName) {
+          // Personal event (party/errand/conference) or no extractable student.
+          await db
+            .update(lessons)
+            .set({ status: 'cancelled', needsMatch: false, cancelledAt: nowIL() })
+            .where(eq(lessons.id, lesson.id));
+          skippedNonLesson++;
+          return;
+        }
+
+        const { student, created } = await findOrCreateStudentByName(
+          parsed.studentName,
+          parsed.subject,
+        );
+        if (created) createdStudents++;
+
+        const snapshotPrice =
+          lesson.price == null ? (student.defaultPrice ?? fallbackPrice) : lesson.price;
+
+        await db
+          .update(lessons)
+          .set({
+            studentId: student.id,
+            needsMatch: false,
+            notes: parsed.subject ?? null,
+            ...(lesson.price == null && snapshotPrice != null ? { price: snapshotPrice } : {}),
+          })
+          .where(eq(lessons.id, lesson.id));
+        assigned++;
+      } catch {
+        // One title's failure must not abort the batch.
+        errors++;
+      }
+    }
+
+    // Process in small sequential batches to respect OpenAI rate limits.
+    for (let i = 0; i < pending.length; i += AI_RESOLVE_CONCURRENCY) {
+      const slice = pending.slice(i, i + AI_RESOLVE_CONCURRENCY);
+      await Promise.all(slice.map(resolveOne));
+    }
+
+    revalidatePath('/lessons');
+    return { ok: true, assigned, createdStudents, skippedNonLesson, errors };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'שגיאה בזיהוי האוטומטי',
     };
   }
 }

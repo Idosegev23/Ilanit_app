@@ -46,6 +46,12 @@ export interface EndedEvent {
   type?: 'individual' | 'group';
   studentId?: string;
   groupId?: string;
+  /** Event location text (when set). Used to detect non-teaching events. */
+  location?: string;
+  /** Event description/notes (when set). Used to detect non-teaching events. */
+  description?: string;
+  /** True for an all-day event (date without a time-of-day) / a marker. */
+  allDay?: boolean;
 }
 
 export interface CalendarEventDetails {
@@ -264,6 +270,10 @@ export async function listEndedSince(
     const type =
       rawType === 'individual' || rawType === 'group' ? rawType : undefined;
 
+    // All-day events carry a `date` (no `dateTime`) on start/end — they are
+    // markers, not timed teaching lessons.
+    const allDay = Boolean(event.start?.date) && !event.start?.dateTime;
+
     out.push({
       id: event.id,
       summary: event.summary ?? '',
@@ -272,6 +282,9 @@ export async function listEndedSince(
       type,
       studentId: readPrivate(event, 'student_id'),
       groupId: readPrivate(event, 'group_id'),
+      location: event.location ?? undefined,
+      description: event.description ?? undefined,
+      allDay,
     });
   }
 

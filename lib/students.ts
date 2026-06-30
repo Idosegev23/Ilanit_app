@@ -46,6 +46,36 @@ export async function createStudent(data: NewStudent): Promise<Student> {
   return inserted[0];
 }
 
+/** Lower-cases, trims and collapses internal whitespace for name comparison. */
+function normalizeName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+/**
+ * Finds an existing student by normalized (case/space-insensitive) name, or
+ * creates one. Used by the AI calendar-import resolver, which only has a name
+ * (and optionally a subject for the receipt label) — no phone yet. Active
+ * students are matched first; on no match a new student is inserted with an
+ * empty phone (Ilanit fills contact details later from the student file).
+ */
+export async function findOrCreateStudentByName(
+  name: string,
+  receiptLabel?: string | null,
+): Promise<{ student: Student; created: boolean }> {
+  const cleaned = name.trim();
+  const target = normalizeName(cleaned);
+
+  const candidates = await db.select().from(students).where(eq(students.archived, false));
+  const existing = candidates.find((s) => normalizeName(s.name) === target);
+  if (existing) return { student: existing, created: false };
+
+  const data: NewStudent = { name: cleaned, phone: '' };
+  const label = receiptLabel?.trim();
+  if (label) data.receiptLabel = label;
+  const created = await createStudent(data);
+  return { student: created, created: true };
+}
+
 /** Returns a student by id, or null. */
 export async function getStudent(id: string): Promise<Student | null> {
   const rows = await db.select().from(students).where(eq(students.id, id)).limit(1);

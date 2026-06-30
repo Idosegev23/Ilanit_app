@@ -253,7 +253,68 @@ describe('runCalendarScan', () => {
   it('returns zeros when no events ended', async () => {
     listEndedSince.mockResolvedValue([]);
     const res = await runCalendarScan('2026-06-02T13:30:00Z', '2026-06-02T16:00:00Z');
-    expect(res).toEqual({ completed: 0, paymentPrompts: 0, needsMatchCreated: 0, groupSkipped: 0 });
+    expect(res).toEqual({
+      completed: 0,
+      paymentPrompts: 0,
+      needsMatchCreated: 0,
+      groupSkipped: 0,
+      nonTeachingSkipped: 0,
+    });
     expect(listEndedSince).toHaveBeenCalledWith('2026-06-02T13:30:00Z', '2026-06-02T16:00:00Z');
+  });
+
+  it('skips Preply events without importing or prompting', async () => {
+    listEndedSince.mockResolvedValue([
+      {
+        id: 'evt-preply',
+        summary: 'Preply lesson - Alexa F.',
+        endISO: '2026-06-02T15:00:00Z',
+        type: 'individual',
+      },
+    ]);
+    queueSelect('lessons', []); // no existing lesson references it
+
+    const res = await runCalendarScan('2026-06-02T13:30:00Z', '2026-06-02T16:00:00Z');
+
+    expect(res.nonTeachingSkipped).toBe(1);
+    expect(res.needsMatchCreated).toBe(0);
+    expect(inserts).toHaveLength(0);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it('skips Preply detected via the location field', async () => {
+    listEndedSince.mockResolvedValue([
+      {
+        id: 'evt-loc',
+        summary: 'שיעור אונליין',
+        location: 'Preply',
+        endISO: '2026-06-02T15:00:00Z',
+      },
+    ]);
+    queueSelect('lessons', []);
+
+    const res = await runCalendarScan('2026-06-02T13:30:00Z', '2026-06-02T16:00:00Z');
+
+    expect(res.nonTeachingSkipped).toBe(1);
+    expect(inserts).toHaveLength(0);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it('skips all-day marker events', async () => {
+    listEndedSince.mockResolvedValue([
+      {
+        id: 'evt-allday',
+        summary: 'מסיבת סיום כיתה ו',
+        endISO: '2026-06-02T15:00:00Z',
+        allDay: true,
+      },
+    ]);
+    queueSelect('lessons', []);
+
+    const res = await runCalendarScan('2026-06-02T13:30:00Z', '2026-06-02T16:00:00Z');
+
+    expect(res.nonTeachingSkipped).toBe(1);
+    expect(inserts).toHaveLength(0);
+    expect(notify).not.toHaveBeenCalled();
   });
 });

@@ -338,6 +338,9 @@ describe('listEndedSince', () => {
         type: 'individual',
         studentId: 's-1',
         groupId: undefined,
+        location: undefined,
+        description: undefined,
+        allDay: false,
       },
       {
         id: 'e2',
@@ -347,6 +350,9 @@ describe('listEndedSince', () => {
         type: 'group',
         studentId: undefined,
         groupId: 'g-9',
+        location: undefined,
+        description: undefined,
+        allDay: false,
       },
     ]);
   });
@@ -369,11 +375,18 @@ describe('listEndedSince', () => {
     expect(results.map((r) => r.id)).toEqual(['past']);
   });
 
-  it('handles all-day events (end.date) and missing extendedProperties', async () => {
+  it('handles all-day events (start/end date) and flags allDay + maps location/description', async () => {
     eventsList.mockResolvedValue({
       data: {
         items: [
-          { id: 'allday', summary: 'יום מיוחד', end: { date: '2026-06-03' } },
+          {
+            id: 'allday',
+            summary: 'יום מיוחד',
+            start: { date: '2026-06-03' },
+            end: { date: '2026-06-03' },
+            location: 'בית הספר',
+            description: 'אירוע',
+          },
         ],
       },
     });
@@ -388,6 +401,9 @@ describe('listEndedSince', () => {
     expect(results[0].type).toBeUndefined();
     expect(results[0].studentId).toBeUndefined();
     expect(results[0].groupId).toBeUndefined();
+    expect(results[0].allDay).toBe(true);
+    expect(results[0].location).toBe('בית הספר');
+    expect(results[0].description).toBe('אירוע');
   });
 
   it('skips cancelled events and events without an end time', async () => {

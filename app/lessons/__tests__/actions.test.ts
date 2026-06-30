@@ -9,6 +9,8 @@ const state = vi.hoisted(() => ({
   lesson: null as null | Record<string, unknown>,
   student: null as null | { id: string; defaultPrice: number | null },
   backfillRows: [] as Array<{ id: string; googleEventId: string | null }>,
+  // Pending calendar_import needs_match lessons for aiResolveImports.
+  pendingImports: [] as Array<Record<string, unknown>>,
   updates: [] as Array<{ id: unknown; patch: Record<string, unknown> }>,
 }));
 
@@ -16,6 +18,9 @@ const mocks = vi.hoisted(() => ({
   authed: { value: true },
   getStudent: vi.fn(async () => state.student),
   getEvent: vi.fn(async (_id: string) => null as null | { summary: string }),
+  parseLessonTitle: vi.fn(),
+  findOrCreateStudentByName: vi.fn(),
+  getSettings: vi.fn(async () => ({ defaultPrivatePrice: null as number | null })),
 }));
 
 vi.mock('@/auth', () => ({
@@ -28,31 +33,50 @@ vi.mock('drizzle-orm', () => ({
   isNull: (...a: unknown[]) => ({ __isNull: a }),
   isNotNull: (...a: unknown[]) => ({ __isNotNull: a }),
 }));
-vi.mock('@/db/schema', () => ({ lessons: { __t: 'lessons' } }));
+vi.mock('@/db/schema', () => ({
+  lessons: {
+    __t: 'lessons',
+    id: { __c: 'id' },
+    source: { __c: 'source' },
+    needsMatch: { __c: 'needsMatch' },
+    studentId: { __c: 'studentId' },
+    bookedByName: { __c: 'bookedByName' },
+    googleEventId: { __c: 'googleEventId' },
+  },
+}));
 vi.mock('@/lib/students', () => ({
   getStudent: mocks.getStudent,
   findStudentByPhone: vi.fn(),
   createStudent: vi.fn(),
+  findOrCreateStudentByName: (...a: unknown[]) => mocks.findOrCreateStudentByName(...a),
 }));
-vi.mock('@/lib/settings', () => ({ getSettings: vi.fn() }));
+vi.mock('@/lib/settings', () => ({ getSettings: () => mocks.getSettings() }));
 vi.mock('@/lib/recurrence', () => ({ cancelOne: vi.fn(), createSeries: vi.fn() }));
 vi.mock('@/lib/google-calendar', () => ({
   insertEvent: vi.fn(),
   getEvent: (id: string) => mocks.getEvent(id),
 }));
+vi.mock('@/lib/ai/parse-lesson', () => ({
+  parseLessonTitle: (...a: unknown[]) => mocks.parseLessonTitle(...a),
+}));
 
 vi.mock('@/lib/db', () => ({
   db: {
     select: () => {
-      // The two actions issue different selects:
-      //   assign:   select().from().where().limit()  → [lesson] | []
-      //   backfill: select().from().where()  (awaited) → backfillRows
-      // So .where() returns a thenable that ALSO exposes .limit().
+      // The actions issue different selects:
+      //   assign:      select().from().where().limit()  → [lesson] | []
+      //   backfill:    select().from().where()  (awaited) → backfillRows
+      //   aiResolve:   select().from().where()  (awaited) → pendingImports
+      // So .where() returns a thenable that ALSO exposes .limit(). The awaited
+      // path returns backfillRows ∪ pendingImports — each suite uses only one.
       const builder: Record<string, unknown> = {};
       builder.from = () => builder;
       builder.where = () => ({
         limit: () => Promise.resolve(state.lesson ? [state.lesson] : []),
-        then: (resolve: (v: unknown) => unknown) => resolve(state.backfillRows),
+        then: (resolve: (v: unknown) => unknown) =>
+          resolve(
+            state.pendingImports.length > 0 ? state.pendingImports : state.backfillRows,
+          ),
       });
       return builder;
     },
@@ -67,16 +91,25 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 
-import { assignStudentToLesson, backfillImportedTitles } from '@/app/lessons/actions';
+import {
+  assignStudentToLesson,
+  backfillImportedTitles,
+  aiResolveImports,
+} from '@/app/lessons/actions';
 
 beforeEach(() => {
   mocks.authed.value = true;
   mocks.getStudent.mockClear();
   mocks.getEvent.mockReset();
   mocks.getEvent.mockResolvedValue(null);
+  mocks.parseLessonTitle.mockReset();
+  mocks.findOrCreateStudentByName.mockReset();
+  mocks.getSettings.mockReset();
+  mocks.getSettings.mockResolvedValue({ defaultPrivatePrice: null });
   state.lesson = null;
   state.student = null;
   state.backfillRows = [];
+  state.pendingImports = [];
   state.updates = [];
 });
 
@@ -178,5 +211,135 @@ describe('backfillImportedTitles', () => {
     const res = await backfillImportedTitles();
     expect(res).toEqual({ ok: false, error: 'אין הרשאה' });
     expect(mocks.getEvent).not.toHaveBeenCalled();
+  });
+});
+
+describe('aiResolveImports', () => {
+  it('parses a title, creates a student, assigns the lesson and snapshots price', async () => {
+    state.pendingImports = [
+      { id: 'l1', bookedByName: 'אמילי אירנה אנגלית', price: null },
+    ];
+    mocks.parseLessonTitle.mockResolvedValue({
+      isLesson: true,
+      studentName: 'אמילי אירנה',
+      subject: 'אנגלית',
+    });
+    mocks.findOrCreateStudentByName.mockResolvedValue({
+      student: { id: 's-emily', defaultPrice: 150 },
+      created: true,
+    });
+
+    const res = await aiResolveImports();
+
+    expect(res).toMatchObject({
+      ok: true,
+      assigned: 1,
+      createdStudents: 1,
+      skippedNonLesson: 0,
+      errors: 0,
+    });
+    expect(mocks.findOrCreateStudentByName).toHaveBeenCalledWith('אמילי אירנה', 'אנגלית');
+    expect(state.updates).toHaveLength(1);
+    expect(state.updates[0].patch).toMatchObject({
+      studentId: 's-emily',
+      needsMatch: false,
+      notes: 'אנגלית',
+      price: 150, // snapshot from student.defaultPrice
+    });
+  });
+
+  it('falls back to settings.defaultPrivatePrice when the student has no default', async () => {
+    state.pendingImports = [{ id: 'l1', bookedByName: 'רפאל כיתה ד', price: null }];
+    mocks.getSettings.mockResolvedValue({ defaultPrivatePrice: 90 });
+    mocks.parseLessonTitle.mockResolvedValue({
+      isLesson: true,
+      studentName: 'רפאל',
+      subject: 'כיתה ד',
+    });
+    mocks.findOrCreateStudentByName.mockResolvedValue({
+      student: { id: 's-rafa', defaultPrice: null },
+      created: false,
+    });
+
+    const res = await aiResolveImports();
+
+    expect(res.assigned).toBe(1);
+    expect(res.createdStudents).toBe(0);
+    expect(state.updates[0].patch).toMatchObject({ studentId: 's-rafa', price: 90 });
+  });
+
+  it('does not overwrite an existing lesson price', async () => {
+    state.pendingImports = [{ id: 'l1', bookedByName: 'דנה מתמטיקה', price: 200 }];
+    mocks.parseLessonTitle.mockResolvedValue({
+      isLesson: true,
+      studentName: 'דנה',
+      subject: 'מתמטיקה',
+    });
+    mocks.findOrCreateStudentByName.mockResolvedValue({
+      student: { id: 's-dana', defaultPrice: 130 },
+      created: false,
+    });
+
+    await aiResolveImports();
+
+    expect(state.updates[0].patch).not.toHaveProperty('price');
+    expect(state.updates[0].patch).toMatchObject({ studentId: 's-dana', notes: 'מתמטיקה' });
+  });
+
+  it('cancels a Preply title without calling the parser', async () => {
+    state.pendingImports = [
+      { id: 'l1', bookedByName: 'Preply lesson - Alexa F.', price: null },
+    ];
+
+    const res = await aiResolveImports();
+
+    expect(res).toMatchObject({ ok: true, assigned: 0, skippedNonLesson: 1 });
+    expect(mocks.parseLessonTitle).not.toHaveBeenCalled();
+    expect(state.updates[0].patch).toMatchObject({ status: 'cancelled', needsMatch: false });
+  });
+
+  it('cancels a non-lesson (personal event) parsed by the AI', async () => {
+    state.pendingImports = [{ id: 'l1', bookedByName: 'מסיבת סיום', price: null }];
+    mocks.parseLessonTitle.mockResolvedValue({
+      isLesson: false,
+      studentName: null,
+      subject: null,
+    });
+
+    const res = await aiResolveImports();
+
+    expect(res).toMatchObject({ ok: true, assigned: 0, skippedNonLesson: 1, createdStudents: 0 });
+    expect(state.updates[0].patch).toMatchObject({ status: 'cancelled', needsMatch: false });
+    expect(mocks.findOrCreateStudentByName).not.toHaveBeenCalled();
+  });
+
+  it('counts an error and continues the batch when one title throws', async () => {
+    state.pendingImports = [
+      { id: 'l1', bookedByName: 'שובר', price: null },
+      { id: 'l2', bookedByName: 'נועה אנגלית', price: null },
+    ];
+    mocks.parseLessonTitle.mockImplementation(async (title: string) => {
+      if (title === 'שובר') throw new Error('rate limit');
+      return { isLesson: true, studentName: 'נועה', subject: 'אנגלית' };
+    });
+    mocks.findOrCreateStudentByName.mockResolvedValue({
+      student: { id: 's-noa', defaultPrice: 110 },
+      created: true,
+    });
+
+    const res = await aiResolveImports();
+
+    expect(res.errors).toBe(1);
+    expect(res.assigned).toBe(1);
+    expect(res.createdStudents).toBe(1);
+    // l2 still assigned despite l1's failure
+    expect(state.updates.some((u) => u.patch.studentId === 's-noa')).toBe(true);
+  });
+
+  it('rejects when not authenticated as owner', async () => {
+    mocks.authed.value = false;
+    const res = await aiResolveImports();
+    expect(res).toEqual({ ok: false, error: 'אין הרשאה' });
+    expect(mocks.parseLessonTitle).not.toHaveBeenCalled();
   });
 });
