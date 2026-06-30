@@ -1,0 +1,1 @@
+ALTER TABLE "groups" ADD COLUMN "max_members" integer DEFAULT 6 NOT NULL;

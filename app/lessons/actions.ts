@@ -114,6 +114,45 @@ export async function cancelLesson(lessonId: string): Promise<ActionResult> {
 }
 
 /**
+ * Marks a lesson as NOT a teaching lesson. Owner-only. Used for calendar-imported
+ * / needs-match rows that aren't real lessons (personal events, mis-imports): the
+ * data is kept, but the row stops holding a slot. Sets `status='cancelled'` and
+ * clears `needsMatch`, so it (a) no longer appears as "ממתין לשיוך", and (b) is
+ * excluded from availability — `lib/availability` busyIntervals only counts
+ * status in ['pending','confirmed'], so a cancelled lesson never blocks booking.
+ * No Google event is touched: imports either have no standalone event we own, and
+ * leaving the calendar entry as-is matches the existing AI "not-a-lesson" path.
+ */
+export async function markLessonNotALesson(lessonId: string): Promise<ActionResult> {
+  try {
+    if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+    if (!lessonId) return { ok: false, error: 'חסר מזהה שיעור' };
+
+    const rows = await db.select().from(lessons).where(eq(lessons.id, lessonId)).limit(1);
+    const lesson = rows[0];
+    if (!lesson) return { ok: false, error: 'שיעור לא נמצא' };
+
+    await db
+      .update(lessons)
+      .set({
+        status: 'cancelled',
+        needsMatch: false,
+        cancelledAt: nowIL(),
+        cancelReason: 'not_a_lesson',
+      })
+      .where(eq(lessons.id, lessonId));
+
+    revalidatePath('/lessons');
+    return { ok: true };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'שגיאה בסימון "לא שיעור"',
+    };
+  }
+}
+
+/**
  * Creates a single lesson manually. Matches/creates the student by phone,
  * snapshots price + location, inserts the Google event, and marks it confirmed.
  */

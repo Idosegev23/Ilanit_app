@@ -123,6 +123,10 @@ import {
   markBillingPaid,
   markBillingUnpaid,
   rosterFor,
+  capacityOf,
+  getGroupCapacity,
+  activeMemberCount,
+  DEFAULT_MAX_MEMBERS,
 } from '@/lib/groups';
 import { getStudent, findStudentByPhone, createStudent } from '@/lib/students';
 import { createReceipt } from '@/lib/morning';
@@ -167,6 +171,50 @@ describe('createGroup', () => {
       /non-negative/,
     );
   });
+
+  it('defaults maxMembers to 6 when omitted', async () => {
+    dbMock.insertResults.push([{ id: 'g1' }]);
+    await createGroup({ name: 'a', monthlyPrice: 100, location: 'x' });
+    expect(dbMock.inserted[0].values).toMatchObject({ maxMembers: DEFAULT_MAX_MEMBERS });
+    expect(DEFAULT_MAX_MEMBERS).toBe(6);
+  });
+
+  it('persists an explicit maxMembers and rejects an invalid one', async () => {
+    dbMock.insertResults.push([{ id: 'g1' }]);
+    await createGroup({ name: 'a', monthlyPrice: 100, location: 'x', maxMembers: 10 });
+    expect(dbMock.inserted[0].values).toMatchObject({ maxMembers: 10 });
+
+    await expect(
+      createGroup({ name: 'a', monthlyPrice: 100, location: 'x', maxMembers: 0 }),
+    ).rejects.toThrow(/positive integer/);
+  });
+});
+
+describe('group capacity', () => {
+  it('capacityOf computes remaining seats and atCapacity flag', () => {
+    expect(capacityOf(2, 6)).toEqual({ count: 2, max: 6, remaining: 4, atCapacity: false });
+    // full
+    expect(capacityOf(6, 6)).toEqual({ count: 6, max: 6, remaining: 0, atCapacity: true });
+    // over capacity (override) — remaining never goes negative
+    expect(capacityOf(7, 6)).toEqual({ count: 7, max: 6, remaining: 0, atCapacity: true });
+  });
+
+  it('activeMemberCount counts active membership rows', async () => {
+    dbMock.selectResults.push([{ id: 'm1' }, { id: 'm2' }, { id: 'm3' }]);
+    expect(await activeMemberCount('g1')).toBe(3);
+  });
+
+  it('getGroupCapacity joins the group cap with the active count', async () => {
+    dbMock.selectResults.push([{ id: 'g1', maxMembers: 6 }]); // getGroup
+    dbMock.selectResults.push([{ id: 'm1' }, { id: 'm2' }]); // activeMemberCount
+    const cap = await getGroupCapacity('g1');
+    expect(cap).toEqual({ count: 2, max: 6, remaining: 4, atCapacity: false });
+  });
+
+  it('getGroupCapacity throws when the group is missing', async () => {
+    dbMock.selectResults.push([]); // getGroup → none
+    await expect(getGroupCapacity('nope')).rejects.toThrow(/not found/);
+  });
 });
 
 describe('groupReceiptLabel', () => {
@@ -181,16 +229,30 @@ describe('createGroupWithSchedule', () => {
     const res = await createGroupWithSchedule({ name: 'g', monthlyPrice: 100, location: 'x' });
     expect(res.group.id).toBe('g1');
     expect(res.sessionsCreated).toBe(0);
+    expect(res.slotsCreated).toBe(0);
     expect(createSeries).not.toHaveBeenCalled();
   });
 
-  it('creates a kind=group weekly series when a schedule is given', async () => {
+  it('treats an empty schedule array as "no schedule"', async () => {
+    dbMock.insertResults.push([{ id: 'g1', name: 'g' }]);
+    const res = await createGroupWithSchedule(
+      { name: 'g', monthlyPrice: 100, location: 'x' },
+      [],
+    );
+    expect(res.sessionsCreated).toBe(0);
+    expect(res.slotsCreated).toBe(0);
+    expect(createSeries).not.toHaveBeenCalled();
+  });
+
+  it('creates a kind=group weekly series when a single schedule is given', async () => {
     dbMock.insertResults.push([{ id: 'g1', name: 'g' }]);
     const res = await createGroupWithSchedule(
       { name: 'g', monthlyPrice: 100, location: 'x' },
       { weekday: 2, startTime: '16:00', durationMin: 45 },
     );
     expect(res.sessionsCreated).toBe(4);
+    expect(res.slotsCreated).toBe(1);
+    expect(createSeries).toHaveBeenCalledTimes(1);
     expect(createSeries).toHaveBeenCalledWith(
       expect.objectContaining({
         kind: 'group',
@@ -200,6 +262,30 @@ describe('createGroupWithSchedule', () => {
         durationMin: 45,
         horizonDays: 14, // falls back to settings.bookingHorizonDays
       }),
+    );
+  });
+
+  it('creates ONE kind=group series PER slot for a multi-day weekly schedule', async () => {
+    dbMock.insertResults.push([{ id: 'g1', name: 'g' }]);
+    // A group meeting twice a week: Monday 17:00 AND Thursday 17:00.
+    const res = await createGroupWithSchedule(
+      { name: 'g', monthlyPrice: 100, location: 'x' },
+      [
+        { weekday: 1, startTime: '17:00', durationMin: 60 },
+        { weekday: 4, startTime: '17:00', durationMin: 60 },
+      ],
+    );
+    // createSeries mock returns { count: 4 } per call → 2 slots × 4 = 8 sessions.
+    expect(res.slotsCreated).toBe(2);
+    expect(res.sessionsCreated).toBe(8);
+    expect(createSeries).toHaveBeenCalledTimes(2);
+    expect(createSeries).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ kind: 'group', groupId: 'g1', weekday: 1, startTime: '17:00' }),
+    );
+    expect(createSeries).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ kind: 'group', groupId: 'g1', weekday: 4, startTime: '17:00' }),
     );
   });
 });

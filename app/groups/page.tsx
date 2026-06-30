@@ -8,15 +8,12 @@ import {
   Layers,
   ArrowLeft,
   Wallet,
-  CalendarClock,
-  Clock,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { PageHeader } from '@/components/ui/page-header';
@@ -24,17 +21,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { listGroups } from '@/lib/groups';
 import { formatShekels } from '@/lib/utils';
 import { createGroupAction } from '@/app/groups/actions';
-
-// Sunday→Saturday weekday options (0 = Sunday), matching lib/time + recurrence.
-const WEEKDAYS: Array<{ value: number; label: string }> = [
-  { value: 0, label: 'ראשון' },
-  { value: 1, label: 'שני' },
-  { value: 2, label: 'שלישי' },
-  { value: 3, label: 'רביעי' },
-  { value: 4, label: 'חמישי' },
-  { value: 5, label: 'שישי' },
-  { value: 6, label: 'שבת' },
-];
+import { WeeklySlotsField } from '@/app/groups/WeeklySlotsField';
 
 // Groups overview: list of learning groups + a form to create a new one.
 export const dynamic = 'force-dynamic';
@@ -170,13 +157,26 @@ export default async function GroupsPage() {
 
                         <div className="mt-auto grid grid-cols-2 gap-3 border-t border-line pt-4">
                           <div>
-                            <p className="text-xs text-muted">חברוֹת</p>
-                            <p className="mt-0.5 flex items-center gap-1.5 text-lg font-semibold text-ink">
+                            <p className="text-xs text-muted">רשומים</p>
+                            <p
+                              className={`mt-0.5 flex items-center gap-1.5 text-lg font-semibold ${
+                                g.memberCount >= g.maxMembers
+                                  ? 'text-accent-text'
+                                  : 'text-ink'
+                              }`}
+                            >
                               <Users
                                 className="size-4 shrink-0 text-primary-600"
                                 aria-hidden="true"
                               />
-                              <span className="tabular-nums">{g.memberCount}</span>
+                              <span className="tabular-nums">
+                                {g.memberCount}/{g.maxMembers}
+                              </span>
+                              {g.memberCount >= g.maxMembers && (
+                                <span className="rounded-full bg-accent-soft px-1.5 py-0.5 text-[0.65rem] font-medium text-accent-text">
+                                  מלא
+                                </span>
+                              )}
                             </p>
                           </div>
                           <div className="text-end">
@@ -287,6 +287,29 @@ export default async function GroupsPage() {
                     placeholder="כתובת המפגשים"
                   />
                 </div>
+
+                {/* Capacity cap — how many members the group can hold. */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="maxMembers" className="flex items-center gap-1.5">
+                    <Users className="size-4 text-primary-600" aria-hidden="true" />
+                    מקסימום משתתפים
+                  </Label>
+                  <Input
+                    id="maxMembers"
+                    name="maxMembers"
+                    type="number"
+                    inputMode="numeric"
+                    min="1"
+                    step="1"
+                    dir="ltr"
+                    defaultValue={6}
+                    className="text-end tabular-nums"
+                  />
+                  <p className="text-xs text-muted">
+                    כמה רשומים מותר בקבוצה. ברירת מחדל: 6. אפשר לחרוג בהמשך.
+                  </p>
+                </div>
+
                 <div className="space-y-1.5">
                   <Label htmlFor="description">תיאור (אופציונלי)</Label>
                   <Textarea
@@ -297,61 +320,10 @@ export default async function GroupsPage() {
                   />
                 </div>
 
-                {/* Optional weekly recurring session — for groups that already
-                   meet on a fixed weekly slot. When filled, the group's weekly
-                   sessions are generated automatically (not gated by open-weeks). */}
-                <fieldset className="space-y-3 rounded-2xl border border-line bg-cream/40 p-4">
-                  <legend className="flex items-center gap-1.5 px-1 text-sm font-medium text-ink">
-                    <CalendarClock
-                      className="size-4 text-primary-600"
-                      aria-hidden="true"
-                    />
-                    מפגש שבועי קבוע (אופציונלי)
-                  </legend>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="weekday">יום בשבוע</Label>
-                      <Select id="weekday" name="weekday" defaultValue="">
-                        <option value="">ללא</option>
-                        {WEEKDAYS.map((d) => (
-                          <option key={d.value} value={d.value}>
-                            {d.label}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="startTime" className="flex items-center gap-1.5">
-                        <Clock className="size-3.5 text-muted" aria-hidden="true" />
-                        שעת התחלה
-                      </Label>
-                      <Input
-                        id="startTime"
-                        name="startTime"
-                        type="time"
-                        dir="ltr"
-                        className="text-end tabular-nums"
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="durationMin">משך מפגש (דק׳)</Label>
-                    <Input
-                      id="durationMin"
-                      name="durationMin"
-                      type="number"
-                      inputMode="numeric"
-                      min="1"
-                      step="5"
-                      dir="ltr"
-                      className="text-end tabular-nums"
-                      placeholder="60"
-                    />
-                  </div>
-                  <p className="text-xs text-muted">
-                    אם תמלאי יום ושעה — ייווצרו מפגשים שבועיים קבועים ביומן אוטומטית.
-                  </p>
-                </fieldset>
+                {/* Optional weekly recurring sessions — a group can meet on
+                   SEVERAL weekday+time slots. Each filled row becomes its own
+                   weekly group series (not gated by open-weeks). */}
+                <WeeklySlotsField />
 
                 {/* Solid terracotta (white-on-#b5471f = 5.4:1, AA) rather than
                    the warm-gradient variant, whose honey/peach midpoint drops

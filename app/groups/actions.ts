@@ -28,26 +28,53 @@ function intShekels(form: FormData, key: string): number {
   return Math.round(n);
 }
 
-/**
- * Creates a group, optionally with a recurring weekly session schedule. When
- * the "מפגש שבועי קבוע" fields are filled, the group's weekly sessions are
- * auto-generated (`recurrences kind=group`, not gated by open-weeks).
- */
-export async function createGroupAction(form: FormData): Promise<void> {
-  const weekdayRaw = str(form, 'weekday');
-  const startTime = str(form, 'startTime');
-  const durationRaw = str(form, 'durationMin');
+/** Parses maxMembers (capacity) — defaults to 6 when blank/invalid. */
+function maxMembersOf(form: FormData): number {
+  const raw = str(form, 'maxMembers');
+  if (!raw) return 6;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) return 6;
+  return n;
+}
 
-  let schedule: WeeklyScheduleInput | undefined;
-  // A schedule is included only when both a weekday and a start time are given.
-  if (weekdayRaw !== '' && startTime) {
+/**
+ * Parses the (possibly repeated) weekly schedule slot fields into an array of
+ * `WeeklyScheduleInput`. The form posts parallel arrays `weekday[]`,
+ * `startTime[]`, `durationMin[]` (one entry per slot row). A slot is kept only
+ * when both its weekday and start time are present; blank rows are ignored so a
+ * group with no schedule (or only some rows filled) still works. Each kept slot
+ * becomes its own `recurrences kind=group` series (multi-day groups).
+ */
+function scheduleSlotsOf(form: FormData): WeeklyScheduleInput[] {
+  const weekdays = form.getAll('weekday').map((v) => String(v).trim());
+  const startTimes = form.getAll('startTime').map((v) => String(v).trim());
+  const durations = form.getAll('durationMin').map((v) => String(v).trim());
+
+  const slots: WeeklyScheduleInput[] = [];
+  const rowCount = Math.max(weekdays.length, startTimes.length, durations.length);
+  for (let i = 0; i < rowCount; i++) {
+    const weekdayRaw = weekdays[i] ?? '';
+    const startTime = startTimes[i] ?? '';
+    const durationRaw = durations[i] ?? '';
+    if (weekdayRaw === '' || !startTime) continue; // incomplete row — skip
     const weekday = Number(weekdayRaw);
     const durationMin = durationRaw ? Number(durationRaw) : 60;
     if (!Number.isInteger(durationMin) || durationMin <= 0) {
       throw new Error('invalid session duration');
     }
-    schedule = { weekday, startTime, durationMin };
+    slots.push({ weekday, startTime, durationMin });
   }
+  return slots;
+}
+
+/**
+ * Creates a group, optionally with one OR MORE recurring weekly session slots.
+ * Each filled "מפגש שבועי קבוע" row generates its own weekly group series
+ * (`recurrences kind=group`, not gated by open-weeks), so a group meeting twice
+ * a week lands both weekly series on the calendar.
+ */
+export async function createGroupAction(form: FormData): Promise<void> {
+  const slots = scheduleSlotsOf(form);
 
   const { group } = await createGroupWithSchedule(
     {
@@ -55,8 +82,9 @@ export async function createGroupAction(form: FormData): Promise<void> {
       monthlyPrice: intShekels(form, 'monthlyPrice'),
       location: str(form, 'location'),
       description: str(form, 'description') || undefined,
+      maxMembers: maxMembersOf(form),
     },
-    schedule,
+    slots,
   );
   revalidatePath('/groups');
   revalidatePath('/lessons');
@@ -70,6 +98,7 @@ export async function updateGroupAction(form: FormData): Promise<void> {
     monthlyPrice: intShekels(form, 'monthlyPrice'),
     location: str(form, 'location'),
     description: str(form, 'description') || null,
+    maxMembers: maxMembersOf(form),
     active: str(form, 'active') === 'on',
   });
   revalidatePath(`/groups/${id}`);

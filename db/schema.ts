@@ -46,6 +46,8 @@ export const groups = pgTable('groups', {
   monthlyPrice: integer('monthly_price').notNull(), // ₪
   location: text('location').notNull(),
   description: text('description'),
+  // Capacity cap on active members; UI warns (and allows override) past this.
+  maxMembers: integer('max_members').notNull().default(6),
   active: boolean('active').notNull().default(true),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

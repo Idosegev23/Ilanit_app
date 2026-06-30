@@ -30,6 +30,18 @@ export function groupReceiptLabel(groupName: string): string {
   return `חוג ${groupName.trim()}`;
 }
 
+/** Default member capacity for a new group when none is specified. */
+export const DEFAULT_MAX_MEMBERS = 6;
+
+/** Normalizes a maxMembers value to a positive integer, defaulting to 6. */
+function normalizeMaxMembers(value: number | undefined): number {
+  if (value === undefined) return DEFAULT_MAX_MEMBERS;
+  if (!Number.isInteger(value) || value < 1) {
+    throw new Error('maxMembers must be a positive integer');
+  }
+  return value;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Learning groups: group CRUD, membership management, prepaid monthly billing,
 // payment confirmation (→ Morning receipt + Blob PDF + WhatsApp attachment), and
@@ -68,11 +80,56 @@ export async function getGroup(id: string): Promise<Group | null> {
   return rows[0] ?? null;
 }
 
+/** Counts the active members currently enrolled in a group. */
+export async function activeMemberCount(groupId: string): Promise<number> {
+  const rows = await db
+    .select({ id: groupMembers.id })
+    .from(groupMembers)
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.active, true)));
+  return rows.length;
+}
+
+export interface GroupCapacity {
+  /** Active members currently enrolled. */
+  count: number;
+  /** Capacity cap (groups.maxMembers). */
+  max: number;
+  /** Free seats remaining (never negative). */
+  remaining: number;
+  /** True when active members ≥ max (no free seats). */
+  atCapacity: boolean;
+}
+
+/**
+ * Returns capacity info for a group: active member count vs. `maxMembers`.
+ * `atCapacity` is true once the active count reaches (or exceeds) the cap —
+ * callers (UI) use this to warn before enrolling beyond the limit. Enrolment is
+ * NOT hard-blocked; capacity is advisory and overridable per spec.
+ */
+export async function getGroupCapacity(groupId: string): Promise<GroupCapacity> {
+  const group = await getGroup(groupId);
+  if (!group) throw new Error(`group not found: ${groupId}`);
+  const count = await activeMemberCount(groupId);
+  return capacityOf(count, group.maxMembers);
+}
+
+/** Pure capacity computation from an active count and a max — easy to unit-test. */
+export function capacityOf(count: number, max: number): GroupCapacity {
+  return {
+    count,
+    max,
+    remaining: Math.max(0, max - count),
+    atCapacity: count >= max,
+  };
+}
+
 export interface CreateGroupInput {
   name: string;
   monthlyPrice: number; // ₪ integer
   location: string;
   description?: string;
+  /** Max active members allowed (capacity). Defaults to 6 when omitted. */
+  maxMembers?: number;
 }
 
 /** Creates a group. Monthly price is normalized to integer shekels. */
@@ -84,12 +141,14 @@ export async function createGroup(input: CreateGroupInput): Promise<Group> {
   if (!Number.isFinite(input.monthlyPrice) || input.monthlyPrice < 0) {
     throw new Error('monthlyPrice must be a non-negative integer (shekels)');
   }
+  const maxMembers = normalizeMaxMembers(input.maxMembers);
 
   const values: NewGroup = {
     name,
     monthlyPrice: Math.round(input.monthlyPrice),
     location,
     description: input.description?.trim() || null,
+    maxMembers,
   };
   const inserted = await db.insert(groups).values(values).returning();
   return inserted[0];
@@ -105,34 +164,50 @@ export interface WeeklyScheduleInput {
 
 export interface CreateGroupWithScheduleResult {
   group: Group;
-  /** Number of recurring group sessions generated (0 if no schedule given). */
+  /** Number of recurring group sessions generated across all slots (0 if none). */
   sessionsCreated: number;
+  /** Number of weekly schedule slots that produced a recurrence series. */
+  slotsCreated: number;
 }
 
 /**
- * Creates a group and — when a weekly schedule is supplied — its recurring
- * weekly group sessions (`recurrences kind=group`, auto-scheduled and NOT gated
- * by open-weeks). This is the prominent "קבוצה חדשה" onboarding for regulars who
- * already meet on a fixed weekly slot. The schedule is optional; without it this
- * behaves exactly like `createGroup`.
+ * Creates a group and — when one or more weekly schedule slots are supplied —
+ * its recurring weekly group sessions (`recurrences kind=group`, auto-scheduled
+ * and NOT gated by open-weeks). Each slot becomes its own recurrence series via
+ * one `createSeries` call, so a group meeting twice a week (e.g. Monday 17:00
+ * AND Thursday 17:00) lands BOTH weekly series on the calendar. This is the
+ * prominent "קבוצה חדשה" onboarding for regulars who already meet weekly.
+ *
+ * Accepts a single slot, an array of slots, or nothing. Without any slot this
+ * behaves exactly like `createGroup`. Empty arrays are treated as "no schedule".
  */
 export async function createGroupWithSchedule(
   input: CreateGroupInput,
-  schedule?: WeeklyScheduleInput,
+  schedule?: WeeklyScheduleInput | WeeklyScheduleInput[],
 ): Promise<CreateGroupWithScheduleResult> {
   const group = await createGroup(input);
-  if (!schedule) return { group, sessionsCreated: 0 };
+
+  const slots = (Array.isArray(schedule) ? schedule : schedule ? [schedule] : []).filter(
+    (s): s is WeeklyScheduleInput => Boolean(s),
+  );
+  if (slots.length === 0) return { group, sessionsCreated: 0, slotsCreated: 0 };
 
   const settings = await getSettings();
-  const { count } = await createSeries({
-    kind: 'group',
-    groupId: group.id,
-    weekday: schedule.weekday,
-    startTime: schedule.startTime,
-    durationMin: schedule.durationMin,
-    horizonDays: schedule.horizonDays ?? settings.bookingHorizonDays,
-  });
-  return { group, sessionsCreated: count };
+  let sessionsCreated = 0;
+  let slotsCreated = 0;
+  for (const slot of slots) {
+    const { count } = await createSeries({
+      kind: 'group',
+      groupId: group.id,
+      weekday: slot.weekday,
+      startTime: slot.startTime,
+      durationMin: slot.durationMin,
+      horizonDays: slot.horizonDays ?? settings.bookingHorizonDays,
+    });
+    sessionsCreated += count;
+    slotsCreated += 1;
+  }
+  return { group, sessionsCreated, slotsCreated };
 }
 
 export type UpdateGroupPatch = Partial<{
@@ -140,6 +215,7 @@ export type UpdateGroupPatch = Partial<{
   monthlyPrice: number;
   location: string;
   description: string | null;
+  maxMembers: number;
   active: boolean;
 }>;
 
@@ -164,6 +240,9 @@ export async function updateGroup(id: string, patch: UpdateGroupPatch): Promise<
   }
   if (patch.description !== undefined) {
     set.description = patch.description?.trim() || null;
+  }
+  if (patch.maxMembers !== undefined) {
+    set.maxMembers = normalizeMaxMembers(patch.maxMembers);
   }
   if (patch.active !== undefined) set.active = patch.active;
 

@@ -21,6 +21,7 @@ import {
   UserPlus,
   RefreshCw,
   Wand2,
+  CircleSlash,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ import {
   approveLesson,
   rejectLesson,
   cancelLesson,
+  markLessonNotALesson,
   backfillImportedTitles,
   aiResolveImports,
   type ActionResult,
@@ -133,6 +135,33 @@ function LessonItem({
   const TypeIcon = isGroup ? Users : User;
   const isActionable = lesson.status === 'pending' || lesson.status === 'confirmed';
   const dimmed = lesson.status === 'rejected' || lesson.status === 'cancelled';
+  // "Not a lesson" applies to any live row (it no longer holds a slot once
+  // cancelled), so offer it whenever the lesson isn't already cancelled/rejected.
+  const canMarkNotALesson = lesson.status !== 'cancelled' && lesson.status !== 'rejected';
+
+  function handleNotALesson() {
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm('לסמן שזה אינו שיעור? הוא יוצא מהיומן ויפסיק לתפוס שעה. ניתן לשחזר בהמשך.')
+    ) {
+      return;
+    }
+    onAction(lesson.id, () => markLessonNotALesson(lesson.id));
+  }
+
+  const NotALessonButton = canMarkNotALesson ? (
+    <Button
+      size="md"
+      variant="ghost"
+      disabled={busy}
+      className="text-muted hover:text-danger max-sm:flex-1"
+      onClick={handleNotALesson}
+      title="סימון שזה אינו שיעור — יפסיק לתפוס שעה ביומן"
+    >
+      <CircleSlash className="size-4" aria-hidden="true" />
+      סמן: לא שיעור
+    </Button>
+  ) : null;
 
   return (
     <div
@@ -203,7 +232,7 @@ function LessonItem({
       </div>
 
       {unassignedImport && (
-        <div className="flex shrink-0 gap-2 max-sm:w-full">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 max-sm:w-full">
           <Button
             size="md"
             variant="gradient"
@@ -213,11 +242,12 @@ function LessonItem({
             <UserCheck className="size-4" aria-hidden="true" />
             שייך תלמיד
           </Button>
+          {NotALessonButton}
         </div>
       )}
 
-      {!unassignedImport && isActionable && (
-        <div className="flex shrink-0 gap-2 max-sm:w-full">
+      {!unassignedImport && (isActionable || canMarkNotALesson) && (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 max-sm:w-full">
           {lesson.status === 'pending' && (
             <>
               <Button
@@ -253,6 +283,7 @@ function LessonItem({
               בטל
             </Button>
           )}
+          {NotALessonButton}
         </div>
       )}
     </div>

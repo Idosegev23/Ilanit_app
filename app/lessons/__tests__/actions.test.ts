@@ -95,6 +95,7 @@ import {
   assignStudentToLesson,
   backfillImportedTitles,
   aiResolveImports,
+  markLessonNotALesson,
 } from '@/app/lessons/actions';
 
 beforeEach(() => {
@@ -341,5 +342,45 @@ describe('aiResolveImports', () => {
     const res = await aiResolveImports();
     expect(res).toEqual({ ok: false, error: 'אין הרשאה' });
     expect(mocks.parseLessonTitle).not.toHaveBeenCalled();
+  });
+});
+
+describe('markLessonNotALesson', () => {
+  it('cancels the lesson and clears needs_match so it stops holding a slot', async () => {
+    state.lesson = { id: 'l1', needsMatch: true, status: 'pending' };
+
+    const res = await markLessonNotALesson('l1');
+
+    expect(res.ok).toBe(true);
+    expect(state.updates).toHaveLength(1);
+    // cancelled lessons are excluded from availability busyIntervals (only
+    // pending/confirmed count), so this frees the slot. needsMatch is cleared.
+    expect(state.updates[0].patch).toMatchObject({
+      status: 'cancelled',
+      needsMatch: false,
+      cancelReason: 'not_a_lesson',
+    });
+    expect(state.updates[0].patch).toHaveProperty('cancelledAt');
+  });
+
+  it('works for an already-confirmed lesson too', async () => {
+    state.lesson = { id: 'l2', needsMatch: false, status: 'confirmed' };
+    const res = await markLessonNotALesson('l2');
+    expect(res.ok).toBe(true);
+    expect(state.updates[0].patch).toMatchObject({ status: 'cancelled', needsMatch: false });
+  });
+
+  it('returns an error when the lesson is missing (no update issued)', async () => {
+    state.lesson = null;
+    const res = await markLessonNotALesson('nope');
+    expect(res).toEqual({ ok: false, error: 'שיעור לא נמצא' });
+    expect(state.updates).toHaveLength(0);
+  });
+
+  it('rejects when not authenticated as owner', async () => {
+    mocks.authed.value = false;
+    const res = await markLessonNotALesson('l1');
+    expect(res).toEqual({ ok: false, error: 'אין הרשאה' });
+    expect(state.updates).toHaveLength(0);
   });
 });
