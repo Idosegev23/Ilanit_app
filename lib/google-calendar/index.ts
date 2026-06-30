@@ -48,6 +48,13 @@ export interface EndedEvent {
   groupId?: string;
 }
 
+export interface CalendarEventDetails {
+  id: string;
+  summary: string;
+  startISO?: string;
+  endISO?: string;
+}
+
 /** Builds an authenticated Calendar v3 client using the current access token. */
 async function getCalendar(): Promise<calendar_v3.Calendar> {
   const e = env();
@@ -167,6 +174,35 @@ export async function cancelEvent(eventId: string): Promise<void> {
     });
   } catch (err) {
     if (isNotFoundError(err)) return;
+    throw err;
+  }
+}
+
+/**
+ * Fetches a single event's details by id. Returns null when the event no longer
+ * exists (404/410) so callers (the title backfill) can skip it safely. Times are
+ * the timed (dateTime) values when present, otherwise the all-day date.
+ */
+export async function getEvent(
+  eventId: string,
+): Promise<CalendarEventDetails | null> {
+  if (!eventId) return null;
+  const calendar = await getCalendar();
+  try {
+    const res = await calendar.events.get({
+      calendarId: calendarId(),
+      eventId,
+    });
+    const event = res.data;
+    if (!event.id) return null;
+    return {
+      id: event.id,
+      summary: event.summary ?? '',
+      startISO: event.start?.dateTime ?? event.start?.date ?? undefined,
+      endISO: endISOOf(event),
+    };
+  } catch (err) {
+    if (isNotFoundError(err)) return null;
     throw err;
   }
 }

@@ -17,6 +17,9 @@ import {
   CalendarClock,
   CalendarCheck2,
   StickyNote,
+  UserCheck,
+  UserPlus,
+  RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -30,13 +33,20 @@ import {
   approveLesson,
   rejectLesson,
   cancelLesson,
+  backfillImportedTitles,
   type ActionResult,
 } from './actions';
 import { ManualLessonForm } from './ManualLessonForm';
 import { RecurringForm } from './RecurringForm';
 import { LessonDialog } from './LessonDialog';
+import { AssignStudentDialog } from './AssignStudentDialog';
 import { WeekStrip } from './WeekStrip';
 import type { LessonRow, StudentOption, GroupOption } from './data';
+
+/** True for a calendar-imported lesson still awaiting a student assignment. */
+function isUnassignedImport(lesson: LessonRow): boolean {
+  return lesson.needsMatch && lesson.source === 'calendar_import';
+}
 
 const FILTERS: Array<{ key: 'all' | LessonRow['status']; label: string }> = [
   { key: 'all', label: 'הכל' },
@@ -101,16 +111,22 @@ function groupByDay(rows: LessonRow[]): DayGroup[] {
 function LessonItem({
   lesson,
   onAction,
+  onAssign,
   busy,
 }: {
   lesson: LessonRow;
   onAction: (id: string, fn: () => Promise<ActionResult>) => void;
+  onAssign: (lesson: LessonRow) => void;
   busy: boolean;
 }) {
   const isGroup = lesson.type === 'group_session';
+  const unassignedImport = isUnassignedImport(lesson);
+  // For an unassigned import the "name" is actually the raw calendar title.
   const title = isGroup
     ? `קבוצה: ${lesson.groupName ?? '—'}`
-    : `שיעור: ${lesson.studentName ?? '—'}`;
+    : unassignedImport
+      ? lesson.studentName ?? '(שיעור מהיומן — ללא כותרת)'
+      : `שיעור: ${lesson.studentName ?? '—'}`;
   const time = formatILDateTime(lesson.startsAt).slice(11); // HH:mm
   const TypeIcon = isGroup ? Users : User;
   const isActionable = lesson.status === 'pending' || lesson.status === 'confirmed';
@@ -121,25 +137,35 @@ function LessonItem({
       className={cn(
         'group relative flex flex-wrap items-center gap-4 rounded-2xl border border-line bg-surface p-4 shadow-soft transition-[transform,box-shadow,border-color] duration-200 ease-out motion-safe:hover:-translate-y-0.5 hover:border-primary-200 hover:shadow-card',
         dimmed && 'opacity-70',
+        unassignedImport && 'border-accent/40 bg-accent-soft/30 hover:border-accent/60',
       )}
     >
       {/* Type icon chip */}
       <span
         className={cn(
           'flex size-11 shrink-0 items-center justify-center rounded-xl shadow-soft',
-          isGroup
+          unassignedImport
             ? 'bg-accent-soft text-accent-text'
-            : 'bg-primary-soft text-primary-600',
+            : isGroup
+              ? 'bg-accent-soft text-accent-text'
+              : 'bg-primary-soft text-primary-600',
         )}
         aria-hidden="true"
       >
-        <TypeIcon className="size-5" />
+        {unassignedImport ? <UserPlus className="size-5" /> : <TypeIcon className="size-5" />}
       </span>
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="truncate font-semibold text-ink">{title}</span>
-          <StatusPill status={lessonStatusKind(lesson.status)} />
+          {unassignedImport ? (
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs font-semibold text-accent-text">
+              <AlertCircle className="size-3.5" aria-hidden="true" />
+              ממתין לשיוך תלמיד
+            </span>
+          ) : (
+            <StatusPill status={lessonStatusKind(lesson.status)} />
+          )}
           {lesson.recurrenceId && (
             <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-muted">
               <Repeat className="size-3.5" aria-hidden="true" />
@@ -174,7 +200,21 @@ function LessonItem({
         )}
       </div>
 
-      {isActionable && (
+      {unassignedImport && (
+        <div className="flex shrink-0 gap-2 max-sm:w-full">
+          <Button
+            size="md"
+            variant="gradient"
+            className="max-sm:flex-1"
+            onClick={() => onAssign(lesson)}
+          >
+            <UserCheck className="size-4" aria-hidden="true" />
+            שייך תלמיד
+          </Button>
+        </div>
+      )}
+
+      {!unassignedImport && isActionable && (
         <div className="flex shrink-0 gap-2 max-sm:w-full">
           {lesson.status === 'pending' && (
             <>
@@ -236,6 +276,9 @@ export function LessonsView({
   // Bumped each time the dialog opens so the forms remount and their
   // useActionState (and thus the success/error message) starts fresh.
   const [formKey, setFormKey] = React.useState(0);
+  const [assignTarget, setAssignTarget] = React.useState<LessonRow | null>(null);
+  const [backfilling, setBackfilling] = React.useState(false);
+  const [notice, setNotice] = React.useState<string | null>(null);
   const [, startTransition] = React.useTransition();
 
   // ── Summary counts (presentation only — derived from the same rows) ──
@@ -279,6 +322,25 @@ export function LessonsView({
     setDialogOpen(true);
   }
 
+  function handleBackfill() {
+    setError(null);
+    setNotice(null);
+    setBackfilling(true);
+    startTransition(async () => {
+      const res = await backfillImportedTitles();
+      if (!res.ok) {
+        setError(res.error ?? 'שגיאה ברענון הכותרות');
+      } else {
+        setNotice(
+          res.updated && res.updated > 0
+            ? `עודכנו ${res.updated} כותרות מהיומן`
+            : 'כל הכותרות כבר מעודכנות',
+        );
+      }
+      setBackfilling(false);
+    });
+  }
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -287,6 +349,15 @@ export function LessonsView({
         subtitle="אישור, דחייה וביטול שיעורים — ויצירת שיעורים חד-פעמיים וסדרות חוזרות."
         actions={
           <>
+            <Button
+              variant="ghost"
+              onClick={handleBackfill}
+              loading={backfilling}
+              title="משיכת כותרות לשיעורים שיובאו מהיומן ללא שם"
+            >
+              <RefreshCw className="size-4" aria-hidden="true" />
+              רענן כותרות מהיומן
+            </Button>
             <Button variant="secondary" onClick={() => openCreate('manual')}>
               <Plus className="size-4" aria-hidden="true" />
               שיעור חדש
@@ -370,6 +441,16 @@ export function LessonsView({
         >
           <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
           {error}
+        </div>
+      )}
+
+      {notice && (
+        <div
+          className="flex items-center gap-2 rounded-xl border border-success/30 bg-success-soft px-4 py-3 text-sm font-medium text-success"
+          role="status"
+        >
+          <Check className="size-4 shrink-0" aria-hidden="true" />
+          {notice}
         </div>
       )}
 
@@ -479,6 +560,7 @@ export function LessonsView({
                         key={lesson.id}
                         lesson={lesson}
                         onAction={handleAction}
+                        onAssign={setAssignTarget}
                         busy={busyId === lesson.id}
                       />
                     ))}
@@ -540,6 +622,15 @@ export function LessonsView({
           />
         )}
       </LessonDialog>
+
+      <AssignStudentDialog
+        open={assignTarget !== null}
+        onClose={() => setAssignTarget(null)}
+        lessonId={assignTarget?.id ?? null}
+        eventTitle={assignTarget?.studentName ?? null}
+        studentOptions={studentOptions}
+        onAssigned={() => setNotice('השיעור שויך בהצלחה')}
+      />
     </div>
   );
 }

@@ -184,10 +184,44 @@ describe('runCalendarScan', () => {
       source: 'calendar_import',
       needsMatch: true,
       googleEventId: 'evt-x',
+      // the event TITLE is stored so it renders in /lessons + powers the
+      // in-app assign suggestion
+      bookedByName: 'פגישה לא מזוהה',
+      notes: 'פגישה לא מזוהה',
     });
     expect(createActionToken).toHaveBeenCalledWith('assign_student', expect.any(String), expect.any(Number));
     const call = notify.mock.calls.find((c) => c[0] === 'assign_student_ilanit')!;
     expect((call[2] as Record<string, unknown>).actionUrl).toBe('https://ilanit.example/m/RAWTOKEN');
+  });
+
+  it('stores the event title on a matched-by-email imported lesson', async () => {
+    listEndedSince.mockResolvedValue([
+      {
+        id: 'evt-mail',
+        summary: 'שיעור פסנתר – נועה',
+        endISO: '2026-06-02T15:00:00Z',
+        type: 'individual',
+        attendeeEmail: 'noa@example.com',
+      },
+    ]);
+    queueSelect('lessons', []); // no existing lesson references evt-mail
+    // resolveStudentByEmail finds a student
+    queueSelect('students', [{ id: 's-noa' }]);
+    // completeAndPrompt: payment existence check (none) + student name lookup
+    queueSelect('payments', []);
+    queueSelect('students', [{ name: 'נועה' }]);
+
+    const res = await runCalendarScan('2026-06-02T13:30:00Z', '2026-06-02T16:00:00Z');
+
+    expect(res.completed).toBe(1);
+    const lessonInsert = inserts.find((i) => i.table === 'lessons');
+    expect(lessonInsert?.values).toMatchObject({
+      source: 'calendar_import',
+      needsMatch: false,
+      studentId: 's-noa',
+      bookedByName: 'שיעור פסנתר – נועה',
+      notes: 'שיעור פסנתר – נועה',
+    });
   });
 
   it('does not re-complete a lesson already marked completed (idempotent)', async () => {

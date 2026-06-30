@@ -136,6 +136,10 @@ async function createImportedLesson(
 ): Promise<Lesson> {
   const startsAt = deriveStart(event, settings.defaultDurationMin);
   const endsAt = new Date(event.endISO);
+  // Store the calendar event's TITLE so imported lessons render with their real
+  // name in /lessons (loadLessons falls back studentName ?? bookedByName) and so
+  // the in-app assign dialog can suggest a student by matching the title.
+  const title = event.summary?.trim() || null;
   const inserted = await db
     .insert(lessons)
     .values({
@@ -148,6 +152,8 @@ async function createImportedLesson(
       needsMatch,
       location: settings.locationAddress,
       googleEventId: event.id,
+      bookedByName: title,
+      notes: title,
     })
     .returning();
   return inserted[0];

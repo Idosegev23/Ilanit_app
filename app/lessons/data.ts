@@ -18,6 +18,8 @@ export interface LessonRow {
   groupName: string | null;
   recurrenceId: string | null;
   notes: string | null;
+  needsMatch: boolean;
+  source: string;
 }
 
 export interface StudentOption {
@@ -50,6 +52,8 @@ export async function loadLessons(): Promise<LessonRow[]> {
       recurrenceId: lessons.recurrenceId,
       notes: lessons.notes,
       bookedByName: lessons.bookedByName,
+      needsMatch: lessons.needsMatch,
+      source: lessons.source,
     })
     .from(lessons)
     .leftJoin(students, eq(lessons.studentId, students.id))
@@ -68,6 +72,8 @@ export async function loadLessons(): Promise<LessonRow[]> {
     groupName: r.groupName,
     recurrenceId: r.recurrenceId,
     notes: r.notes,
+    needsMatch: r.needsMatch,
+    source: r.source,
   }));
 }
 

@@ -19,9 +19,10 @@ const h = vi.hoisted(() => {
   const eventsInsert = vi.fn();
   const eventsDelete = vi.fn();
   const eventsList = vi.fn();
+  const eventsGet = vi.fn();
   const calendarFactory = vi.fn(() => ({
     freebusy: { query: freebusyQuery },
-    events: { insert: eventsInsert, delete: eventsDelete, list: eventsList },
+    events: { insert: eventsInsert, delete: eventsDelete, list: eventsList, get: eventsGet },
   }));
   const OAuth2 = vi.fn(() => oauth2ClientInstance);
   return {
@@ -31,6 +32,7 @@ const h = vi.hoisted(() => {
     eventsInsert,
     eventsDelete,
     eventsList,
+    eventsGet,
     calendarFactory,
     OAuth2,
   };
@@ -43,6 +45,7 @@ const {
   eventsInsert,
   eventsDelete,
   eventsList,
+  eventsGet,
   calendarFactory,
   OAuth2,
 } = h;
@@ -72,6 +75,7 @@ import {
   insertRecurringEvent,
   cancelEvent,
   listEndedSince,
+  getEvent,
 } from '@/lib/google-calendar';
 import { getGoogleAccessToken } from '@/lib/google-tokens';
 
@@ -81,6 +85,7 @@ beforeEach(() => {
   eventsInsert.mockReset();
   eventsDelete.mockReset();
   eventsList.mockReset();
+  eventsGet.mockReset();
   calendarFactory.mockClear();
   OAuth2.mockClear();
   (getGoogleAccessToken as unknown as ReturnType<typeof vi.fn>).mockClear();
@@ -411,5 +416,60 @@ describe('listEndedSince', () => {
       '2026-06-03T13:00:00+03:00',
     );
     expect(results).toEqual([]);
+  });
+});
+
+describe('getEvent', () => {
+  it('fetches a single event and returns its id, summary and times', async () => {
+    eventsGet.mockResolvedValue({
+      data: {
+        id: 'evt-9',
+        summary: 'שיעור – דנה',
+        start: { dateTime: '2026-06-10T13:00:00+03:00' },
+        end: { dateTime: '2026-06-10T14:00:00+03:00' },
+      },
+    });
+
+    const res = await getEvent('evt-9');
+
+    expect(eventsGet).toHaveBeenCalledTimes(1);
+    const arg = eventsGet.mock.calls[0][0];
+    expect(arg.calendarId).toBe('primary');
+    expect(arg.eventId).toBe('evt-9');
+    expect(res).toEqual({
+      id: 'evt-9',
+      summary: 'שיעור – דנה',
+      startISO: '2026-06-10T13:00:00+03:00',
+      endISO: '2026-06-10T14:00:00+03:00',
+    });
+  });
+
+  it('handles all-day events (start.date/end.date)', async () => {
+    eventsGet.mockResolvedValue({
+      data: { id: 'allday', summary: 'יום מיוחד', start: { date: '2026-06-03' }, end: { date: '2026-06-04' } },
+    });
+    const res = await getEvent('allday');
+    expect(res).toEqual({
+      id: 'allday',
+      summary: 'יום מיוחד',
+      startISO: '2026-06-03',
+      endISO: '2026-06-04',
+    });
+  });
+
+  it('returns null for an empty event id without calling the API', async () => {
+    const res = await getEvent('');
+    expect(res).toBeNull();
+    expect(eventsGet).not.toHaveBeenCalled();
+  });
+
+  it('returns null when the event is gone (404/410)', async () => {
+    eventsGet.mockRejectedValue({ code: 404, message: 'Not Found' });
+    await expect(getEvent('missing')).resolves.toBeNull();
+  });
+
+  it('propagates non-not-found errors', async () => {
+    eventsGet.mockRejectedValue({ code: 500, message: 'server error' });
+    await expect(getEvent('boom')).rejects.toBeTruthy();
   });
 });

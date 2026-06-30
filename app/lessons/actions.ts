@@ -4,19 +4,26 @@
 // Ilanit's authenticated area (middleware-protected) and revalidate the page.
 
 import { revalidatePath } from 'next/cache';
+import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { lessons } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull, isNotNull } from 'drizzle-orm';
 import { getStudent, findStudentByPhone, createStudent } from '@/lib/students';
 import { getSettings } from '@/lib/settings';
 import { nowIL, parseILDateTime } from '@/lib/time';
 import { normalizePhoneIL } from '@/lib/utils';
-import { insertEvent } from '@/lib/google-calendar';
+import { insertEvent, getEvent } from '@/lib/google-calendar';
 import { cancelOne, createSeries } from '@/lib/recurrence';
 
 export interface ActionResult {
   ok: boolean;
   error?: string;
+}
+
+/** True when the request is the authenticated owner (Ilanit). */
+async function requireOwner(): Promise<boolean> {
+  const session = await auth();
+  return Boolean(session?.user);
 }
 
 /**
@@ -231,5 +238,97 @@ export async function createRecurringSeries(formData: FormData): Promise<ActionR
     return { ok: true, error: res.count === 0 ? 'לא נוצרו שיעורים בטווח שנבחר' : undefined };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'שגיאה ביצירת הסדרה' };
+  }
+}
+
+/**
+ * In-app assign for a needs_match (calendar-imported) lesson. Owner-only. Binds
+ * the chosen student, clears needs_match, and snapshots the student's default
+ * price when the lesson had none — mirroring lib/availability/assign but driven
+ * from the /lessons screen rather than a single-use token link.
+ */
+export async function assignStudentToLesson(
+  lessonId: string,
+  studentId: string,
+): Promise<ActionResult> {
+  try {
+    if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+    if (!lessonId) return { ok: false, error: 'חסר מזהה שיעור' };
+    if (!studentId) return { ok: false, error: 'יש לבחור תלמיד/ה' };
+
+    const rows = await db.select().from(lessons).where(eq(lessons.id, lessonId)).limit(1);
+    const lesson = rows[0];
+    if (!lesson) return { ok: false, error: 'שיעור לא נמצא' };
+    if (!lesson.needsMatch) return { ok: false, error: 'השיעור כבר שויך' };
+
+    const student = await getStudent(studentId);
+    if (!student) return { ok: false, error: 'התלמיד/ה לא נמצא/ה' };
+
+    await db
+      .update(lessons)
+      .set({
+        studentId: student.id,
+        needsMatch: false,
+        // snapshot the student's default price only if the lesson had none
+        ...(lesson.price == null && student.defaultPrice != null
+          ? { price: student.defaultPrice }
+          : {}),
+      })
+      .where(eq(lessons.id, lesson.id));
+
+    revalidatePath('/lessons');
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'שגיאה בשיוך השיעור' };
+  }
+}
+
+export interface BackfillResult extends ActionResult {
+  updated?: number;
+  scanned?: number;
+}
+
+/**
+ * Backfills titles for already-imported calendar lessons. Owner-only. For every
+ * `calendar_import` lesson that has a googleEventId but no bookedByName, fetches
+ * the event and writes its summary into bookedByName/notes. Idempotent: titled
+ * lessons are filtered out at the query, and events that no longer exist (or
+ * have no title) are skipped.
+ */
+export async function backfillImportedTitles(): Promise<BackfillResult> {
+  try {
+    if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+
+    const rows = await db
+      .select({ id: lessons.id, googleEventId: lessons.googleEventId })
+      .from(lessons)
+      .where(
+        and(
+          eq(lessons.source, 'calendar_import'),
+          isNotNull(lessons.googleEventId),
+          isNull(lessons.bookedByName),
+        ),
+      );
+
+    let updated = 0;
+    for (const row of rows) {
+      if (!row.googleEventId) continue;
+      const event = await getEvent(row.googleEventId);
+      const title = event?.summary?.trim();
+      if (!title) continue; // event gone or untitled — leave as-is
+      await db
+        .update(lessons)
+        .set({ bookedByName: title, notes: title })
+        .where(eq(lessons.id, row.id));
+      updated++;
+    }
+
+    revalidatePath('/lessons');
+    return { ok: true, updated, scanned: rows.length };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'שגיאה ברענון הכותרות',
+    };
   }
 }
