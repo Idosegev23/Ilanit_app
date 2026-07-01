@@ -1,58 +1,38 @@
-import Link from 'next/link';
-import { Link2Off, MessageCircle, ShieldCheck } from 'lucide-react';
+import { CalendarCheck, Clock } from 'lucide-react';
 import { AuthLayout } from '@/components/ui/auth-layout';
-import { buttonVariants } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { TokenBookingForm } from '@/app/book/[token]/TokenBookingForm';
+import { loadBookingWeek } from '@/app/book/[token]/actions';
 
-// There is NO generic public booking page. Booking happens only through a
-// PERSONAL link (`/book/[token]`) that Ilanit sends to a student over WhatsApp.
-// Anyone landing on bare /book sees a warm, branded notice explaining this —
-// rendered inside the shared AuthLayout (gradient brand panel + elevated card),
-// never a lonely card floating in an empty void.
+// Permanent PUBLIC booking page. This is the fixed link Ilanit shares once and
+// reuses forever — no per-person token. Every visitor fills in their own details
+// (name + phone, optional parent + email) and picks one or more slots; each
+// request becomes a pending lesson for Ilanit to approve. The student is matched
+// or created by phone, so returning people are recognised.
 
+export const dynamic = 'force-dynamic';
 export const metadata = { title: 'קביעת שיעור — אילנית' };
 
-export default function BookLandingPage() {
+export default async function PublicBookPage() {
+  const initialWeek = await loadBookingWeek();
+
   return (
     <AuthLayout
+      wide
+      bare
       eyebrow="קביעת שיעור"
-      valueProp="קביעת שיעור מתבצעת דרך לינק אישי שאילנית שולחת בוואטסאפ."
-      highlights={[
-        'הלינק האישי שומר על המקום שלך',
-        'בחירת מועד פנוי בלחיצה',
-        'אישור מהיר בוואטסאפ',
+      headline="קביעת שיעור עם אילנית"
+      valueProp="ממלאים פרטים, בוחרים יום ומועד שמתאים לכם — והבקשה עוברת לאישור. אפשר לקבוע גם כמה שיעורים."
+      features={[
+        { icon: CalendarCheck, label: 'תצוגת שבוע מלא — בוחרים יום ומועד פנוי' },
+        { icon: Clock, label: 'אישור מהיר ותזכורת בוואטסאפ' },
       ]}
     >
-      <div className="flex flex-col items-center gap-7 text-center">
-        <span className="flex size-16 items-center justify-center rounded-2xl bg-primary-soft text-primary-600 shadow-soft ring-1 ring-primary-100">
-          <Link2Off className="size-8" aria-hidden="true" />
-        </span>
-
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-ink">צריך לינק אישי</h1>
-          <p className="mx-auto max-w-sm text-sm leading-relaxed text-muted">
-            כדי לקבוע שיעור, יש לפתוח את הלינק האישי שאילנית שולחת בוואטסאפ. אם
-            עדיין לא קיבלת לינק — אפשר לפנות אליה והיא תשלח לך אחד.
-          </p>
-        </div>
-
-        <div className="flex w-full items-center gap-3 rounded-2xl bg-gradient-tint p-4 text-start ring-1 ring-line">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface text-success shadow-soft">
-            <ShieldCheck className="size-5" aria-hidden="true" />
-          </span>
-          <p className="text-sm leading-relaxed text-muted">
-            הלינק האישי הוא פרטי — הוא שומר עבורך את המקום ואת פרטי השיעור.
-          </p>
-        </div>
-
-        <Link
-          href="/login"
-          className={cn(buttonVariants({ variant: 'secondary', size: 'lg' }), 'w-full')}
-        >
-          <MessageCircle className="size-5" aria-hidden="true" />
-          כניסה לאזור הניהול
-        </Link>
-      </div>
+      <TokenBookingForm
+        token=""
+        publicBooking
+        studentName=""
+        initialWeek={initialWeek}
+      />
     </AuthLayout>
   );
 }

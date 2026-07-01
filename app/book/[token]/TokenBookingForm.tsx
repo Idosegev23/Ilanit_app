@@ -50,6 +50,12 @@ interface TokenBookingFormProps {
    * before booking. False when Ilanit sent a known student their personal link.
    */
   needsDetails?: boolean;
+  /**
+   * Permanent PUBLIC booking page (bare /book, no token). The visitor fills their
+   * own details and books directly against the open endpoint; supports booking
+   * several lessons in a row without re-entering details.
+   */
+  publicBooking?: boolean;
   /** Pre-fills the email field when the student already has one on file. */
   studentEmail?: string | null;
   studentGuardianName?: string | null;
@@ -122,11 +128,15 @@ export function TokenBookingForm({
   token,
   studentName,
   needsDetails = false,
+  publicBooking = false,
   studentEmail,
   studentGuardianName,
   studentGuardianPhone,
   initialWeek,
 }: TokenBookingFormProps) {
+  // The visitor fills their own details for a public booking or a blank invite.
+  const requireDetails = needsDetails || publicBooking;
+
   const [view, setView] = React.useState<BookingWeekView>(initialWeek);
   const [navigating, setNavigating] = React.useState(false);
   const [navError, setNavError] = React.useState<string | null>(null);
@@ -136,19 +146,21 @@ export function TokenBookingForm({
   const [selectedDateISO, setSelectedDateISO] = React.useState<string | null>(null);
 
   const [phase, setPhase] = React.useState<Phase>('pick');
-  // Recipient-supplied details (generic invite). Prefilled from the student when
-  // known (existing student re-using a link), empty for a fresh invite.
-  const [name, setName] = React.useState(needsDetails ? '' : studentName);
+  // Visitor-supplied details. Prefilled from the student when known; empty for a
+  // public/fresh booking. `detailsLocked` flips true after the first successful
+  // booking so additional lessons don't re-ask for the same details.
+  const [name, setName] = React.useState(requireDetails ? '' : studentName);
   const [phone, setPhone] = React.useState('');
   const [guardianName, setGuardianName] = React.useState(studentGuardianName ?? '');
   const [guardianPhone, setGuardianPhone] = React.useState(studentGuardianPhone ?? '');
   const [email, setEmail] = React.useState(studentEmail ?? '');
   const [notes, setNotes] = React.useState('');
+  const [detailsLocked, setDetailsLocked] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
 
-  // Identity shown in the header: a fresh invite has no real name yet.
-  const headerName = needsDetails ? 'תיאום שיעור' : studentName;
+  // Identity shown in the header: public/fresh bookings have no real name yet.
+  const headerName = requireDetails ? (name.trim() || 'תיאום שיעור') : studentName;
 
   const { week, firstWeekStart, lastWeekStart } = view;
   const sundayISO = week.days[0]?.dateISO ?? week.weekStartISO;
@@ -197,7 +209,7 @@ export function TokenBookingForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!selected) return;
-    if (needsDetails) {
+    if (requireDetails) {
       if (!name.trim()) {
         setFormError('יש להזין שם מלא');
         return;
@@ -214,12 +226,13 @@ export function TokenBookingForm({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          token,
+          // Public page books against the open endpoint; a token page sends its token.
+          ...(publicBooking ? { open: true } : { token }),
           email: email.trim() || undefined,
           notes: notes.trim() || undefined,
           startISO: selected.startISO,
           endISO: selected.endISO,
-          ...(needsDetails
+          ...(requireDetails
             ? {
                 name: name.trim(),
                 phone: phone.trim(),
@@ -241,6 +254,8 @@ export function TokenBookingForm({
         }
         return;
       }
+      // Details are saved now — don't re-ask when booking further lessons.
+      if (requireDetails) setDetailsLocked(true);
       setPhase('done');
     } catch {
       setFormError('שגיאה בקביעת השיעור');
@@ -309,7 +324,7 @@ export function TokenBookingForm({
           </span>
           <div className="min-w-0">
             <p className="text-xs font-medium uppercase tracking-wide text-accent-text">
-              {needsDetails ? 'קביעת שיעור עם אילנית' : 'קביעת שיעור עבור'}
+              {requireDetails ? 'קביעת שיעור עם אילנית' : 'קביעת שיעור עבור'}
             </p>
             <p className="truncate text-lg font-bold text-ink">{headerName}</p>
           </div>
@@ -342,7 +357,7 @@ export function TokenBookingForm({
               </div>
             </div>
 
-            {needsDetails && (
+            {requireDetails && !detailsLocked && (
               <div className="space-y-4 rounded-2xl border border-line bg-surface-2/40 p-4">
                 <p className="text-sm font-semibold text-ink">הפרטים שלכם</p>
                 <div className="space-y-1.5">
@@ -402,6 +417,22 @@ export function TokenBookingForm({
                     אם מדובר בילד/ה — העדכונים יישלחו לטלפון ההורה.
                   </p>
                 </div>
+              </div>
+            )}
+
+            {requireDetails && detailsLocked && (
+              <div className="flex items-center gap-2 rounded-2xl border border-line bg-surface-2/40 px-4 py-3 text-sm">
+                <span className="font-semibold text-ink">{name}</span>
+                <span dir="ltr" className="tabular-nums text-muted">
+                  {phone}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setDetailsLocked(false)}
+                  className="ms-auto font-medium text-primary-600 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                >
+                  שינוי פרטים
+                </button>
               </div>
             )}
 

@@ -3,7 +3,7 @@ import { lessons, type Lesson, type Student } from '@/db/schema';
 import { and, eq, lt, gt, inArray } from 'drizzle-orm';
 import { env } from '@/lib/env';
 import { getSettings } from '@/lib/settings';
-import { getStudent, updateStudent, findStudentByPhone } from '@/lib/students';
+import { getStudent, updateStudent, findStudentByPhone, createStudent } from '@/lib/students';
 import { normalizePhoneIL } from '@/lib/utils';
 import { resolveBookingLink } from '@/lib/booking-links';
 import { isSlotBookable } from '@/lib/availability';
@@ -29,8 +29,14 @@ export interface BookRequest {
   /** Optional email — only when the student wants email/calendar reminders. */
   email?: string;
   notes?: string;
-  // ── Recipient-supplied details, for a GENERIC invite where the student is a
-  //    blank placeholder (no phone). Required (name + phone) in that case. ──
+  /**
+   * Permanent PUBLIC booking (no token): the visitor is identified purely by the
+   * details below. When set, name + phone are required and the student is matched
+   * by phone (or created).
+   */
+  open?: boolean;
+  // ── Visitor-supplied details. Required (name + phone) for a public/open
+  //    booking or a blank invite placeholder. ──
   name?: string;
   phone?: string;
   guardianName?: string;
@@ -72,11 +78,6 @@ async function hasConflict(start: Date, end: Date): Promise<boolean> {
  * dashboard.
  */
 export async function bookLesson(req: BookRequest): Promise<BookResult> {
-  const token = (req.token ?? '').trim();
-  if (!token) {
-    return { ok: false, error: 'invalid_token', message: 'הקישור אינו תקין' };
-  }
-
   const start = new Date(req.startISO);
   const end = new Date(req.endISO);
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
@@ -85,21 +86,30 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
 
   const email = req.email?.trim() ? req.email.trim() : undefined;
 
-  // 1) resolve the student from the personal booking-link token
-  const resolved = await resolveBookingLink(token);
-  if (!resolved) {
-    return { ok: false, error: 'invalid_token', message: 'הקישור אינו תקין או שפג תוקפו' };
+  // 1) Identify the student. Two entry points:
+  //    • personal / invite link → resolve the student from the token;
+  //    • permanent PUBLIC link (req.open) → no token; the student is identified
+  //      purely from the details the visitor fills in below.
+  let student: Student | null = null;
+  if (!req.open) {
+    const token = (req.token ?? '').trim();
+    if (!token) {
+      return { ok: false, error: 'invalid_token', message: 'הקישור אינו תקין' };
+    }
+    const resolved = await resolveBookingLink(token);
+    if (!resolved) {
+      return { ok: false, error: 'invalid_token', message: 'הקישור אינו תקין או שפג תוקפו' };
+    }
+    student = await getStudent(resolved.studentId);
+    if (!student) {
+      return { ok: false, error: 'invalid_token', message: 'התלמיד לא נמצא' };
+    }
   }
 
-  let student: Student | null = await getStudent(resolved.studentId);
-  if (!student) {
-    return { ok: false, error: 'invalid_token', message: 'התלמיד לא נמצא' };
-  }
-
-  // 1b) Generic invite: the placeholder student has no phone. The recipient
-  // supplies their own details now — persist them (or reuse an existing student
-  // that already owns the phone) before booking.
-  if (!student.phone) {
+  // 1b) When there is no student yet (public link) or the student is a blank
+  // invite placeholder (no phone), the visitor supplies their own details. Match
+  // an existing student by phone, else fill the placeholder, else create one.
+  if (!student || !student.phone) {
     const name = req.name?.trim();
     const phoneRaw = req.phone?.trim();
     if (!name) {
@@ -126,9 +136,9 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
 
     try {
       const existing = await findStudentByPhone(phone);
-      if (existing && existing.id !== student.id) {
-        // The phone already belongs to a real student — book under them and fill
-        // any blanks rather than creating a duplicate.
+      if (existing) {
+        // The phone already belongs to a real student — book under them, filling
+        // any blank fields rather than creating a duplicate.
         const patch: Partial<Omit<Student, 'id' | 'createdAt'>> = {};
         if (!existing.name?.trim()) patch.name = name;
         if (guardianName && !existing.guardianName) patch.guardianName = guardianName;
@@ -136,8 +146,18 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
         if (email && !existing.email) patch.email = email;
         student =
           Object.keys(patch).length > 0 ? await updateStudent(existing.id, patch) : existing;
-      } else {
+      } else if (student) {
+        // Invite placeholder → fill it in.
         student = await updateStudent(student.id, {
+          name,
+          phone,
+          guardianName,
+          guardianPhone,
+          ...(email ? { email } : {}),
+        });
+      } else {
+        // Public link, brand-new person → create the student.
+        student = await createStudent({
           name,
           phone,
           guardianName,
@@ -146,9 +166,13 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
         });
       }
     } catch (err) {
-      console.error('[booking] failed to save recipient details:', err);
+      console.error('[booking] failed to save booking details:', err);
       return { ok: false, error: 'internal', message: 'שגיאה בשמירת הפרטים' };
     }
+  }
+
+  if (!student) {
+    return { ok: false, error: 'internal', message: 'שגיאה בזיהוי התלמיד' };
   }
 
   // 2) re-check the slot (template + exceptions + freeBusy + lead-time + past)

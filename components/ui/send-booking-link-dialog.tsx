@@ -163,25 +163,27 @@ export function SendBookingLinkDialog({
     e.preventDefault();
     setError(null);
 
-    let body: Record<string, unknown>;
-    if (tab === 'existing') {
-      if (!selectedId) {
-        setError('יש לבחור תלמיד מהרשימה');
-        return;
-      }
-      body = { studentId: selectedId };
-    } else {
-      // Generic invite — no fields; the recipient fills everything themselves.
-      body = { newInvite: true };
+    // "הזמנה חדשה" → the PERMANENT public link. It never changes, so there's
+    // nothing to create — just surface it to copy / share (again and again).
+    if (tab === 'new') {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      setResultUrl(`${origin}/book`);
+      setResultSent(false);
+      setResultTab('new');
+      return;
     }
 
-    const submittedTab = tab;
+    // Existing student → mint + WhatsApp their personal link.
+    if (!selectedId) {
+      setError('יש לבחור תלמיד מהרשימה');
+      return;
+    }
     setSubmitting(true);
     try {
       const res = await fetch('/api/booking-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ studentId: selectedId }),
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
@@ -190,7 +192,7 @@ export function SendBookingLinkDialog({
       }
       setResultUrl(json.url as string);
       setResultSent(json.sent !== false);
-      setResultTab(submittedTab);
+      setResultTab('existing');
     } catch {
       setError('שגיאה ביצירת הקישור');
     } finally {
@@ -275,14 +277,14 @@ export function SendBookingLinkDialog({
                 <div className="space-y-1">
                   <h3 className="text-base font-semibold text-ink">
                     {isInviteResult
-                      ? 'קישור ההזמנה מוכן'
+                      ? 'הקישור הקבוע שלך'
                       : resultSent
                         ? 'הלינק נשלח בוואטסאפ!'
                         : 'הלינק נוצר'}
                   </h3>
                   <p className="text-sm text-muted">
                     {isInviteResult
-                      ? 'העתיקי ושלחי את הקישור למוזמן/ת — הוא/היא ימלא/תמלא את כל הפרטים ויבחר/תבחר מועד. הבקשה תגיע אלייך לאישור.'
+                      ? 'זה הקישור הקבוע — שמרי אותו ושלחי לכל מי שתרצי, שוב ושוב. כל אחד ממלא בעצמו את הפרטים, בוחר מועד (אפשר כמה שיעורים), והבקשה תגיע אלייך לאישור.'
                       : resultSent
                         ? 'התלמיד/ה קיבל/ה הודעת וואטסאפ עם הלינק האישי לתיאום.'
                         : 'שליחת הוואטסאפ נכשלה — אפשר להעתיק את הלינק ולשלוח ידנית.'}
@@ -441,7 +443,7 @@ export function SendBookingLinkDialog({
                   </div>
                 )}
 
-                {/* New invite — no fields; the recipient fills everything. */}
+                {/* Permanent public link — no fields; each visitor fills their own. */}
                 {tab === 'new' && (
                   <div className="space-y-3">
                     <div className="flex items-start gap-3 rounded-2xl border border-line bg-cream/40 p-4">
@@ -449,17 +451,17 @@ export function SendBookingLinkDialog({
                         <Link2 className="size-5" aria-hidden="true" />
                       </span>
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-ink">קישור הזמנה חדש</p>
+                        <p className="text-sm font-semibold text-ink">קישור קבוע לתיאום</p>
                         <p className="text-sm leading-relaxed text-muted">
-                          לא צריך למלא כלום. צרי קישור ושלחי אותו למי שתרצי (וואטסאפ / SMS) —
-                          התלמיד/ה פותח/ת אותו, ממלא/ת בעצמו/ה את כל הפרטים (שם, טלפון, פרטי הורה)
-                          ובוחר/ת מועד. הבקשה תגיע אלייך לאישור.
+                          זהו קישור אחד <span className="font-semibold text-ink">קבוע</span> — שלחי
+                          אותו לכל מי שתרצי, שוב ושוב. כל אחד פותח, ממלא בעצמו את הפרטים (שם, טלפון,
+                          פרטי הורה) ובוחר מועד — אפשר גם כמה שיעורים. הבקשה תגיע אלייך לאישור.
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 rounded-xl bg-primary-50 px-3.5 py-2.5 text-xs text-primary-600">
                       <Sparkles className="size-4 shrink-0" aria-hidden="true" />
-                      <span>אימייל הוא רשות — רק אם התלמיד/ה רוצה תזכורות גם במייל.</span>
+                      <span>אימייל הוא רשות — רק אם רוצים גם תזכורות במייל.</span>
                     </div>
                   </div>
                 )}
@@ -486,11 +488,9 @@ export function SendBookingLinkDialog({
                       <Send className="size-4" aria-hidden="true" />
                     )}
                     {submitting
-                      ? tab === 'new'
-                        ? 'יוצר…'
-                        : 'שולח…'
+                      ? 'שולח…'
                       : tab === 'new'
-                        ? 'צור קישור הזמנה'
+                        ? 'קבלת הקישור הקבוע'
                         : 'שליחת הלינק'}
                   </Button>
                 </div>
