@@ -50,6 +50,13 @@
       "when": 1782905042476,
       "tag": "0006_special_quasimodo",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782906552062,
+      "tag": "0007_equal_mindworm",
+      "breakpoints": true
     }
   ]
 }

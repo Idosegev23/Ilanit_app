@@ -266,9 +266,14 @@ export const messageLog = pgTable(
     relatedLessonId: uuid('related_lesson_id'),
     relatedId: text('related_id'),
     providerMsgId: text('provider_msg_id'),
-    status: text('status', { enum: ['pending', 'sent', 'failed'] })
+    status: text('status', {
+      enum: ['pending', 'sent', 'delivered', 'read', 'failed'],
+    })
       .notNull()
       .default('pending'),
+    // Chat direction: 'out' = we sent it, 'in' = a customer replied (received via
+    // the GreenAPI incoming webhook; only stored for known students).
+    direction: text('direction', { enum: ['out', 'in'] }).notNull().default('out'),
     error: text('error'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -277,6 +282,7 @@ export const messageLog = pgTable(
       t.template,
       t.relatedId,
     ),
+    contactIdx: index('message_log_contact_idx').on(t.toPhone, t.createdAt),
   }),
 );
 

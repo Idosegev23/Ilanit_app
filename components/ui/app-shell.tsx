@@ -8,7 +8,7 @@ import { Topbar } from './topbar';
 
 // Route prefixes that are STANDALONE (no app shell): public booking, login, and
 // the single-action token pages Ilanit opens from her phone.
-const STANDALONE_PREFIXES = ['/book', '/login', '/a/', '/m/', '/p/'];
+const STANDALONE_PREFIXES = ['/book', '/login', '/a/', '/m/', '/p/', '/c/'];
 
 function isStandalone(pathname: string): boolean {
   if (pathname === '/') return true; // root just redirects

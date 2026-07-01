@@ -45,6 +45,11 @@ const envSchema = z.object({
   // "paid?" prompts, overdue-debt reminders, monthly group billing). Default
   // OFF — Ilanit asked to silence all collection messages for now.
   COLLECTION_ENABLED: z.string().optional(),
+
+  // ── WhatsApp inbox webhook ──
+  // Optional shared secret. When set, the GreenAPI webhook URL must include
+  // ?token=<this> or the /api/whatsapp/webhook endpoint rejects the call.
+  WHATSAPP_WEBHOOK_SECRET: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -3,6 +3,7 @@ import {
   Users,
   CalendarDays,
   UsersRound,
+  MessageCircle,
   Settings,
   type LucideIcon,
 } from 'lucide-react';
@@ -25,6 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/students', label: 'תלמידים', icon: Users },
   { href: '/lessons', label: 'שיעורים', icon: CalendarDays },
   { href: '/groups', label: 'קבוצות', icon: UsersRound },
+  { href: '/messages', label: 'הודעות', icon: MessageCircle },
   { href: '/settings', label: 'הגדרות', icon: Settings },
 ];
 
@@ -40,6 +42,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/students', label: 'תלמידים', icon: Users },
       { href: '/lessons', label: 'שיעורים', icon: CalendarDays },
       { href: '/groups', label: 'קבוצות', icon: UsersRound },
+      { href: '/messages', label: 'הודעות', icon: MessageCircle },
     ],
   },
   {
