@@ -43,6 +43,13 @@
       "when": 1782848819565,
       "tag": "0005_jittery_machine_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1782905042476,
+      "tag": "0006_special_quasimodo",
+      "breakpoints": true
     }
   ]
 }

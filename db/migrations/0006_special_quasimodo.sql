@@ -1,0 +1,1 @@
+ALTER TABLE "settings" ALTER COLUMN "booking_horizon_days" SET DEFAULT 30;

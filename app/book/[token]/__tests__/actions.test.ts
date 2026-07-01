@@ -62,24 +62,15 @@ describe('loadBookingWeek horizon bounds', () => {
   });
 });
 
-describe('loadBookingWeek initial nearest-open-week resolution', () => {
-  it('lands on the current week when it is open', async () => {
-    openWeeksValue.list = [CURRENT_WEEK, NEXT_WEEK];
+describe('loadBookingWeek initial load', () => {
+  it('always lands on the current week (no manual open-weeks step)', async () => {
     const view = await loadBookingWeek();
     expect(view.week.weekStartISO).toBe(CURRENT_WEEK);
   });
 
-  it('jumps to the first open week when the current one is closed', async () => {
-    openWeeksValue.list = [NEXT_WEEK];
+  it('reports every Sunday in the horizon as bookable', async () => {
     const view = await loadBookingWeek();
-    expect(view.week.weekStartISO).toBe(NEXT_WEEK);
-  });
-
-  it('falls back to the current week when none are open', async () => {
-    openWeeksValue.list = [];
-    const view = await loadBookingWeek();
-    expect(view.week.weekStartISO).toBe(CURRENT_WEEK);
-    expect(view.week.isOpen).toBe(false);
+    expect(view.openWeeks).toEqual([CURRENT_WEEK, NEXT_WEEK, LAST_WEEK]);
   });
 });
 

@@ -219,7 +219,7 @@ export function SettingsView({
 
       <div className="space-y-8">
         <AvailabilityEditor windows={windows} onChange={handleWindows} />
-        <ExceptionsEditor exceptions={exceptions} onChange={handleExceptions} />
+        <ExceptionsEditor exceptions={exceptions} windows={windows} onChange={handleExceptions} />
         <BusinessSettingsForm values={settings} onChange={handleSettings} />
       </div>
 

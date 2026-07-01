@@ -84,31 +84,19 @@ beforeEach(() => {
   gate.open = true;
 });
 
-describe('availableSlots open-weeks gate', () => {
-  it('returns slots when the week is open', async () => {
-    gate.open = true;
+describe('availableSlots', () => {
+  it('returns slots from the weekly template', async () => {
     const slots = await availableSlots(DATE);
     expect(slots).toHaveLength(3);
   });
-
-  it('returns nothing when the week is NOT open (even with a template)', async () => {
-    gate.open = false;
-    expect(await availableSlots(DATE)).toEqual([]);
-  });
 });
 
-describe('isSlotBookable open-weeks gate', () => {
+describe('isSlotBookable', () => {
   const startISO = parseILDateTime(DATE, '09:00').toISOString();
   const endISO = parseILDateTime(DATE, '10:00').toISOString();
 
-  it('is true when the week is open and the slot is inside a template window', async () => {
-    gate.open = true;
+  it('is true when the slot is inside a template window', async () => {
     expect(await isSlotBookable(startISO, endISO)).toBe(true);
-  });
-
-  it('is false when the week is NOT open', async () => {
-    gate.open = false;
-    expect(await isSlotBookable(startISO, endISO)).toBe(false);
   });
 });
 
@@ -131,11 +119,9 @@ describe('availableWeek', () => {
     expect(monday?.slots).toHaveLength(3);
   });
 
-  it('reports isOpen=false and empty slots for every day when the week is closed', async () => {
-    gate.open = false;
+  it('always reports isOpen=true (booking is no longer gated by open-weeks)', async () => {
     const week = await availableWeek(WEEK_START);
-    expect(week.isOpen).toBe(false);
+    expect(week.isOpen).toBe(true);
     expect(week.days).toHaveLength(7);
-    expect(week.days.every((d) => d.slots.length === 0)).toBe(true);
   });
 });

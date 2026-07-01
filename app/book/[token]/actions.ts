@@ -12,7 +12,7 @@
 // disable navigation past the horizon edges).
 
 import { availableWeek, type AvailableWeek } from '@/lib/availability';
-import { listOpenWeeks, weekStartOf } from '@/lib/open-weeks';
+import { weekStartOf } from '@/lib/open-weeks';
 import { getSettings } from '@/lib/settings';
 import { nowIL, parseILDateTime } from '@/lib/time';
 
@@ -56,32 +56,35 @@ function clampWeek(weekStart: string, first: string, last: string): string {
   return weekStart;
 }
 
+/** Every Sunday `weekStart` in the inclusive [first, last] horizon (ascending). */
+function weekStartsInRange(first: string, last: string): string[] {
+  const out: string[] = [];
+  let cursor = first;
+  for (let i = 0; i < 60 && cursor <= last; i++) {
+    out.push(cursor);
+    const sunday = parseILDateTime(cursor, '00:00');
+    cursor = weekStartOf(new Date(sunday.getTime() + 7 * MS_PER_DAY));
+  }
+  return out;
+}
+
 /**
- * Loads the booking week view. When `weekStartISO` is omitted (the initial
- * load), we resolve the NEAREST open week within the horizon so the user lands
- * on a bookable week when one exists. Any input is normalized to its Sunday and
- * clamped to the booking horizon.
+ * Loads the booking week view. Availability is governed by the weekly template +
+ * per-date exceptions + lead-time — there is no manual open-weeks step, so every
+ * week within the horizon is bookable. The initial load lands on the current
+ * week; any input is normalized to its Sunday and clamped to the horizon.
  */
 export async function loadBookingWeek(weekStartISO?: string): Promise<BookingWeekView> {
   const { first, last } = await horizonBounds();
-  const openWeeks = await listOpenWeeks(first, last);
 
-  // Resolve the target Sunday.
-  let target: string;
-  if (weekStartISO && DATE_RE.test(weekStartISO)) {
-    target = clampWeek(
-      weekStartOf(parseILDateTime(weekStartISO, '00:00')),
-      first,
-      last,
-    );
-  } else {
-    // Initial load: prefer the nearest open week (the current one if open,
-    // otherwise the first open week in the horizon), else the current week.
-    target = openWeeks.length > 0 ? openWeeks[0] : first;
-    if (openWeeks.includes(first)) target = first;
-  }
+  const target =
+    weekStartISO && DATE_RE.test(weekStartISO)
+      ? clampWeek(weekStartOf(parseILDateTime(weekStartISO, '00:00')), first, last)
+      : first;
 
   const week = await availableWeek(target);
 
+  // All weeks in the horizon are open now (kept for the client's nav bounds).
+  const openWeeks = weekStartsInRange(first, last);
   return { week, openWeeks, firstWeekStart: first, lastWeekStart: last };
 }

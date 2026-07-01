@@ -8,22 +8,44 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
-import type { AvailabilityExceptionInput } from './types';
+import type { AvailabilityExceptionInput, AvailabilityWindow } from './types';
 
 interface ExceptionsEditorProps {
   exceptions: AvailabilityExceptionInput[];
+  /** The weekly template — used to PREFILL a special-hours date from its usual hours. */
+  windows: AvailabilityWindow[];
   onChange: (next: AvailabilityExceptionInput[]) => void;
 }
 
-// Date-level exceptions to the weekly template:
+// Date-level control on top of the weekly template:
 //   blocked → that whole date has no slots (holiday / sick day)
-//   custom  → that date uses a one-off start/end window instead of the template
-export function ExceptionsEditor({ exceptions, onChange }: ExceptionsEditorProps) {
-  function addException() {
-    const today = new Date().toISOString().slice(0, 10);
+//   custom  → that date uses special start/end hours instead of the template
+//             (prefilled from the day's usual hours, so "add hours to this date"
+//              starts from the template rather than a blank).
+export function ExceptionsEditor({ exceptions, windows, onChange }: ExceptionsEditorProps) {
+  // Weekday (0=Sun…6=Sat) of a yyyy-MM-dd string, TZ-safe.
+  function weekdayOf(dateStr: string): number {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1)).getUTCDay();
+  }
+  // The first active weekly-template window for a date's weekday, if any.
+  function templateWindowFor(dateStr: string): { startTime: string; endTime: string } | null {
+    const wd = weekdayOf(dateStr);
+    const w = windows.find((x) => x.active && x.weekday === wd);
+    return w ? { startTime: w.startTime, endTime: w.endTime } : null;
+  }
+
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  function addBlocked() {
+    onChange([...exceptions, { date: today(), type: 'blocked', startTime: null, endTime: null }]);
+  }
+  function addCustom() {
+    const d = today();
+    const tpl = templateWindowFor(d);
     onChange([
       ...exceptions,
-      { date: today, type: 'blocked', startTime: null, endTime: null },
+      { date: d, type: 'custom', startTime: tpl?.startTime ?? '16:00', endTime: tpl?.endTime ?? '20:00' },
     ]);
   }
 
@@ -37,8 +59,11 @@ export function ExceptionsEditor({ exceptions, onChange }: ExceptionsEditorProps
           next.startTime = null;
           next.endTime = null;
         } else if (next.type === 'custom') {
-          next.startTime = next.startTime ?? '16:00';
-          next.endTime = next.endTime ?? '20:00';
+          // Prefill from the day's template when empty (e.g. right after
+          // switching from "blocked") so adjusting one date is one edit.
+          const tpl = templateWindowFor(next.date);
+          next.startTime = next.startTime ?? tpl?.startTime ?? '16:00';
+          next.endTime = next.endTime ?? tpl?.endTime ?? '20:00';
         }
         return next;
       }),
@@ -56,24 +81,31 @@ export function ExceptionsEditor({ exceptions, onChange }: ExceptionsEditorProps
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary-600 shadow-soft">
             <CalendarX2 className="size-5" aria-hidden="true" />
           </span>
-          חריגים ותאריכים חסומים
+          זמינות לפי תאריך ספציפי
         </CardTitle>
         <CardDescription className="ps-[46px]">
-          חופשות וימי מחלה (חסום) או ימים עם שעות מיוחדות (מותאם). חריג גובר על
-          התבנית השבועית באותו תאריך.
+          שליטה ליום מסוים: לחסום תאריך (חופש/מחלה), או להגדיר לו שעות מיוחדות —
+          למשל להוסיף/לשנות שעות רק לתאריך אחד (שבוע חזרות וכד׳). גובר על התבנית
+          השבועית באותו יום.
         </CardDescription>
       </CardHeader>
       <CardBody className="space-y-3">
         {exceptions.length === 0 ? (
           <EmptyState
             icon={CalendarX2}
-            title="אין חריגים"
-            description="הוסיפי תאריך חסום או יום עם שעות מיוחדות."
+            title="אין הגדרות לפי תאריך"
+            description="הוסיפי שעות מיוחדות ליום מסוים, או חסמי תאריך."
             action={
-              <Button type="button" size="md" variant="secondary" onClick={addException}>
-                <Plus className="size-4" aria-hidden="true" />
-                הוסף חריג
-              </Button>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button type="button" size="md" variant="secondary" onClick={addCustom}>
+                  <Plus className="size-4" aria-hidden="true" />
+                  שעות מיוחדות לתאריך
+                </Button>
+                <Button type="button" size="md" variant="ghost" onClick={addBlocked}>
+                  <CalendarX2 className="size-4" aria-hidden="true" />
+                  חסימת תאריך
+                </Button>
+              </div>
             }
           />
         ) : (
@@ -183,10 +215,16 @@ export function ExceptionsEditor({ exceptions, onChange }: ExceptionsEditorProps
                 );
               })}
             </ul>
-            <Button type="button" size="md" variant="secondary" onClick={addException}>
-              <Plus className="size-4" aria-hidden="true" />
-              הוסף חריג
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="md" variant="secondary" onClick={addCustom}>
+                <Plus className="size-4" aria-hidden="true" />
+                שעות מיוחדות לתאריך
+              </Button>
+              <Button type="button" size="md" variant="ghost" onClick={addBlocked}>
+                <CalendarX2 className="size-4" aria-hidden="true" />
+                חסימת תאריך
+              </Button>
+            </div>
           </>
         )}
       </CardBody>

@@ -212,7 +212,7 @@ export const settings = pgTable('settings', {
   defaultDurationMin: integer('default_duration_min').notNull().default(60),
   bufferMin: integer('buffer_min').notNull().default(15),
   leadTimeMin: integer('lead_time_min').notNull().default(120),
-  bookingHorizonDays: integer('booking_horizon_days').notNull().default(14),
+  bookingHorizonDays: integer('booking_horizon_days').notNull().default(30),
   reminderTime: time('reminder_time').notNull().default('18:00'),
   paymentFollowupDelayH: integer('payment_followup_delay_h').notNull().default(24),
   groupBillingDay: integer('group_billing_day').notNull().default(1),

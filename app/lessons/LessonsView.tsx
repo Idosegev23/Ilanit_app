@@ -28,7 +28,6 @@ import { ManualLessonForm } from './ManualLessonForm';
 import { RecurringForm } from './RecurringForm';
 import { LessonDialog } from './LessonDialog';
 import { AssignStudentDialog } from './AssignStudentDialog';
-import { WeekStrip } from './WeekStrip';
 import { CalendarShell } from './calendar/CalendarShell';
 import type { LessonRow, StudentOption, GroupOption } from './data';
 
@@ -197,10 +196,6 @@ export function LessonsView({
           tone="primary"
         />
       </div>
-
-      {/* Owner-only WEEK STRIP — open/close upcoming weeks for personal-link
-          booking. Weeks start CLOSED; Ilanit opens them manually. */}
-      <WeekStrip />
 
       {/* Prominent primary action for existing regulars — a recurring weekly
           series (individual). Auto-scheduled, NOT gated by open-weeks. */}
