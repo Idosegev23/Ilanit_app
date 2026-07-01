@@ -2,51 +2,94 @@
 
 import { auth } from '@/auth';
 import { revalidatePath } from 'next/cache';
+import { toILTimeStr } from '@/lib/time';
 import {
-  blockFullDay,
+  dayAvailability,
+  monthDayStates,
+  type DaySlot,
+  type DayState,
+} from '@/lib/availability';
+import {
   blockTimeWindow,
+  unblockTimeWindow,
+  blockFullDay,
+  unblockFullDay,
+  isFullDayBlocked,
   blockDateRange,
-  removeBlock,
-  listBlocks,
-  blocksHorizon,
-  type BlockRow,
 } from '@/lib/availability/blocks';
 
-// Owner-only server actions for the /availability manager (the "everything open,
-// mark what to close" blocks). Availability = operating hours − blocks − lessons.
+// Owner-only server actions for the interactive availability calendar. Everything
+// within operating hours is open unless closed here; lessons are taken auto.
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const TIME_RE = /^\d{2}:\d{2}$/;
-
-export interface BlockActionResult {
-  ok: boolean;
-  error?: string;
-  count?: number;
-}
 
 async function requireOwner(): Promise<boolean> {
   const session = await auth();
   return Boolean(session?.user);
 }
 
-export async function fetchBlocks(): Promise<BlockRow[]> {
-  if (!(await requireOwner())) return [];
-  const { from, to } = blocksHorizon();
-  return listBlocks(from, to);
+function hhmm(iso: string): string {
+  return toILTimeStr(new Date(iso)).slice(0, 5);
 }
 
-export async function blockFullDayAction(date: string): Promise<BlockActionResult> {
+export interface ActionResult {
+  ok: boolean;
+  error?: string;
+  count?: number;
+}
+
+/** Per-day open/taken counts for the month grid range [fromISO, toISO]. */
+export async function loadMonth(
+  fromISO: string,
+  toISO: string,
+): Promise<Record<string, DayState>> {
+  if (!(await requireOwner())) return {};
+  if (!DATE_RE.test(fromISO) || !DATE_RE.test(toISO)) return {};
+  return monthDayStates(fromISO, toISO);
+}
+
+/** One day's slots (with state) + whether the whole day is blocked. */
+export async function loadDay(
+  dateISO: string,
+): Promise<{ slots: DaySlot[]; fullDayBlocked: boolean }> {
+  if (!(await requireOwner())) return { slots: [], fullDayBlocked: false };
+  if (!DATE_RE.test(dateISO)) return { slots: [], fullDayBlocked: false };
+  const [slots, fullDayBlocked] = await Promise.all([
+    dayAvailability(dateISO),
+    isFullDayBlocked(dateISO),
+  ]);
+  return { slots, fullDayBlocked };
+}
+
+/** Toggles a single slot open/closed (close=true → block that window). */
+export async function toggleSlot(
+  dateISO: string,
+  startISO: string,
+  endISO: string,
+  close: boolean,
+): Promise<ActionResult> {
   if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
-  if (!DATE_RE.test(date)) return { ok: false, error: 'תאריך לא תקין' };
-  await blockFullDay(date);
+  if (!DATE_RE.test(dateISO)) return { ok: false, error: 'תאריך לא תקין' };
+  const start = hhmm(startISO);
+  const end = hhmm(endISO);
+  if (close) await blockTimeWindow(dateISO, start, end);
+  else await unblockTimeWindow(dateISO, start, end);
   revalidatePath('/availability');
   return { ok: true };
 }
 
-export async function blockRangeAction(
-  fromDate: string,
-  toDate: string,
-): Promise<BlockActionResult> {
+/** Closes or re-opens a whole day. */
+export async function toggleDay(dateISO: string, close: boolean): Promise<ActionResult> {
+  if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+  if (!DATE_RE.test(dateISO)) return { ok: false, error: 'תאריך לא תקין' };
+  if (close) await blockFullDay(dateISO);
+  else await unblockFullDay(dateISO);
+  revalidatePath('/availability');
+  return { ok: true };
+}
+
+/** Closes a full date range (vacation). */
+export async function closeRange(fromDate: string, toDate: string): Promise<ActionResult> {
   if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
   if (!DATE_RE.test(fromDate) || !DATE_RE.test(toDate)) {
     return { ok: false, error: 'תאריכים לא תקינים' };
@@ -55,25 +98,4 @@ export async function blockRangeAction(
   const count = await blockDateRange(fromDate, toDate);
   revalidatePath('/availability');
   return { ok: true, count };
-}
-
-export async function blockWindowAction(
-  date: string,
-  start: string,
-  end: string,
-): Promise<BlockActionResult> {
-  if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
-  if (!DATE_RE.test(date)) return { ok: false, error: 'תאריך לא תקין' };
-  if (!TIME_RE.test(start) || !TIME_RE.test(end)) return { ok: false, error: 'שעות לא תקינות' };
-  if (end <= start) return { ok: false, error: 'שעת הסיום לפני ההתחלה' };
-  await blockTimeWindow(date, start, end);
-  revalidatePath('/availability');
-  return { ok: true };
-}
-
-export async function removeBlockAction(id: string): Promise<BlockActionResult> {
-  if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
-  await removeBlock(id);
-  revalidatePath('/availability');
-  return { ok: true };
 }

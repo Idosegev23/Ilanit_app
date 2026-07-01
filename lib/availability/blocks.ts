@@ -107,3 +107,44 @@ export async function listBlocks(fromISO: string, toISO: string): Promise<BlockR
 export async function removeBlock(id: string): Promise<void> {
   await db.delete(availabilityExceptions).where(eq(availabilityExceptions.id, id));
 }
+
+/** Opens a slot: removes any block_window on the date overlapping [start,end]. */
+export async function unblockTimeWindow(
+  dateISO: string,
+  startTime: string,
+  endTime: string,
+): Promise<void> {
+  const rows = await db
+    .select()
+    .from(availabilityExceptions)
+    .where(
+      and(eq(availabilityExceptions.date, dateISO), eq(availabilityExceptions.type, 'block_window')),
+    );
+  const overlapping = rows
+    .filter((r) => {
+      const bs = hhmm(r.startTime) ?? '';
+      const be = hhmm(r.endTime) ?? '';
+      return bs < endTime && startTime < be; // time strings compare lexically
+    })
+    .map((r) => r.id);
+  if (overlapping.length) {
+    await db.delete(availabilityExceptions).where(inArray(availabilityExceptions.id, overlapping));
+  }
+}
+
+/** Re-opens a full day: removes its full-day 'blocked' exception(s). */
+export async function unblockFullDay(dateISO: string): Promise<void> {
+  await db
+    .delete(availabilityExceptions)
+    .where(and(eq(availabilityExceptions.date, dateISO), eq(availabilityExceptions.type, 'blocked')));
+}
+
+/** Whether a date has a full-day block. */
+export async function isFullDayBlocked(dateISO: string): Promise<boolean> {
+  const rows = await db
+    .select({ id: availabilityExceptions.id })
+    .from(availabilityExceptions)
+    .where(and(eq(availabilityExceptions.date, dateISO), eq(availabilityExceptions.type, 'blocked')))
+    .limit(1);
+  return rows.length > 0;
+}

@@ -1,6 +1,6 @@
 import { db } from '@/lib/db';
 import { availability, availabilityExceptions, lessons } from '@/db/schema';
-import { and, eq, gte, inArray, lt, ne } from 'drizzle-orm';
+import { and, eq, gte, inArray, lt, lte, ne } from 'drizzle-orm';
 import { getSettings } from '@/lib/settings';
 import { freeBusy } from '@/lib/google-calendar';
 import {
@@ -361,4 +361,170 @@ export async function isSlotBookable(startISO: string, endISO: string): Promise<
     (b) => start.getTime() < b.endMs && b.startMs < end.getTime(),
   );
   return !collides;
+}
+
+// ── Availability EDITOR data (the interactive month/day calendar) ─────────────
+
+export type SlotState = 'open' | 'closed' | 'taken' | 'past';
+
+export interface DaySlot {
+  startISO: string;
+  endISO: string;
+  label: string; // "08:00–09:00"
+  state: SlotState;
+}
+
+/** Slices operating windows into (duration) slots stepped by duration+buffer. */
+function sliceWindows(
+  windows: TimeWindow[],
+  dayStartMs: number,
+  durationMin: number,
+  bufferMin: number,
+): { startMs: number; endMs: number }[] {
+  const step = durationMin + Math.max(0, bufferMin);
+  const out: { startMs: number; endMs: number }[] = [];
+  for (const w of windows) {
+    for (let m = w.startMin; m + durationMin <= w.endMin; m += step) {
+      out.push({
+        startMs: dayStartMs + m * MS_PER_MIN,
+        endMs: dayStartMs + (m + durationMin) * MS_PER_MIN,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Every operating-hours slot for a date with its state — backs the availability
+ * editor. open = bookable; closed = a block; taken = a lesson/calendar event;
+ * past = elapsed. Includes calendar freeBusy for accuracy.
+ */
+export async function dayAvailability(dateISO: string): Promise<DaySlot[]> {
+  const dayStart = parseILDateTime(dateISO, '00:00');
+  const dayStartMs = dayStart.getTime();
+  const dayEndMs = dayStartMs + 24 * 60 * MS_PER_MIN;
+  const settings = await getSettings();
+  const weekday = ilWeekday(dayStart);
+
+  const [templateWindows, exception, busy, timeBlocks] = await Promise.all([
+    templateWindowsFor(weekday),
+    exceptionFor(dateISO),
+    busyIntervals(dayStartMs, dayEndMs),
+    timeBlocksFor(dateISO, dayStartMs),
+  ]);
+
+  const fullDayBlocked = exception?.type === 'blocked';
+  const windows = exception?.type === 'custom' ? exception.windows : templateWindows;
+  const earliestMs = nowIL().getTime() + settings.leadTimeMin * MS_PER_MIN;
+
+  return sliceWindows(windows, dayStartMs, settings.defaultDurationMin, settings.bufferMin).map(
+    ({ startMs, endMs }) => {
+      let state: SlotState;
+      if (busy.some((b) => startMs < b.endMs && b.startMs < endMs)) state = 'taken';
+      else if (fullDayBlocked || timeBlocks.some((b) => startMs < b.endMs && b.startMs < endMs))
+        state = 'closed';
+      else if (startMs < earliestMs) state = 'past';
+      else state = 'open';
+      return {
+        startISO: new Date(startMs).toISOString(),
+        endISO: new Date(endMs).toISOString(),
+        label: slotLabel(startMs, endMs),
+        state,
+      };
+    },
+  );
+}
+
+export interface DayState {
+  date: string; // yyyy-MM-dd
+  open: number;
+  total: number;
+  taken: number;
+  fullyClosed: boolean;
+}
+
+/**
+ * Per-day open/taken/total slot counts across [fromISO, toISO] — backs the month
+ * grid. Batched (template + lessons + blocks in 3 queries); calendar freeBusy is
+ * omitted here for speed (the day panel adds it when a day is opened).
+ */
+export async function monthDayStates(
+  fromISO: string,
+  toISO: string,
+): Promise<Record<string, DayState>> {
+  const settings = await getSettings();
+  const durationMin = settings.defaultDurationMin;
+  const bufferMin = settings.bufferMin;
+
+  const tmplRows = await db.select().from(availability).where(eq(availability.active, true));
+  const byWeekday = new Map<number, TimeWindow[]>();
+  for (const r of tmplRows) {
+    const arr = byWeekday.get(r.weekday) ?? [];
+    arr.push({ startMin: timeStrToMinutes(r.startTime), endMin: timeStrToMinutes(r.endTime) });
+    byWeekday.set(r.weekday, arr);
+  }
+
+  const fromDay = parseILDateTime(fromISO, '00:00');
+  const toDay = parseILDateTime(toISO, '00:00');
+
+  const lessonRows = await db
+    .select({ startsAt: lessons.startsAt, endsAt: lessons.endsAt })
+    .from(lessons)
+    .where(
+      and(
+        inArray(lessons.status, ['pending', 'confirmed']),
+        lt(lessons.startsAt, new Date(toDay.getTime() + 24 * 60 * MS_PER_MIN)),
+        gte(lessons.endsAt, fromDay),
+      ),
+    );
+  const lessonIntervals = lessonRows.map((l) => ({
+    startMs: l.startsAt.getTime(),
+    endMs: l.endsAt.getTime(),
+  }));
+
+  const blockRows = await db
+    .select()
+    .from(availabilityExceptions)
+    .where(and(gte(availabilityExceptions.date, fromISO), lte(availabilityExceptions.date, toISO)));
+  const fullDay = new Set<string>();
+  const blocksByDate = new Map<string, { startMin: number; endMin: number }[]>();
+  for (const b of blockRows) {
+    if (b.type === 'blocked') fullDay.add(b.date);
+    if (b.type === 'block_window' && b.startTime && b.endTime) {
+      const arr = blocksByDate.get(b.date) ?? [];
+      arr.push({ startMin: timeStrToMinutes(b.startTime), endMin: timeStrToMinutes(b.endTime) });
+      blocksByDate.set(b.date, arr);
+    }
+  }
+
+  const earliestMs = nowIL().getTime() + settings.leadTimeMin * MS_PER_MIN;
+
+  const result: Record<string, DayState> = {};
+  for (let d = new Date(fromDay); d <= toDay; d = new Date(d.getTime() + 24 * 60 * MS_PER_MIN)) {
+    const dateISO = toILDateStr(d);
+    const dayStart = parseILDateTime(dateISO, '00:00');
+    const dayStartMs = dayStart.getTime();
+    const windows = byWeekday.get(ilWeekday(dayStart)) ?? [];
+    const dayFullyBlocked = fullDay.has(dateISO);
+    const dbw = (blocksByDate.get(dateISO) ?? []).map((w) => ({
+      startMs: dayStartMs + w.startMin * MS_PER_MIN,
+      endMs: dayStartMs + w.endMin * MS_PER_MIN,
+    }));
+
+    let open = 0;
+    let total = 0;
+    let taken = 0;
+    for (const { startMs, endMs } of sliceWindows(windows, dayStartMs, durationMin, bufferMin)) {
+      total += 1;
+      if (lessonIntervals.some((b) => startMs < b.endMs && b.startMs < endMs)) {
+        taken += 1;
+        continue;
+      }
+      if (dayFullyBlocked || dbw.some((b) => startMs < b.endMs && b.startMs < endMs)) continue;
+      if (startMs < earliestMs) continue;
+      open += 1;
+    }
+    result[dateISO] = { date: dateISO, open, total, taken, fullyClosed: total > 0 && open === 0 };
+  }
+  return result;
 }
