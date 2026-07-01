@@ -194,7 +194,10 @@ export const availability = pgTable('availability', {
 export const availabilityExceptions = pgTable('availability_exceptions', {
   id: uuid('id').primaryKey().defaultRandom(),
   date: date('date').notNull(),
-  type: text('type', { enum: ['blocked', 'custom'] }).notNull(),
+  // blocked = whole day closed; custom = replace the day's windows (legacy);
+  // block_window = SUBTRACT a time window from the day (partial close, the
+  // "everything open, mark what to close" model).
+  type: text('type', { enum: ['blocked', 'custom', 'block_window'] }).notNull(),
   startTime: time('start_time'),
   endTime: time('end_time'),
 });

@@ -50,10 +50,13 @@ export default async function SettingsPage() {
     active: r.active,
   }));
 
+  // 'block_window' blocks are managed on /availability, not here — the settings
+  // editor covers full-day blocks + custom-hours only.
   const initialExceptions: AvailabilityExceptionInput[] = exceptionRows
+    .filter((r) => r.type === 'blocked' || r.type === 'custom')
     .map((r) => ({
       date: r.date,
-      type: r.type,
+      type: r.type as 'blocked' | 'custom',
       startTime: toHHmm(r.startTime),
       endTime: toHHmm(r.endTime),
     }))

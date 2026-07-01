@@ -121,9 +121,41 @@ async function busyIntervals(
 }
 
 /**
+ * Partial time-block intervals for a date — `block_window` exceptions that
+ * SUBTRACT a window from the day's open hours (the "everything open, mark what to
+ * close" model). Returned as busy intervals so they carve slots out like a lesson.
+ */
+async function timeBlocksFor(dateISO: string, dayStartMs: number): Promise<Interval[]> {
+  const rows = await db
+    .select({
+      type: availabilityExceptions.type,
+      startTime: availabilityExceptions.startTime,
+      endTime: availabilityExceptions.endTime,
+    })
+    .from(availabilityExceptions)
+    .where(
+      and(
+        eq(availabilityExceptions.date, dateISO),
+        eq(availabilityExceptions.type, 'block_window'),
+      ),
+    );
+
+  const out: Interval[] = [];
+  for (const r of rows) {
+    if (r.type !== 'block_window' || !r.startTime || !r.endTime) continue;
+    const s = timeStrToMinutes(r.startTime);
+    const e = timeStrToMinutes(r.endTime);
+    if (e > s) {
+      out.push({ startMs: dayStartMs + s * MS_PER_MIN, endMs: dayStartMs + e * MS_PER_MIN });
+    }
+  }
+  return out;
+}
+
+/**
  * Returns the bookable slots for a single `yyyy-MM-dd` date, applying the
- * weekly template, exceptions, existing lessons, calendar freeBusy, lead-time
- * and the past.
+ * operating-hours template, exceptions (full-day + time-window blocks), existing
+ * lessons, calendar freeBusy, lead-time and the past.
  */
 export async function availableSlots(dateISO: string): Promise<Slot[]> {
   // 00:00 (Asia/Jerusalem) of the requested date, as a UTC instant.
@@ -137,11 +169,13 @@ export async function availableSlots(dateISO: string): Promise<Slot[]> {
   const dayEndMs = dayStartMs + 24 * 60 * MS_PER_MIN;
   const weekday = ilWeekday(dayStart);
 
-  const [templateWindows, exception, busy] = await Promise.all([
+  const [templateWindows, exception, baseBusy, timeBlocks] = await Promise.all([
     templateWindowsFor(weekday),
     exceptionFor(dateISO),
     busyIntervals(dayStartMs, dayEndMs),
+    timeBlocksFor(dateISO, dayStartMs),
   ]);
+  const busy = [...baseBusy, ...timeBlocks];
 
   const earliestStartMs = nowIL().getTime() + settings.leadTimeMin * MS_PER_MIN;
 
@@ -319,7 +353,12 @@ export async function isSlotBookable(startISO: string, endISO: string): Promise<
   const insideWindow = windows.some((w) => startMin >= w.startMin && endMin <= w.endMin);
   if (!insideWindow) return false;
 
-  const busy = await busyIntervals(dayStart.getTime(), dayStart.getTime() + 24 * 60 * MS_PER_MIN);
-  const collides = busy.some((b) => start.getTime() < b.endMs && b.startMs < end.getTime());
+  const [busy, timeBlocks] = await Promise.all([
+    busyIntervals(dayStart.getTime(), dayStart.getTime() + 24 * 60 * MS_PER_MIN),
+    timeBlocksFor(dateISO, dayStart.getTime()),
+  ]);
+  const collides = [...busy, ...timeBlocks].some(
+    (b) => start.getTime() < b.endMs && b.startMs < end.getTime(),
+  );
   return !collides;
 }

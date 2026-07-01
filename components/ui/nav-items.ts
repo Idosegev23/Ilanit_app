@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   Users,
   CalendarDays,
+  CalendarClock,
   UsersRound,
   MessageCircle,
   Settings,
@@ -25,6 +26,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'דשבורד', icon: LayoutDashboard },
   { href: '/students', label: 'תלמידים', icon: Users },
   { href: '/lessons', label: 'שיעורים', icon: CalendarDays },
+  { href: '/availability', label: 'זמינות', icon: CalendarClock },
   { href: '/groups', label: 'קבוצות', icon: UsersRound },
   { href: '/messages', label: 'הודעות', icon: MessageCircle },
   { href: '/settings', label: 'הגדרות', icon: Settings },
@@ -41,6 +43,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/students', label: 'תלמידים', icon: Users },
       { href: '/lessons', label: 'שיעורים', icon: CalendarDays },
+      { href: '/availability', label: 'זמינות', icon: CalendarClock },
       { href: '/groups', label: 'קבוצות', icon: UsersRound },
       { href: '/messages', label: 'הודעות', icon: MessageCircle },
     ],
