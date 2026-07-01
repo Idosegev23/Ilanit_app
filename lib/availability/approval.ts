@@ -9,6 +9,7 @@ import { createBookingLink } from '@/lib/booking-links';
 import { insertEvent } from '@/lib/google-calendar';
 import { notify } from '@/lib/notifications/dispatch';
 import { hasSlotConflict } from '@/lib/availability';
+import { createCancelUrl } from '@/lib/availability/cancel';
 import { formatILDateTime } from '@/lib/time';
 import { addToCalendarUrl } from '@/lib/calendar-link';
 
@@ -186,6 +187,7 @@ async function approveLesson(data: LessonWithStudent): Promise<ApproveResult> {
 
   if (data.studentPhone) {
     try {
+      const cancelUrl = await createCancelUrl(lesson.id);
       await notify(
         'booking_approved_student',
         data.studentPhone,
@@ -199,6 +201,7 @@ async function approveLesson(data: LessonWithStudent): Promise<ApproveResult> {
             end: lesson.endsAt,
             location,
           }),
+          cancelUrl,
         },
         `approved:${lesson.id}`,
         lesson.id,

@@ -45,6 +45,9 @@ vi.mock('@/lib/google-calendar', () => ({ insertEvent: mocks.insertEvent }));
 vi.mock('@/lib/notifications/dispatch', () => ({ notify: mocks.notify }));
 vi.mock('@/lib/settings', () => ({ getSettings: mocks.getSettings }));
 vi.mock('@/lib/availability', () => ({ hasSlotConflict: mocks.hasSlotConflict }));
+vi.mock('@/lib/availability/cancel', () => ({
+  createCancelUrl: vi.fn(async () => 'https://ilanit.test/c/tok'),
+}));
 vi.mock('@/lib/env', () => ({ env: () => ({ NEXT_PUBLIC_APP_URL: 'https://ilanit.test' }) }));
 
 vi.mock('drizzle-orm', () => ({ eq: () => ({}) }));

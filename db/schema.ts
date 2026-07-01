@@ -243,7 +243,7 @@ export const actionTokens = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     tokenHash: text('token_hash').notNull(),
-    type: text('type', { enum: ['approve', 'payment', 'assign_student'] }).notNull(),
+    type: text('type', { enum: ['approve', 'payment', 'assign_student', 'cancel'] }).notNull(),
     lessonId: uuid('lesson_id')
       .notNull()
       .references(() => lessons.id, { onDelete: 'cascade' }),

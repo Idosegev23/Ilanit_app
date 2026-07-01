@@ -22,6 +22,7 @@ import { cancelOne, createSeries } from '@/lib/recurrence';
 import { parseLessonTitle } from '@/lib/ai/parse-lesson';
 import { notifyStudent } from '@/lib/notifications/dispatch';
 import { addToCalendarUrl } from '@/lib/calendar-link';
+import { createCancelUrl } from '@/lib/availability/cancel';
 
 export interface ActionResult {
   ok: boolean;
@@ -93,6 +94,7 @@ export async function approveLesson(lessonId: string): Promise<ActionResult> {
             end: lesson.endsAt,
             location: lesson.location,
           }),
+          cancelUrl: await createCancelUrl(lesson.id),
         });
       } catch (err) {
         console.error('[lessons] approve confirmation failed:', err);

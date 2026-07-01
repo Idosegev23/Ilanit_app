@@ -60,6 +60,9 @@ vi.mock('@/lib/students', () => ({
   updateStudent: mocks.updateStudent,
 }));
 vi.mock('@/lib/tokens', () => ({ createActionToken: mocks.createActionToken }));
+vi.mock('@/lib/availability/cancel', () => ({
+  createCancelUrl: vi.fn(async () => 'https://ilanit.test/c/tok'),
+}));
 vi.mock('@/lib/notifications/dispatch', () => ({
   notify: mocks.notify,
   // notifyStudent routes to the guardian phone when present, else the student's

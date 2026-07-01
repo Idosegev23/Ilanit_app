@@ -8,6 +8,7 @@ import { normalizePhoneIL } from '@/lib/utils';
 import { resolveBookingLink } from '@/lib/booking-links';
 import { isSlotBookable } from '@/lib/availability';
 import { createActionToken } from '@/lib/tokens';
+import { createCancelUrl } from '@/lib/availability/cancel';
 import { notify, notifyStudent } from '@/lib/notifications/dispatch';
 import { formatILDateTime } from '@/lib/time';
 
@@ -247,10 +248,11 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
       lesson.id,
     );
 
+    const cancelUrl = await createCancelUrl(lesson.id);
     await notifyStudent(
       student,
       'booking_pending_student',
-      { studentName: student.name, datetime },
+      { studentName: student.name, datetime, cancelUrl },
       `pending-student:${lesson.id}`,
       lesson.id,
     );

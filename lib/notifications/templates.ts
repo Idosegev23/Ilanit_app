@@ -45,7 +45,8 @@ const builders: Record<TemplateKey, (v: Vars) => string> = {
   booking_pending_student: (v) =>
     `שלום ${s(v, 'studentName')}! 🌟\n` +
     `בקשתך לשיעור בתאריך ${s(v, 'datetime')} התקבלה וממתינה לאישור של אילנית.\n` +
-    `נעדכן אותך ברגע שהשיעור יאושר.`,
+    `נעדכן אותך ברגע שהשיעור יאושר.` +
+    (s(v, 'cancelUrl') ? `\nלשינוי או ביטול הבקשה: ${s(v, 'cancelUrl')}` : ''),
 
   booking_pending_ilanit: (v) =>
     `בקשת שיעור חדשה 📩\n` +
@@ -60,6 +61,7 @@ const builders: Record<TemplateKey, (v: Vars) => string> = {
     `השיעור שלך אושר ל-${s(v, 'datetime')}.\n` +
     `כתובת: ${s(v, 'location')}\n` +
     (s(v, 'calendarUrl') ? `הוספה ליומן: ${s(v, 'calendarUrl')}\n` : '') +
+    (s(v, 'cancelUrl') ? `לשינוי או ביטול המועד: ${s(v, 'cancelUrl')}\n` : '') +
     `נתראה!`,
 
   booking_rejected_student: (v) =>

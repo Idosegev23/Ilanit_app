@@ -94,6 +94,9 @@ const hasSlotConflict = vi.hoisted(() => vi.fn(async (_s?: string, _e?: string) 
 vi.mock('@/lib/availability', () => ({
   hasSlotConflict: (...a: unknown[]) => hasSlotConflict(...(a as [string, string])),
 }));
+vi.mock('@/lib/availability/cancel', () => ({
+  createCancelUrl: vi.fn(async () => 'https://ilanit.test/c/tok'),
+}));
 
 const createSeries = vi.hoisted(() => vi.fn(async (_input?: unknown) => ({ count: 3 })));
 vi.mock('@/lib/recurrence', () => ({

@@ -62,6 +62,9 @@ vi.mock('@/lib/ai/parse-lesson', () => ({
 vi.mock('@/lib/notifications/dispatch', () => ({
   notifyStudent: vi.fn(async () => ({ ok: true })),
 }));
+vi.mock('@/lib/availability/cancel', () => ({
+  createCancelUrl: vi.fn(async () => 'https://ilanit.test/c/tok'),
+}));
 
 vi.mock('@/lib/db', () => ({
   db: {

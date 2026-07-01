@@ -19,6 +19,7 @@ import { hasSlotConflict } from '@/lib/availability';
 import { createSeries } from '@/lib/recurrence';
 import { notifyStudent } from '@/lib/notifications/dispatch';
 import { addToCalendarUrl } from '@/lib/calendar-link';
+import { createCancelUrl } from '@/lib/availability/cancel';
 
 // Server actions for the Students UI. The directory + client-file pages stay
 // server components and post through here. Money is integer shekels; phones are
@@ -323,6 +324,7 @@ export async function scheduleStudentLesson(form: FormData): Promise<ScheduleRes
           end: endsAt,
           location,
         }),
+        cancelUrl: await createCancelUrl(lesson.id),
       });
     } catch (err) {
       console.error('[students] schedule confirmation failed:', err);
