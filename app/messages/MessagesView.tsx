@@ -18,7 +18,12 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import type { Conversation, ChatMessage } from '@/lib/messages';
 import type { MessageStatus } from '@/lib/message-log';
-import { fetchConversations, fetchThread, sendMessageAction } from './actions';
+import {
+  fetchConversations,
+  fetchThread,
+  sendMessageAction,
+  refreshAvatarsAction,
+} from './actions';
 
 const POLL_MS = 8000;
 
@@ -39,6 +44,32 @@ function toneFor(name: string): string {
   let sum = 0;
   for (let i = 0; i < name.length; i++) sum += name.charCodeAt(i);
   return AVATAR_TONES[sum % AVATAR_TONES.length];
+}
+
+/** WhatsApp profile picture with an initials fallback. */
+function Avatar({ name, url }: { name: string; url: string | null }) {
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt=""
+        className="size-10 shrink-0 rounded-xl object-cover shadow-soft"
+        referrerPolicy="no-referrer"
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        'flex size-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold shadow-soft',
+        toneFor(name),
+      )}
+    >
+      {initials(name)}
+    </span>
+  );
 }
 function timeLabel(iso: string): string {
   try {
@@ -81,9 +112,11 @@ export function MessagesView({
   const [conversations, setConversations] = React.useState<Conversation[]>(initialConversations);
   const [query, setQuery] = React.useState('');
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
-  const [thread, setThread] = React.useState<{ name: string; messages: ChatMessage[] } | null>(
-    null,
-  );
+  const [thread, setThread] = React.useState<{
+    name: string;
+    avatarUrl: string | null;
+    messages: ChatMessage[];
+  } | null>(null);
   const [loadingThread, setLoadingThread] = React.useState(false);
   const [draft, setDraft] = React.useState('');
   const [sending, setSending] = React.useState(false);
@@ -133,6 +166,23 @@ export function MessagesView({
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [refreshThread]);
+
+  // On mount, pull WhatsApp avatars for students without one cached, then refresh
+  // the list so their pictures appear.
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const n = await refreshAvatarsAction();
+        if (!cancelled && n > 0) setConversations(await fetchConversations());
+      } catch {
+        /* non-fatal */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Auto-scroll to the newest message.
   React.useEffect(() => {
@@ -212,15 +262,7 @@ export function MessagesView({
                           isSel ? 'bg-primary-50' : 'hover:bg-surface-2/60',
                         )}
                       >
-                        <span
-                          aria-hidden="true"
-                          className={cn(
-                            'flex size-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold shadow-soft',
-                            toneFor(c.name),
-                          )}
-                        >
-                          {initials(c.name)}
-                        </span>
+                        <Avatar name={c.name} url={c.avatarUrl} />
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center justify-between gap-2">
                             <span className="truncate font-semibold text-ink">{c.name}</span>
@@ -276,6 +318,7 @@ export function MessagesView({
                 >
                   <ChevronRight className="size-5" aria-hidden="true" />
                 </button>
+                <Avatar name={thread?.name ?? ''} url={thread?.avatarUrl ?? null} />
                 <span className="truncate font-bold text-ink">{thread?.name ?? '…'}</span>
               </div>
 

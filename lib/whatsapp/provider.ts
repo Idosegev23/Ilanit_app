@@ -52,6 +52,26 @@ export async function sendText(toPhone: string, text: string): Promise<SendResul
   }
 }
 
+interface AvatarResp {
+  urlAvatar?: string;
+  available?: boolean;
+}
+
+/**
+ * Fetches a contact's WhatsApp profile-picture URL by phone. Returns { url: null }
+ * when the contact has no picture / it's hidden / the lookup fails — never throws.
+ */
+export async function getAvatar(toPhone: string): Promise<{ url: string | null }> {
+  try {
+    const chatId = toChatId(toPhone);
+    const resp = await callGreen<AvatarResp>('getAvatar', { chatId });
+    const url = resp.urlAvatar?.trim();
+    return { url: url ? url : null };
+  } catch {
+    return { url: null };
+  }
+}
+
 /**
  * Sends a file (e.g. a receipt PDF) by public URL, as a real attachment in the
  * message (not a link). Optional caption.

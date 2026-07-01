@@ -24,6 +24,7 @@ export interface Conversation {
   studentId: string;
   name: string;
   contactPhone: string;
+  avatarUrl: string | null;
   lastBody: string;
   lastDirection: 'out' | 'in';
   lastAt: string; // ISO
@@ -60,15 +61,16 @@ export async function listConversations(): Promise<Conversation[]> {
       name: students.name,
       phone: students.phone,
       guardianPhone: students.guardianPhone,
+      avatarUrl: students.avatarUrl,
     })
     .from(students);
 
   // phone → studentId, and studentId → student meta
   const phoneToId = new Map<string, string>();
-  const meta = new Map<string, { name: string; contactPhone: string }>();
+  const meta = new Map<string, { name: string; contactPhone: string; avatarUrl: string | null }>();
   for (const s of roster) {
     for (const ph of contactPhones(s)) phoneToId.set(ph, s.id);
-    meta.set(s.id, { name: s.name, contactPhone: contactPhoneFor(s) });
+    meta.set(s.id, { name: s.name, contactPhone: contactPhoneFor(s), avatarUrl: s.avatarUrl });
   }
 
   const rows = await db
@@ -92,6 +94,7 @@ export async function listConversations(): Promise<Conversation[]> {
         studentId,
         name: m.name,
         contactPhone: m.contactPhone,
+        avatarUrl: m.avatarUrl,
         lastBody: r.body,
         lastDirection: r.direction,
         lastAt: r.createdAt.toISOString(),

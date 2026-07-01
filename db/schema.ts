@@ -32,6 +32,9 @@ export const students = pgTable(
     defaultPrice: integer('default_price'), // ₪
     defaultDurationMin: integer('default_duration_min').notNull().default(60),
     notes: text('notes'),
+    // WhatsApp profile picture URL, pulled from GreenAPI by phone (cached).
+    avatarUrl: text('avatar_url'),
+    avatarFetchedAt: timestamp('avatar_fetched_at', { withTimezone: true }),
     archived: boolean('archived').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },

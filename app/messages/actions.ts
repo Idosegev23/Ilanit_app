@@ -8,6 +8,7 @@ import {
   type Conversation,
   type ChatMessage,
 } from '@/lib/messages';
+import { refreshMissingAvatars } from '@/lib/whatsapp/avatars';
 
 // Owner-only server actions backing the /messages inbox. The inbox polls
 // fetchConversations / fetchThread for near-real-time updates and posts new
@@ -25,11 +26,20 @@ export async function fetchConversations(): Promise<Conversation[]> {
 
 export async function fetchThread(
   studentId: string,
-): Promise<{ name: string; messages: ChatMessage[] } | null> {
+): Promise<{ name: string; avatarUrl: string | null; messages: ChatMessage[] } | null> {
   if (!(await requireOwner())) return null;
   const t = await loadThread(studentId);
   if (!t) return null;
-  return { name: t.student.name, messages: t.messages };
+  return { name: t.student.name, avatarUrl: t.student.avatarUrl, messages: t.messages };
+}
+
+/**
+ * Pulls WhatsApp profile pictures (avatars) for students that don't have one
+ * cached yet. Called by the inbox on mount; the next poll picks up the new URLs.
+ */
+export async function refreshAvatarsAction(): Promise<number> {
+  if (!(await requireOwner())) return 0;
+  return refreshMissingAvatars(25);
 }
 
 export async function sendMessageAction(
