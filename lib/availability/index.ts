@@ -304,6 +304,7 @@ export interface OverlappingLesson {
   timeLabel: string; // "09:00–10:00"
   name: string; // student / group / booked-by name
   isGroup: boolean;
+  googleEventId: string | null;
 }
 
 /**
@@ -330,6 +331,7 @@ export async function overlappingLessons(
       studentName: students.name,
       groupName: groups.name,
       bookedByName: lessons.bookedByName,
+      googleEventId: lessons.googleEventId,
     })
     .from(lessons)
     .leftJoin(students, eq(lessons.studentId, students.id))
@@ -350,6 +352,7 @@ export async function overlappingLessons(
     timeLabel: `${toILTimeStr(r.startsAt)}–${toILTimeStr(r.endsAt)}`,
     name: r.groupName ?? r.studentName ?? r.bookedByName ?? 'שיעור',
     isGroup: r.type === 'group_session',
+    googleEventId: r.googleEventId,
   }));
 }
 

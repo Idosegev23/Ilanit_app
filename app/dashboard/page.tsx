@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/card';
 import { StatCard, type StatTone } from '@/components/ui/stat-card';
 import { PageHeader } from '@/components/ui/page-header';
+import { ilHour, nowIL } from '@/lib/time';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
 import { buttonVariants } from '@/components/ui/button';
@@ -301,12 +302,17 @@ export default async function DashboardPage() {
     phone: s.phone ?? '',
   }));
 
+  // Personal, time-of-day greeting — this system is Ilanit's alone.
+  const hour = ilHour(nowIL());
+  const greeting =
+    hour < 12 ? 'בוקר טוב' : hour < 17 ? 'צהריים טובים' : hour < 21 ? 'ערב טוב' : 'לילה טוב';
+
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="סקירה כללית"
-        title="דשבורד"
-        subtitle="סקירת ההכנסות, התפוסה והפעולות הפתוחות שלך ב-30 הימים האחרונים."
+        eyebrow="המערכת שלך"
+        title={`${greeting}, אילנית 🌸`}
+        subtitle="הנה מה שקורה אצלך ב-30 הימים האחרונים — ההכנסות, התפוסה והפעולות שממתינות לך."
         actions={
           <SendBookingLinkDialog students={dialogStudents} className="w-full sm:w-auto" />
         }

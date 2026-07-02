@@ -21,6 +21,7 @@ import {
   forceOpenSlot,
   unforceOpenSlot,
 } from '@/lib/availability/blocks';
+import { listEventsInRange } from '@/lib/google-calendar';
 
 // Owner-only server actions for the interactive availability calendar. Everything
 // within operating hours is open unless closed here; lessons are taken auto.
@@ -87,17 +88,31 @@ export async function toggleSlot(
   return { ok: true };
 }
 
-/** What already occupies a slot (for the "open over existing?" confirmation). */
+/**
+ * What already occupies a slot (for the "open over existing?" confirmation) —
+ * DB lessons (named) plus titled Google Calendar events (so a calendar-only busy
+ * block shows its title instead of "אירוע ללא פירוט"), deduped by event id.
+ */
 export async function slotOccupants(
   startISO: string,
   endISO: string,
 ): Promise<OverlappingLesson[]> {
   if (!(await requireOwner())) return [];
-  try {
-    return await overlappingLessons(startISO, endISO);
-  } catch {
-    return [];
-  }
+  const lessons = await overlappingLessons(startISO, endISO).catch(() => [] as OverlappingLesson[]);
+  const lessonEventIds = new Set(
+    lessons.map((l) => l.googleEventId).filter((id): id is string => Boolean(id)),
+  );
+  const calEvents = await listEventsInRange(startISO, endISO).catch(() => []);
+  const calOccupants: OverlappingLesson[] = calEvents
+    .filter((e) => !lessonEventIds.has(e.id))
+    .map((e) => ({
+      id: e.id,
+      timeLabel: e.startISO && e.endISO ? `${hhmm(e.startISO)}–${hhmm(e.endISO)}` : '',
+      name: e.summary || 'אירוע ביומן',
+      isGroup: false,
+      googleEventId: e.id,
+    }));
+  return [...lessons, ...calOccupants];
 }
 
 /** Force-opens a taken slot for booking (open=true), or reverts it (open=false). */

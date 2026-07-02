@@ -96,6 +96,46 @@ export async function freeBusy(
     .map((b) => ({ start: b.start, end: b.end }));
 }
 
+export interface CalendarBusyEvent {
+  id: string;
+  summary: string;
+  startISO?: string;
+  endISO?: string;
+}
+
+/**
+ * Lists TIMED events overlapping [timeMin, timeMax] with their titles — used to
+ * label WHAT occupies a slot (freeBusy has no title). Best-effort: returns [] on
+ * any API error; skips all-day and cancelled events.
+ */
+export async function listEventsInRange(
+  timeMin: string,
+  timeMax: string,
+): Promise<CalendarBusyEvent[]> {
+  try {
+    const calendar = await getCalendar();
+    const res = await calendar.events.list({
+      calendarId: calendarId(),
+      timeMin,
+      timeMax,
+      singleEvents: true,
+      showDeleted: false,
+      maxResults: 20,
+      orderBy: 'startTime',
+    });
+    return (res.data.items ?? [])
+      .filter((e) => Boolean(e.id) && e.status !== 'cancelled' && Boolean(e.start?.dateTime))
+      .map((e) => ({
+        id: e.id as string,
+        summary: e.summary ?? '',
+        startISO: e.start?.dateTime ?? undefined,
+        endISO: endISOOf(e),
+      }));
+  } catch {
+    return [];
+  }
+}
+
 /** Shared body builder for both one-off and recurring inserts. */
 function buildEventBody(e: EventInput): calendar_v3.Schema$Event {
   const body: calendar_v3.Schema$Event = {
