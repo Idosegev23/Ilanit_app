@@ -54,8 +54,8 @@ export function MonthView({
           const inMonth = isSameMonthKey(key, anchorKey);
           const isToday = key === todayKey;
           const dayNum = Number(key.slice(8, 10));
-          const isWeekend =
-            weekdayOfKey(key) === 6 || weekdayOfKey(key) === 5;
+          // Saturday only — Friday can have lessons, so it is NOT dimmed.
+          const isRestDay = weekdayOfKey(key) === 6;
           const visible = dayEvents.slice(0, MAX_VISIBLE);
           const overflow = dayEvents.length - visible.length;
           return (
@@ -64,7 +64,7 @@ export function MonthView({
               className={cn(
                 'flex min-h-24 flex-col gap-1 border-b border-s border-line p-1.5 last:border-s-0 [&:nth-child(7n)]:border-s-0',
                 !inMonth && 'bg-cream/40',
-                isWeekend && inMonth && 'bg-surface-2/30',
+                isRestDay && inMonth && 'bg-surface-2/30',
               )}
             >
               <button
