@@ -13,7 +13,7 @@ interface AvailRow {
 }
 interface ExcRow {
   date: string;
-  type: 'blocked' | 'custom';
+  type: 'blocked' | 'custom' | 'block_window' | 'force_open';
   startTime: string | null;
   endTime: string | null;
 }
@@ -173,6 +173,29 @@ describe('availableSlots (adapter)', () => {
     ];
     const slots = await availableSlots(DATE);
     expect(slots.map((s) => s.label)).toEqual(['09:00–10:00', '11:00–12:00']);
+  });
+
+  it('force_open reopens a slot occupied by a lesson', async () => {
+    data.availability = [
+      { weekday, startTime: '09:00:00', endTime: '12:00:00', active: true },
+    ];
+    data.lessons = [
+      { startsAt: parseILDateTime(DATE, '09:00'), endsAt: parseILDateTime(DATE, '10:00') },
+    ];
+    // Without a force_open the 09:00 slot is taken.
+    expect((await availableSlots(DATE)).map((s) => s.label)).toEqual([
+      '10:00–11:00',
+      '11:00–12:00',
+    ]);
+    // Force-open the 09:00 window → the slot returns despite the lesson.
+    data.exceptions = [
+      { date: DATE, type: 'force_open', startTime: '09:00:00', endTime: '10:00:00' },
+    ];
+    expect((await availableSlots(DATE)).map((s) => s.label)).toEqual([
+      '09:00–10:00',
+      '10:00–11:00',
+      '11:00–12:00',
+    ]);
   });
 
   it('removes slots blocked by calendar freeBusy', async () => {

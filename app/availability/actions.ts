@@ -6,8 +6,10 @@ import { toILTimeStr } from '@/lib/time';
 import {
   dayAvailability,
   monthDayStates,
+  overlappingLessons,
   type DaySlot,
   type DayState,
+  type OverlappingLesson,
 } from '@/lib/availability';
 import {
   blockTimeWindow,
@@ -16,6 +18,8 @@ import {
   unblockFullDay,
   isFullDayBlocked,
   blockDateRange,
+  forceOpenSlot,
+  unforceOpenSlot,
 } from '@/lib/availability/blocks';
 
 // Owner-only server actions for the interactive availability calendar. Everything
@@ -72,8 +76,43 @@ export async function toggleSlot(
   if (!DATE_RE.test(dateISO)) return { ok: false, error: 'תאריך לא תקין' };
   const start = hhmm(startISO);
   const end = hhmm(endISO);
-  if (close) await blockTimeWindow(dateISO, start, end);
-  else await unblockTimeWindow(dateISO, start, end);
+  if (close) {
+    // A close always wins — drop any stale force-open on this slot first.
+    await unforceOpenSlot(dateISO, start, end);
+    await blockTimeWindow(dateISO, start, end);
+  } else {
+    await unblockTimeWindow(dateISO, start, end);
+  }
+  revalidatePath('/availability');
+  return { ok: true };
+}
+
+/** What already occupies a slot (for the "open over existing?" confirmation). */
+export async function slotOccupants(
+  startISO: string,
+  endISO: string,
+): Promise<OverlappingLesson[]> {
+  if (!(await requireOwner())) return [];
+  try {
+    return await overlappingLessons(startISO, endISO);
+  } catch {
+    return [];
+  }
+}
+
+/** Force-opens a taken slot for booking (open=true), or reverts it (open=false). */
+export async function toggleForceOpen(
+  dateISO: string,
+  startISO: string,
+  endISO: string,
+  open: boolean,
+): Promise<ActionResult> {
+  if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+  if (!DATE_RE.test(dateISO)) return { ok: false, error: 'תאריך לא תקין' };
+  const start = hhmm(startISO);
+  const end = hhmm(endISO);
+  if (open) await forceOpenSlot(dateISO, start, end);
+  else await unforceOpenSlot(dateISO, start, end);
   revalidatePath('/availability');
   return { ok: true };
 }

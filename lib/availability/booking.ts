@@ -1,12 +1,11 @@
 import { db } from '@/lib/db';
 import { lessons, type Lesson, type Student } from '@/db/schema';
-import { and, eq, lt, gt, inArray } from 'drizzle-orm';
 import { env } from '@/lib/env';
 import { getSettings } from '@/lib/settings';
 import { getStudent, updateStudent, findStudentByPhone, createStudent } from '@/lib/students';
 import { normalizePhoneIL } from '@/lib/utils';
 import { resolveBookingLink } from '@/lib/booking-links';
-import { isSlotBookable } from '@/lib/availability';
+import { isSlotBookable, isSlotForceOpen, overlappingLessons } from '@/lib/availability';
 import { insertEvent, cancelEvent } from '@/lib/google-calendar';
 import { addToCalendarUrl } from '@/lib/calendar-link';
 import { createCancelUrl } from '@/lib/availability/cancel';
@@ -51,23 +50,15 @@ export type BookResult =
     };
 
 /**
- * Atomically guards against a double-booking: re-reads any overlapping
- * pending/confirmed lesson AFTER the slot passed isSlotBookable, so a race that
- * inserted between the check and now is still caught before we create ours.
+ * Race guard: after the slot passed isSlotBookable, re-check for a real
+ * overlapping pending/confirmed lesson (empty group sessions excluded) before
+ * inserting. A force-opened slot is a deliberate override → not a conflict, so a
+ * booking there is allowed (a double-book Ilanit explicitly enabled).
  */
-async function hasConflict(start: Date, end: Date): Promise<boolean> {
-  const rows = await db
-    .select({ id: lessons.id })
-    .from(lessons)
-    .where(
-      and(
-        inArray(lessons.status, ['pending', 'confirmed']),
-        lt(lessons.startsAt, end),
-        gt(lessons.endsAt, start),
-      ),
-    )
-    .limit(1);
-  return rows.length > 0;
+async function hasConflict(startISO: string, endISO: string): Promise<boolean> {
+  if (await isSlotForceOpen(startISO, endISO)) return false;
+  const overlaps = await overlappingLessons(startISO, endISO);
+  return overlaps.length > 0;
 }
 
 /**
@@ -180,7 +171,7 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
     return { ok: false, error: 'slot_taken', message: 'המועד כבר אינו פנוי' };
   }
   // 3) final conflict guard against a concurrent booking
-  if (await hasConflict(start, end)) {
+  if (await hasConflict(req.startISO, req.endISO)) {
     return { ok: false, error: 'slot_taken', message: 'המועד כבר אינו פנוי' };
   }
 

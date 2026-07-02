@@ -30,6 +30,15 @@ const state = vi.hoisted(() => ({
 const mocks = vi.hoisted(() => ({
   resolveBookingLink: vi.fn(async () => state.resolved),
   isSlotBookable: vi.fn(async () => state.bookable),
+  isSlotForceOpen: vi.fn(async () => false),
+  overlappingLessons: vi.fn(async () =>
+    state.conflictRows.map((r) => ({
+      id: r.id,
+      timeLabel: '09:00–10:00',
+      name: 'x',
+      isGroup: false,
+    })),
+  ),
   getStudent: vi.fn(async () => state.student),
   updateStudent: vi.fn(async (_id: string, patch: Record<string, unknown>) => ({
     ...state.student,
@@ -55,7 +64,11 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/booking-links', () => ({ resolveBookingLink: mocks.resolveBookingLink }));
-vi.mock('@/lib/availability', () => ({ isSlotBookable: mocks.isSlotBookable }));
+vi.mock('@/lib/availability', () => ({
+  isSlotBookable: mocks.isSlotBookable,
+  isSlotForceOpen: mocks.isSlotForceOpen,
+  overlappingLessons: mocks.overlappingLessons,
+}));
 vi.mock('@/lib/students', () => ({
   getStudent: mocks.getStudent,
   updateStudent: mocks.updateStudent,

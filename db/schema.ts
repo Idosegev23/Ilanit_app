@@ -195,9 +195,12 @@ export const availabilityExceptions = pgTable('availability_exceptions', {
   id: uuid('id').primaryKey().defaultRandom(),
   date: date('date').notNull(),
   // blocked = whole day closed; custom = replace the day's windows (legacy);
-  // block_window = SUBTRACT a time window from the day (partial close, the
-  // "everything open, mark what to close" model).
-  type: text('type', { enum: ['blocked', 'custom', 'block_window'] }).notNull(),
+  // block_window = SUBTRACT a time window from the day (partial close);
+  // force_open = OPEN a window for booking even if a lesson/event overlaps it
+  // (Ilanit's explicit override of a taken slot).
+  type: text('type', {
+    enum: ['blocked', 'custom', 'block_window', 'force_open'],
+  }).notNull(),
   startTime: time('start_time'),
   endTime: time('end_time'),
 });

@@ -151,12 +151,12 @@ async function busyIntervals(
   return busy;
 }
 
-/**
- * Partial time-block intervals for a date — `block_window` exceptions that
- * SUBTRACT a window from the day's open hours (the "everything open, mark what to
- * close" model). Returned as busy intervals so they carve slots out like a lesson.
- */
-async function timeBlocksFor(dateISO: string, dayStartMs: number): Promise<Interval[]> {
+/** Time-window exception intervals of a given kind for a date, as ms intervals. */
+async function windowIntervalsFor(
+  dateISO: string,
+  dayStartMs: number,
+  kind: 'block_window' | 'force_open',
+): Promise<Interval[]> {
   const rows = await db
     .select({
       type: availabilityExceptions.type,
@@ -164,16 +164,11 @@ async function timeBlocksFor(dateISO: string, dayStartMs: number): Promise<Inter
       endTime: availabilityExceptions.endTime,
     })
     .from(availabilityExceptions)
-    .where(
-      and(
-        eq(availabilityExceptions.date, dateISO),
-        eq(availabilityExceptions.type, 'block_window'),
-      ),
-    );
+    .where(and(eq(availabilityExceptions.date, dateISO), eq(availabilityExceptions.type, kind)));
 
   const out: Interval[] = [];
   for (const r of rows) {
-    if (r.type !== 'block_window' || !r.startTime || !r.endTime) continue;
+    if (r.type !== kind || !r.startTime || !r.endTime) continue;
     const s = timeStrToMinutes(r.startTime);
     const e = timeStrToMinutes(r.endTime);
     if (e > s) {
@@ -181,6 +176,42 @@ async function timeBlocksFor(dateISO: string, dayStartMs: number): Promise<Inter
     }
   }
   return out;
+}
+
+/**
+ * `block_window` exceptions — partial closes that SUBTRACT a window from the
+ * day's open hours (fed into busy so they carve slots out like a lesson).
+ */
+function timeBlocksFor(dateISO: string, dayStartMs: number): Promise<Interval[]> {
+  return windowIntervalsFor(dateISO, dayStartMs, 'block_window');
+}
+
+/**
+ * `force_open` exceptions — windows Ilanit explicitly opened for booking even
+ * though a lesson/event overlaps them. Subtracted from the busy set so the slot
+ * becomes bookable (an intentional override / possible double-book).
+ */
+function forceOpenFor(dateISO: string, dayStartMs: number): Promise<Interval[]> {
+  return windowIntervalsFor(dateISO, dayStartMs, 'force_open');
+}
+
+/** Subtracts `holes` from `intervals` (interval difference). */
+function subtractIntervals(intervals: Interval[], holes: Interval[]): Interval[] {
+  if (holes.length === 0) return intervals;
+  let result = intervals;
+  for (const hole of holes) {
+    const next: Interval[] = [];
+    for (const iv of result) {
+      if (hole.endMs <= iv.startMs || hole.startMs >= iv.endMs) {
+        next.push(iv); // no overlap
+        continue;
+      }
+      if (hole.startMs > iv.startMs) next.push({ startMs: iv.startMs, endMs: hole.startMs });
+      if (hole.endMs < iv.endMs) next.push({ startMs: hole.endMs, endMs: iv.endMs });
+    }
+    result = next;
+  }
+  return result;
 }
 
 /**
@@ -200,13 +231,15 @@ export async function availableSlots(dateISO: string): Promise<Slot[]> {
   const dayEndMs = dayStartMs + 24 * 60 * MS_PER_MIN;
   const weekday = ilWeekday(dayStart);
 
-  const [templateWindows, exception, baseBusy, timeBlocks] = await Promise.all([
+  const [templateWindows, exception, baseBusy, timeBlocks, forceOpen] = await Promise.all([
     templateWindowsFor(weekday),
     exceptionFor(dateISO),
     busyIntervals(dayStartMs, dayEndMs),
     timeBlocksFor(dateISO, dayStartMs),
+    forceOpenFor(dateISO, dayStartMs),
   ]);
-  const busy = [...baseBusy, ...timeBlocks];
+  // Force-open windows reopen otherwise-busy/blocked time for booking.
+  const busy = subtractIntervals([...baseBusy, ...timeBlocks], forceOpen);
 
   const earliestStartMs = nowIL().getTime() + settings.leadTimeMin * MS_PER_MIN;
 
@@ -246,12 +279,24 @@ export async function hasSlotConflict(
 
   const dateISO = toILDateStr(start);
   const dayStart = parseILDateTime(dateISO, '00:00');
-  const busy = await busyIntervals(
-    dayStart.getTime(),
-    dayStart.getTime() + 24 * 60 * MS_PER_MIN,
-    excludeLessonId,
-  );
-  return busy.some((b) => start.getTime() < b.endMs && b.startMs < end.getTime());
+  const [busy, forceOpen] = await Promise.all([
+    busyIntervals(dayStart.getTime(), dayStart.getTime() + 24 * 60 * MS_PER_MIN, excludeLessonId),
+    forceOpenFor(dateISO, dayStart.getTime()),
+  ]);
+  // Force-opened windows are deliberate overrides — not conflicts.
+  const effective = subtractIntervals(busy, forceOpen);
+  return effective.some((b) => start.getTime() < b.endMs && b.startMs < end.getTime());
+}
+
+/** True when a force_open window fully covers [start,end] (a deliberate override). */
+export async function isSlotForceOpen(startISO: string, endISO: string): Promise<boolean> {
+  const start = new Date(startISO);
+  const end = new Date(endISO);
+  if (!(start.getTime() < end.getTime())) return false;
+  const dateISO = toILDateStr(start);
+  const dayStart = parseILDateTime(dateISO, '00:00');
+  const forceOpen = await forceOpenFor(dateISO, dayStart.getTime());
+  return forceOpen.some((f) => f.startMs <= start.getTime() && end.getTime() <= f.endMs);
 }
 
 export interface OverlappingLesson {
@@ -438,11 +483,13 @@ export async function isSlotBookable(startISO: string, endISO: string): Promise<
   const insideWindow = windows.some((w) => startMin >= w.startMin && endMin <= w.endMin);
   if (!insideWindow) return false;
 
-  const [busy, timeBlocks] = await Promise.all([
+  const [busy, timeBlocks, forceOpen] = await Promise.all([
     busyIntervals(dayStart.getTime(), dayStart.getTime() + 24 * 60 * MS_PER_MIN),
     timeBlocksFor(dateISO, dayStart.getTime()),
+    forceOpenFor(dateISO, dayStart.getTime()),
   ]);
-  const collides = [...busy, ...timeBlocks].some(
+  const effective = subtractIntervals([...busy, ...timeBlocks], forceOpen);
+  const collides = effective.some(
     (b) => start.getTime() < b.endMs && b.startMs < end.getTime(),
   );
   return !collides;
@@ -450,7 +497,7 @@ export async function isSlotBookable(startISO: string, endISO: string): Promise<
 
 // ── Availability EDITOR data (the interactive month/day calendar) ─────────────
 
-export type SlotState = 'open' | 'closed' | 'taken' | 'past';
+export type SlotState = 'open' | 'closed' | 'taken' | 'past' | 'forced';
 
 export interface DaySlot {
   startISO: string;
@@ -491,11 +538,12 @@ export async function dayAvailability(dateISO: string): Promise<DaySlot[]> {
   const settings = await getSettings();
   const weekday = ilWeekday(dayStart);
 
-  const [templateWindows, exception, busy, timeBlocks] = await Promise.all([
+  const [templateWindows, exception, busy, timeBlocks, forceOpen] = await Promise.all([
     templateWindowsFor(weekday),
     exceptionFor(dateISO),
     busyIntervals(dayStartMs, dayEndMs),
     timeBlocksFor(dateISO, dayStartMs),
+    forceOpenFor(dateISO, dayStartMs),
   ]);
 
   const fullDayBlocked = exception?.type === 'blocked';
@@ -504,11 +552,18 @@ export async function dayAvailability(dateISO: string): Promise<DaySlot[]> {
 
   return sliceWindows(windows, dayStartMs, settings.defaultDurationMin, settings.bufferMin).map(
     ({ startMs, endMs }) => {
+      const overlaps = (b: Interval) => startMs < b.endMs && b.startMs < endMs;
+      const forced = forceOpen.some(overlaps);
+      const overlapsBusy = busy.some(overlaps);
+      const overlapsBlockWindow = timeBlocks.some(overlaps);
       let state: SlotState;
-      if (busy.some((b) => startMs < b.endMs && b.startMs < endMs)) state = 'taken';
-      else if (fullDayBlocked || timeBlocks.some((b) => startMs < b.endMs && b.startMs < endMs))
-        state = 'closed';
-      else if (startMs < earliestMs) state = 'past';
+      if (startMs < earliestMs) state = 'past';
+      // A full-day block wins over a force-open (availableSlots yields nothing).
+      else if (fullDayBlocked) state = 'closed';
+      // Force-opened over a real conflict → bookable override.
+      else if (forced && (overlapsBusy || overlapsBlockWindow)) state = 'forced';
+      else if (overlapsBusy) state = 'taken';
+      else if (overlapsBlockWindow) state = 'closed';
       else state = 'open';
       return {
         startISO: new Date(startMs).toISOString(),
@@ -575,12 +630,18 @@ export async function monthDayStates(
     .where(and(gte(availabilityExceptions.date, fromISO), lte(availabilityExceptions.date, toISO)));
   const fullDay = new Set<string>();
   const blocksByDate = new Map<string, { startMin: number; endMin: number }[]>();
+  const forceByDate = new Map<string, { startMin: number; endMin: number }[]>();
   for (const b of blockRows) {
     if (b.type === 'blocked') fullDay.add(b.date);
     if (b.type === 'block_window' && b.startTime && b.endTime) {
       const arr = blocksByDate.get(b.date) ?? [];
       arr.push({ startMin: timeStrToMinutes(b.startTime), endMin: timeStrToMinutes(b.endTime) });
       blocksByDate.set(b.date, arr);
+    }
+    if (b.type === 'force_open' && b.startTime && b.endTime) {
+      const arr = forceByDate.get(b.date) ?? [];
+      arr.push({ startMin: timeStrToMinutes(b.startTime), endMin: timeStrToMinutes(b.endTime) });
+      forceByDate.set(b.date, arr);
     }
   }
 
@@ -593,21 +654,30 @@ export async function monthDayStates(
     const dayStartMs = dayStart.getTime();
     const windows = byWeekday.get(ilWeekday(dayStart)) ?? [];
     const dayFullyBlocked = fullDay.has(dateISO);
-    const dbw = (blocksByDate.get(dateISO) ?? []).map((w) => ({
+    const toMs = (w: { startMin: number; endMin: number }) => ({
       startMs: dayStartMs + w.startMin * MS_PER_MIN,
       endMs: dayStartMs + w.endMin * MS_PER_MIN,
-    }));
+    });
+    const dbw = (blocksByDate.get(dateISO) ?? []).map(toMs);
+    const fo = (forceByDate.get(dateISO) ?? []).map(toMs);
 
     let open = 0;
     let total = 0;
     let taken = 0;
     for (const { startMs, endMs } of sliceWindows(windows, dayStartMs, durationMin, bufferMin)) {
+      const overlaps = (b: { startMs: number; endMs: number }) =>
+        startMs < b.endMs && b.startMs < endMs;
       total += 1;
-      if (lessonIntervals.some((b) => startMs < b.endMs && b.startMs < endMs)) {
+      // Force-opened over a conflict → bookable (unless the whole day is blocked / past).
+      if (fo.some(overlaps) && !dayFullyBlocked && startMs >= earliestMs) {
+        open += 1;
+        continue;
+      }
+      if (lessonIntervals.some(overlaps)) {
         taken += 1;
         continue;
       }
-      if (dayFullyBlocked || dbw.some((b) => startMs < b.endMs && b.startMs < endMs)) continue;
+      if (dayFullyBlocked || dbw.some(overlaps)) continue;
       if (startMs < earliestMs) continue;
       open += 1;
     }

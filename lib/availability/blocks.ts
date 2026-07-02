@@ -132,6 +132,49 @@ export async function unblockTimeWindow(
   }
 }
 
+/** Force-opens a HH:mm..HH:mm window for booking even if a lesson overlaps it. */
+export async function forceOpenSlot(
+  dateISO: string,
+  startTime: string,
+  endTime: string,
+): Promise<void> {
+  const rows = await db
+    .select()
+    .from(availabilityExceptions)
+    .where(
+      and(eq(availabilityExceptions.date, dateISO), eq(availabilityExceptions.type, 'force_open')),
+    );
+  const dup = rows.some((r) => hhmm(r.startTime) === startTime && hhmm(r.endTime) === endTime);
+  if (dup) return;
+  await db
+    .insert(availabilityExceptions)
+    .values({ date: dateISO, type: 'force_open', startTime, endTime });
+}
+
+/** Removes force_open windows on the date overlapping [start,end] (back to taken). */
+export async function unforceOpenSlot(
+  dateISO: string,
+  startTime: string,
+  endTime: string,
+): Promise<void> {
+  const rows = await db
+    .select()
+    .from(availabilityExceptions)
+    .where(
+      and(eq(availabilityExceptions.date, dateISO), eq(availabilityExceptions.type, 'force_open')),
+    );
+  const overlapping = rows
+    .filter((r) => {
+      const bs = hhmm(r.startTime) ?? '';
+      const be = hhmm(r.endTime) ?? '';
+      return bs < endTime && startTime < be;
+    })
+    .map((r) => r.id);
+  if (overlapping.length) {
+    await db.delete(availabilityExceptions).where(inArray(availabilityExceptions.id, overlapping));
+  }
+}
+
 /** Re-opens a full day: removes its full-day 'blocked' exception(s). */
 export async function unblockFullDay(dateISO: string): Promise<void> {
   await db

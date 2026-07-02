@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import {
   ChevronLeft,
   ChevronRight,
@@ -18,8 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import type { DayState } from '@/lib/availability';
-import type { DaySlot } from '@/lib/availability';
+import type { DayState, DaySlot, OverlappingLesson } from '@/lib/availability';
 import {
   monthGridKeys,
   addMonthsKey,
@@ -28,7 +28,15 @@ import {
   dayLabel,
   HE_WEEKDAYS_SHORT,
 } from '../lessons/calendar/calendar-lib';
-import { loadMonth, loadDay, toggleSlot, toggleDay, closeRange } from './actions';
+import {
+  loadMonth,
+  loadDay,
+  toggleSlot,
+  toggleDay,
+  closeRange,
+  slotOccupants,
+  toggleForceOpen,
+} from './actions';
 
 interface Props {
   today: string;
@@ -51,6 +59,14 @@ export function AvailabilityView({ today, initialMonthAnchor, initialStates }: P
   const [busySlot, setBusySlot] = React.useState<string | null>(null);
   const [busyDay, setBusyDay] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+
+  // "Open over a taken slot?" confirmation.
+  const [confirm, setConfirm] = React.useState<{
+    slot: DaySlot;
+    occupants: OverlappingLesson[];
+    loading: boolean;
+  } | null>(null);
+  const [confirmBusy, setConfirmBusy] = React.useState(false);
 
   const [vacFrom, setVacFrom] = React.useState(today);
   const [vacTo, setVacTo] = React.useState(today);
@@ -98,8 +114,48 @@ export function AvailabilityView({ today, initialMonthAnchor, initialStates }: P
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Route a slot click by its state.
+  function onSlotClick(slot: DaySlot) {
+    if (slot.state === 'past') return;
+    if (slot.state === 'taken') {
+      void openTakenConfirm(slot);
+    } else if (slot.state === 'forced') {
+      void onForce(slot, false); // revert override → back to taken
+    } else {
+      void onToggleSlot(slot); // open ↔ closed
+    }
+  }
+
+  async function openTakenConfirm(slot: DaySlot) {
+    setConfirm({ slot, occupants: [], loading: true });
+    try {
+      const occupants = await slotOccupants(slot.startISO, slot.endISO);
+      setConfirm({ slot, occupants, loading: false });
+    } catch {
+      setConfirm({ slot, occupants: [], loading: false });
+    }
+  }
+
+  async function onForce(slot: DaySlot, open: boolean) {
+    if (open) setConfirmBusy(true);
+    else setBusySlot(slot.startISO);
+    setError(null);
+    try {
+      const res = await toggleForceOpen(selected, slot.startISO, slot.endISO, open);
+      if (!res.ok) setError(res.error ?? 'הפעולה נכשלה');
+      await refreshDay(selected);
+      void refreshMonth(anchor);
+    } catch {
+      setError('שגיאה — נסי שוב');
+    } finally {
+      setConfirmBusy(false);
+      setBusySlot(null);
+      setConfirm(null);
+    }
+  }
+
   async function onToggleSlot(slot: DaySlot) {
-    if (slot.state === 'taken' || slot.state === 'past') return;
+    if (slot.state !== 'open' && slot.state !== 'closed') return;
     const close = slot.state === 'open';
     setBusySlot(slot.startISO);
     setError(null);
@@ -320,13 +376,13 @@ export function AvailabilityView({ today, initialMonthAnchor, initialStates }: P
                 <div className="grid grid-cols-2 gap-2">
                   {day.slots.map((s) => {
                     const busy = busySlot === s.startISO;
-                    const disabled = s.state === 'taken' || s.state === 'past' || busy;
+                    const disabled = s.state === 'past' || busy;
                     return (
                       <button
                         key={s.startISO}
                         type="button"
                         disabled={disabled}
-                        onClick={() => void onToggleSlot(s)}
+                        onClick={() => onSlotClick(s)}
                         dir="ltr"
                         className={cn(
                           'flex items-center justify-center gap-1.5 rounded-xl border px-2 py-2.5 text-sm font-semibold tabular-nums shadow-soft transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
@@ -334,8 +390,12 @@ export function AvailabilityView({ today, initialMonthAnchor, initialStates }: P
                             'border-success/40 bg-success-soft text-success hover:brightness-95',
                           s.state === 'closed' &&
                             'border-danger/30 bg-danger-soft text-danger hover:brightness-95',
-                          s.state === 'taken' && 'cursor-not-allowed border-primary-200 bg-primary-50 text-primary-600',
-                          s.state === 'past' && 'cursor-not-allowed border-line bg-surface-2/50 text-muted opacity-70',
+                          s.state === 'taken' &&
+                            'border-primary-200 bg-primary-50 text-primary-600 hover:brightness-95',
+                          s.state === 'forced' &&
+                            'border-warning/50 bg-warning-soft text-warning hover:brightness-95',
+                          s.state === 'past' &&
+                            'cursor-not-allowed border-line bg-surface-2/50 text-muted opacity-70',
                         )}
                       >
                         {busy ? (
@@ -347,6 +407,7 @@ export function AvailabilityView({ today, initialMonthAnchor, initialStates }: P
                         ) : null}
                         <span>{s.label}</span>
                         {s.state === 'taken' && <span className="text-[10px]">שיעור</span>}
+                        {s.state === 'forced' && <span className="text-[10px]">נפתח</span>}
                       </button>
                     );
                   })}
@@ -362,7 +423,15 @@ export function AvailabilityView({ today, initialMonthAnchor, initialStates }: P
                   <span className="inline-flex items-center gap-1">
                     <span className="size-3 rounded bg-primary-50 ring-1 ring-primary-200" /> שיעור
                   </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="size-3 rounded bg-warning-soft ring-1 ring-warning/50" /> נפתח על תפוס
+                  </span>
                 </div>
+                <p className="text-xs leading-relaxed text-muted">
+                  לחיצה על משבצת <span className="font-medium text-primary-600">שיעור</span> תאפשר לפתוח
+                  אותה לתיאום למרות שהיא תפוסה (עם אישור). לחיצה על משבצת{' '}
+                  <span className="font-medium text-warning">נפתח</span> מבטלת את הפתיחה.
+                </p>
               </>
             )}
           </CardBody>
@@ -408,6 +477,81 @@ export function AvailabilityView({ today, initialMonthAnchor, initialStates }: P
           </div>
         </CardBody>
       </Card>
+
+      {/* ── "Open a taken slot?" confirmation ── */}
+      {confirm &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-end justify-center p-0 sm:items-center sm:p-4"
+            role="dialog"
+            aria-modal="true"
+          >
+            <button
+              type="button"
+              aria-label="סגור"
+              className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]"
+              onClick={() => setConfirm(null)}
+            />
+            <div className="relative z-10 w-full max-w-sm rounded-t-3xl border border-line bg-surface p-6 shadow-pop sm:rounded-3xl">
+              <div className="flex items-start gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-warning-soft text-warning">
+                  <AlertCircle className="size-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3 className="text-base font-bold text-ink">לפתוח משבצת תפוסה?</h3>
+                  <p className="mt-1 text-sm text-muted">
+                    <span dir="ltr" className="tabular-nums">
+                      {confirm.slot.label}
+                    </span>{' '}
+                    כבר תפוסה. פתיחה תאפשר לתאם שיעור נוסף באותה שעה.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 rounded-2xl border border-line bg-surface-2/50 p-3 text-sm">
+                <p className="mb-1 font-semibold text-ink">מה כבר קיים בשעה זו:</p>
+                {confirm.loading ? (
+                  <p className="text-muted">טוען…</p>
+                ) : confirm.occupants.length > 0 ? (
+                  <ul className="space-y-0.5">
+                    {confirm.occupants.map((o) => (
+                      <li key={o.id} dir="rtl">
+                        <span dir="ltr" className="tabular-nums">
+                          {o.timeLabel}
+                        </span>{' '}
+                        · {o.isGroup ? 'קבוצה: ' : ''}
+                        {o.name}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-muted">אירוע ביומן (ללא פירוט).</p>
+                )}
+              </div>
+
+              <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="sm:flex-1"
+                  onClick={() => setConfirm(null)}
+                >
+                  ביטול
+                </Button>
+                <Button
+                  type="button"
+                  className="sm:flex-1"
+                  loading={confirmBusy}
+                  onClick={() => void onForce(confirm.slot, true)}
+                >
+                  פתח בכל זאת
+                </Button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
