@@ -292,7 +292,7 @@ export function MessagesView({
         {/* ── Thread ── */}
         <section
           className={cn(
-            'flex min-h-0 flex-col bg-surface-2/30',
+            'flex min-h-0 min-w-0 flex-col bg-surface-2/30',
             selectedId ? 'flex' : 'hidden lg:flex',
           )}
         >
@@ -347,7 +347,7 @@ export function MessagesView({
                           </p>
                           <span
                             className={cn(
-                              'mt-1 flex items-center gap-1',
+                              'mt-1 flex flex-wrap items-center gap-1',
                               out ? 'justify-start text-primary-fg/70' : 'justify-end text-muted',
                             )}
                           >

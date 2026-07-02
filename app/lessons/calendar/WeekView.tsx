@@ -77,7 +77,10 @@ export function WeekView({
             return (
               <div
                 key={key}
-                className="min-w-0 border-s border-line first:border-s-0"
+                className={cn(
+                  'min-w-0 border-s border-line first:border-s-0',
+                  wd === 6 && 'bg-surface-2/40', // Saturday — rest day
+                )}
               >
                 {/* Day header */}
                 <div
@@ -108,6 +111,12 @@ export function WeekView({
                   className={cn('relative', isToday && 'bg-primary-soft/30')}
                   style={{ height: totalHeight }}
                 >
+                  {/* Saturday rest-day watermark (only when the day has no events) */}
+                  {wd === 6 && dayEvents.length === 0 && (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                      <span className="text-xs font-medium text-muted/70">מנוחה</span>
+                    </div>
+                  )}
                   {/* hour gridlines */}
                   {Array.from({
                     length: bounds.endHour - bounds.startHour,

@@ -358,7 +358,7 @@ export function ScheduleLessonDialog({
                           name="durationMin"
                           type="number"
                           min={1}
-                          step={5}
+                          step={1}
                           inputMode="numeric"
                           dir="ltr"
                           className="text-end tabular-nums"
@@ -424,7 +424,7 @@ export function ScheduleLessonDialog({
                           name="durationMin"
                           type="number"
                           min={1}
-                          step={5}
+                          step={1}
                           inputMode="numeric"
                           dir="ltr"
                           className="text-end tabular-nums"
