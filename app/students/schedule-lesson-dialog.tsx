@@ -26,6 +26,7 @@ import {
   checkSlotConflictAction,
   type ScheduleResult,
 } from './actions';
+import type { OverlappingLesson } from '@/lib/availability';
 
 // ADMIN scheduling dialog — Ilanit (owner) directly SETS a lesson for an
 // existing student. One-off → ONE confirmed lesson + immediate calendar event;
@@ -107,6 +108,7 @@ export function ScheduleLessonDialog({
     String(student.defaultDurationMin || 60),
   );
   const [conflict, setConflict] = React.useState(false);
+  const [conflictItems, setConflictItems] = React.useState<OverlappingLesson[]>([]);
 
   const close = React.useCallback(() => {
     if (pending) return;
@@ -121,6 +123,7 @@ export function ScheduleLessonDialog({
     setError(null);
     setDone(null);
     setConflict(false);
+    setConflictItems([]);
     setDate('');
     setTime('');
     setDuration(String(student.defaultDurationMin || 60));
@@ -171,6 +174,7 @@ export function ScheduleLessonDialog({
   React.useEffect(() => {
     if (mode !== 'one-off' || !date || !time) {
       setConflict(false);
+      setConflictItems([]);
       return;
     }
     const minutes = Number(duration) || 60;
@@ -178,8 +182,10 @@ export function ScheduleLessonDialog({
       try {
         const res = await checkSlotConflictAction(date, time, minutes);
         setConflict(Boolean(res.conflict));
+        setConflictItems(res.items ?? []);
       } catch {
         setConflict(false);
+        setConflictItems([]);
       }
     }, 350);
     return () => clearTimeout(handle);
@@ -390,15 +396,31 @@ export function ScheduleLessonDialog({
                     </Field>
 
                     {conflict && !done && (
-                      <p
+                      <div
                         className="flex items-start gap-2 rounded-xl bg-warning-soft px-3.5 py-3 text-sm text-warning"
                         role="status"
                       >
                         <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                        <span>
-                          קיים שיעור או אירוע ביומן בחפיפה לשעה זו. אפשר לקבוע בכל זאת.
-                        </span>
-                      </p>
+                        <div className="space-y-1">
+                          {conflictItems.length > 0 ? (
+                            <>
+                              <p className="font-semibold">בשעה זו כבר קיים:</p>
+                              <ul className="space-y-0.5">
+                                {conflictItems.map((it) => (
+                                  <li key={it.id} className="tabular-nums" dir="rtl">
+                                    <span dir="ltr">{it.timeLabel}</span> ·{' '}
+                                    {it.isGroup ? 'קבוצה: ' : ''}
+                                    {it.name}
+                                  </li>
+                                ))}
+                              </ul>
+                              <p>אפשר לקבוע בכל זאת.</p>
+                            </>
+                          ) : (
+                            <span>קיים אירוע ביומן בחפיפה לשעה זו. אפשר לקבוע בכל זאת.</span>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                 ) : (

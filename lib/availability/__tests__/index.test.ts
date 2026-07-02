@@ -33,6 +33,7 @@ vi.mock('@/db/schema', () => ({
   availability: { __t: 'availability' },
   availabilityExceptions: { __t: 'exceptions' },
   lessons: { __t: 'lessons' },
+  groupMembers: { __t: 'group_members' },
 }));
 
 // drizzle operators are no-ops here; filtering is done in the fake db by table.
@@ -42,6 +43,10 @@ vi.mock('drizzle-orm', () => ({
   gte: () => ({}),
   lt: () => ({}),
   inArray: () => ({}),
+  ne: () => ({}),
+  or: (...a: unknown[]) => a,
+  exists: () => ({}),
+  isNull: () => ({}),
 }));
 
 vi.mock('@/lib/db', () => {

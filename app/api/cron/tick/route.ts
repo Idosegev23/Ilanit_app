@@ -5,13 +5,15 @@ import {
   runCalendarScan,
   runPaymentFollowup,
 } from '@/lib/jobs';
+import { reconcileCancellations } from '@/lib/jobs/reconcile-cancellations';
 import { getSettings } from '@/lib/settings';
 import { ilHour, nowIL } from '@/lib/time';
 
-// Hourly cron (vercel.json: "0 * * * *"). Three jobs, each tz-gated in
-// Asia/Jerusalem:
+// Hourly cron (vercel.json: "0 * * * *"). Jobs, each tz-gated in Asia/Jerusalem:
 //   (א) day-before reminders — only at the hour of settings.reminder_time
 //   (ב) calendar scan        — every run, over the trailing window
+//   (ד) cancellation reconcile — every run; frees slots for lessons Ilanit
+//        deleted directly in Google Calendar
 //   (ג) payment follow-up    — only once a day, at the reminder hour
 // Auth: Authorization: Bearer <CRON_SECRET>.
 
@@ -40,6 +42,14 @@ export async function GET(req: Request): Promise<Response> {
     ran.calendarScan = await runCalendarScan(sinceISO, now.toISOString());
   } catch (err) {
     ran.calendarScanError = err instanceof Error ? err.message : String(err);
+  }
+
+  // (ד) Cancellation reconcile — every run. Frees slots for future standalone
+  // lessons whose Google event Ilanit deleted directly in her calendar.
+  try {
+    ran.reconcileCancellations = await reconcileCancellations();
+  } catch (err) {
+    ran.reconcileError = err instanceof Error ? err.message : String(err);
   }
 
   // (א) Day-before reminders — only at the reminder hour.

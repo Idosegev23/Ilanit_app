@@ -93,6 +93,7 @@ vi.mock('@/lib/google-calendar', () => ({
 const hasSlotConflict = vi.hoisted(() => vi.fn(async (_s?: string, _e?: string) => false));
 vi.mock('@/lib/availability', () => ({
   hasSlotConflict: (...a: unknown[]) => hasSlotConflict(...(a as [string, string])),
+  overlappingLessons: async () => [],
 }));
 vi.mock('@/lib/availability/cancel', () => ({
   createCancelUrl: vi.fn(async () => 'https://ilanit.test/c/tok'),

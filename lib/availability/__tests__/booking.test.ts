@@ -36,6 +36,7 @@ const mocks = vi.hoisted(() => ({
     ...patch,
   })),
   createActionToken: vi.fn(async () => 'raw-token-xyz'),
+  insertEvent: vi.fn(async () => ({ id: 'gcal-1' })),
   notify: vi.fn(
     async (
       _template: string,
@@ -60,6 +61,10 @@ vi.mock('@/lib/students', () => ({
   updateStudent: mocks.updateStudent,
 }));
 vi.mock('@/lib/tokens', () => ({ createActionToken: mocks.createActionToken }));
+vi.mock('@/lib/google-calendar', () => ({
+  insertEvent: mocks.insertEvent,
+  cancelEvent: vi.fn(async () => {}),
+}));
 vi.mock('@/lib/availability/cancel', () => ({
   createCancelUrl: vi.fn(async () => 'https://ilanit.test/c/tok'),
 }));
@@ -175,7 +180,7 @@ describe('bookLesson — slot guards', () => {
 });
 
 describe('bookLesson — happy path (student from token)', () => {
-  it('creates a pending lesson with price+location snapshot, token and notifications', async () => {
+  it('creates a CONFIRMED lesson with a calendar event and notifies Ilanit + the student', async () => {
     const res = await bookLesson({
       token: 'tok',
       startISO: FUTURE_START,
@@ -189,29 +194,37 @@ describe('bookLesson — happy path (student from token)', () => {
     expect(mocks.resolveBookingLink).toHaveBeenCalledWith('tok');
     expect(mocks.getStudent).toHaveBeenCalledWith('student-1');
 
-    // pending lesson snapshot — booked-by fields come from the known student
+    // Google Calendar event inserted (before the lesson)
+    expect(mocks.insertEvent).toHaveBeenCalledTimes(1);
+
+    // confirmed lesson snapshot with the google event id — no approval step
     expect(state.insertedValues).toMatchObject({
       type: 'individual',
       source: 'booking',
-      status: 'pending',
+      status: 'confirmed',
       needsMatch: false,
       studentId: 'student-1',
       price: 150,
       location: 'רחוב הדקל 1, חיפה',
+      googleEventId: 'gcal-1',
       bookedByName: 'דנה לוי',
       bookedByPhone: '+972501234567',
       notes: 'מבחן מחר',
     });
 
-    // approve token + both notifications
-    expect(mocks.createActionToken).toHaveBeenCalledWith('approve', 'lesson-1', expect.any(Number));
+    // notifications: "scheduled" → Ilanit, confirmation → student
     const templates = mocks.notify.mock.calls.map((c) => c[0]);
-    expect(templates).toContain('booking_pending_ilanit');
-    expect(templates).toContain('booking_pending_student');
+    expect(templates).toContain('booking_scheduled_ilanit');
+    expect(templates).toContain('booking_approved_student');
+    const ilanitCall = mocks.notify.mock.calls.find((c) => c[0] === 'booking_scheduled_ilanit');
+    expect(ilanitCall?.[1]).toBe('972545886779');
+  });
 
-    // the Ilanit notification carries the approval link with the raw token
-    const ilanitCall = mocks.notify.mock.calls.find((c) => c[0] === 'booking_pending_ilanit');
-    expect(ilanitCall?.[2]).toMatchObject({ actionUrl: 'https://ilanit.test/a/raw-token-xyz' });
+  it('fails the booking when the calendar insert fails (no confirmed lesson off-calendar)', async () => {
+    mocks.insertEvent.mockRejectedValueOnce(new Error('gcal down'));
+    const res = await bookLesson({ token: 'tok', startISO: FUTURE_START, endISO: FUTURE_END });
+    expect(res).toMatchObject({ ok: false, error: 'internal' });
+    expect(state.insertedValues).toBeNull();
   });
 
   it('records a newly-supplied email on a student missing one', async () => {

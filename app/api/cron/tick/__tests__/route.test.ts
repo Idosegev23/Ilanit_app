@@ -17,6 +17,13 @@ vi.mock('@/lib/jobs', () => ({
   runPaymentFollowup: () => runPaymentFollowup(),
 }));
 
+const reconcileCancellations = vi.fn((..._a: unknown[]) =>
+  Promise.resolve({ checked: 0, cancelled: 0 }),
+);
+vi.mock('@/lib/jobs/reconcile-cancellations', () => ({
+  reconcileCancellations: () => reconcileCancellations(),
+}));
+
 const getSettings = vi.fn(async () => ({ reminderTime: '18:00' }));
 vi.mock('@/lib/settings', () => ({ getSettings: () => getSettings() }));
 
@@ -39,6 +46,7 @@ beforeEach(() => {
   runDayBeforeReminders.mockClear();
   runCalendarScan.mockClear();
   runPaymentFollowup.mockClear();
+  reconcileCancellations.mockClear();
   getSettings.mockClear();
   mockHour = 9;
 });
@@ -62,6 +70,7 @@ describe('GET /api/cron/tick', () => {
     expect(res.status).toBe(200);
     expect(body.atReminderHour).toBe(false);
     expect(runCalendarScan).toHaveBeenCalledTimes(1);
+    expect(reconcileCancellations).toHaveBeenCalledTimes(1); // every run
     expect(runDayBeforeReminders).not.toHaveBeenCalled();
     expect(runPaymentFollowup).not.toHaveBeenCalled();
   });

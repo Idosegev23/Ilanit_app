@@ -1,6 +1,13 @@
 import { db } from '@/lib/db';
-import { availability, availabilityExceptions, lessons } from '@/db/schema';
-import { and, eq, gte, inArray, lt, lte, ne } from 'drizzle-orm';
+import {
+  availability,
+  availabilityExceptions,
+  groupMembers,
+  groups,
+  lessons,
+  students,
+} from '@/db/schema';
+import { and, eq, exists, gt, gte, inArray, isNull, lt, lte, ne, or } from 'drizzle-orm';
 import { getSettings } from '@/lib/settings';
 import { freeBusy } from '@/lib/google-calendar';
 import {
@@ -81,6 +88,28 @@ async function exceptionFor(
  * plus the calendar's freeBusy for the same window. Calendar errors degrade
  * gracefully (we keep the lesson-based busy set) so booking still works.
  */
+/**
+ * Keep a lesson as "busy" unless it is an EMPTY group session. An individual
+ * lesson always counts; a group_session counts only when its group has ≥1 active
+ * member — a group with 0 students isn't really happening, so its hour stays open
+ * for booking. Read live from group_members, so adding/removing members updates
+ * availability instantly.
+ */
+function notEmptyGroupSession() {
+  return or(
+    ne(lessons.type, 'group_session'),
+    // Defensive: an orphaned group session (group deleted → groupId NULL) still
+    // blocks, so it can't be silently double-booked.
+    isNull(lessons.groupId),
+    exists(
+      db
+        .select({ id: groupMembers.id })
+        .from(groupMembers)
+        .where(and(eq(groupMembers.groupId, lessons.groupId), eq(groupMembers.active, true))),
+    ),
+  );
+}
+
 async function busyIntervals(
   dayStartMs: number,
   dayEndMs: number,
@@ -100,6 +129,8 @@ async function busyIntervals(
         // Exclude a specific lesson (the one being approved): a pending lesson
         // already holds its own slot here, so without this it self-collides.
         excludeLessonId ? ne(lessons.id, excludeLessonId) : undefined,
+        // Empty group sessions (0 active members) don't block.
+        notEmptyGroupSession(),
       ),
     );
 
@@ -221,6 +252,60 @@ export async function hasSlotConflict(
     excludeLessonId,
   );
   return busy.some((b) => start.getTime() < b.endMs && b.startMs < end.getTime());
+}
+
+export interface OverlappingLesson {
+  id: string;
+  timeLabel: string; // "09:00–10:00"
+  name: string; // student / group / booked-by name
+  isGroup: boolean;
+}
+
+/**
+ * The DB lessons (pending/confirmed) that occupy a slot, labeled with the
+ * student/group name + time — so the admin scheduler can show WHAT is on a taken
+ * slot (booking is still allowed over it). Calendar-only busy blocks are not
+ * included (freeBusy has no title). Half-open overlap, matching hasSlotConflict.
+ */
+export async function overlappingLessons(
+  startISO: string,
+  endISO: string,
+  excludeLessonId?: string,
+): Promise<OverlappingLesson[]> {
+  const start = new Date(startISO);
+  const end = new Date(endISO);
+  if (!(start.getTime() < end.getTime())) return [];
+
+  const rows = await db
+    .select({
+      id: lessons.id,
+      type: lessons.type,
+      startsAt: lessons.startsAt,
+      endsAt: lessons.endsAt,
+      studentName: students.name,
+      groupName: groups.name,
+      bookedByName: lessons.bookedByName,
+    })
+    .from(lessons)
+    .leftJoin(students, eq(lessons.studentId, students.id))
+    .leftJoin(groups, eq(lessons.groupId, groups.id))
+    .where(
+      and(
+        inArray(lessons.status, ['pending', 'confirmed']),
+        lt(lessons.startsAt, end),
+        gt(lessons.endsAt, start),
+        excludeLessonId ? ne(lessons.id, excludeLessonId) : undefined,
+        // Match the engine: empty group sessions aren't shown as occupying.
+        notEmptyGroupSession(),
+      ),
+    );
+
+  return rows.map((r) => ({
+    id: r.id,
+    timeLabel: `${toILTimeStr(r.startsAt)}–${toILTimeStr(r.endsAt)}`,
+    name: r.groupName ?? r.studentName ?? r.bookedByName ?? 'שיעור',
+    isGroup: r.type === 'group_session',
+  }));
 }
 
 export interface WeekDay {
@@ -475,6 +560,8 @@ export async function monthDayStates(
         inArray(lessons.status, ['pending', 'confirmed']),
         lt(lessons.startsAt, new Date(toDay.getTime() + 24 * 60 * MS_PER_MIN)),
         gte(lessons.endsAt, fromDay),
+        // Empty group sessions (0 active members) don't block.
+        notEmptyGroupSession(),
       ),
     );
   const lessonIntervals = lessonRows.map((l) => ({

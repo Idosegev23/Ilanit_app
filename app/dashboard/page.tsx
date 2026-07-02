@@ -256,40 +256,6 @@ function UpcomingList({ rows }: { rows: ActionLessonRow[] }) {
   );
 }
 
-function PendingList({ rows }: { rows: ActionLessonRow[] }) {
-  if (rows.length === 0)
-    return (
-      <EmptyState
-        icon={ClipboardCheck}
-        title="אין בקשות הממתינות לאישור"
-        description="בקשות תיאום חדשות יופיעו כאן לאישור."
-        className="py-10"
-      />
-    );
-  return (
-    <ul className="flex flex-col gap-0.5">
-      {rows.map((r) => (
-        <ActionRow
-          key={r.id}
-          name={r.studentName}
-          tone="accent"
-          meta={formatILShort(r.startsAt)}
-          trailing={
-            <Link
-              href={`/lessons?lesson=${r.id}`}
-              aria-label={`אישור שיעור עבור ${r.studentName}`}
-              className={buttonVariants({ size: 'md', variant: 'primary' })}
-            >
-              <ClipboardCheck className="size-4" aria-hidden="true" />
-              אישור
-            </Link>
-          }
-        />
-      ))}
-    </ul>
-  );
-}
-
 function UnpaidList({ rows }: { rows: UnpaidRow[] }) {
   if (rows.length === 0)
     return (
@@ -472,16 +438,6 @@ export default async function DashboardPage() {
             count={data.actions.todayUpcoming.length}
           >
             <UpcomingList rows={data.actions.todayUpcoming} />
-          </ActionCard>
-          <ActionCard
-            title="ממתינים לאישור"
-            icon={ClipboardCheck}
-            tone="accent"
-            count={data.actions.pendingApprovals.length}
-            href="/lessons"
-            hrefLabel="לכל השיעורים"
-          >
-            <PendingList rows={data.actions.pendingApprovals} />
           </ActionCard>
           <ActionCard
             title="טרם שולמו"

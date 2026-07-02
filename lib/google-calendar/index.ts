@@ -200,7 +200,10 @@ export async function getEvent(
       eventId,
     });
     const event = res.data;
-    if (!event.id) return null;
+    // A deleted event may come back as HTTP 200 with status 'cancelled' (during
+    // Google's retention window) rather than a 404 — treat it as gone, mirroring
+    // the listEndedSince scan filter.
+    if (!event.id || event.status === 'cancelled') return null;
     return {
       id: event.id,
       summary: event.summary ?? '',

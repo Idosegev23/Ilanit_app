@@ -8,6 +8,7 @@ export type TemplateKey =
   | 'booking_link_student'
   | 'booking_pending_student'
   | 'booking_pending_ilanit'
+  | 'booking_scheduled_ilanit'
   | 'booking_approved_student'
   | 'booking_rejected_student'
   | 'reminder_day_before_individual'
@@ -55,6 +56,14 @@ const builders: Record<TemplateKey, (v: Vars) => string> = {
     `מחיר: ${money(v, 'price')}\n` +
     (s(v, 'notes') ? `הערות: ${s(v, 'notes')}\n` : '') +
     `לאישור או דחייה: ${s(v, 'actionUrl')}`,
+
+  booking_scheduled_ilanit: (v) =>
+    `נקבע שיעור חדש ✅\n` +
+    `תלמיד/ה: ${s(v, 'studentName')} (${s(v, 'phone')})\n` +
+    `מתי: ${s(v, 'datetime')}\n` +
+    `מחיר: ${money(v, 'price')}\n` +
+    (s(v, 'notes') ? `הערות: ${s(v, 'notes')}\n` : '') +
+    `השיעור נכנס ליומן והתלמיד/ה קיבל/ה אישור.`,
 
   booking_approved_student: (v) =>
     `מצוין ${s(v, 'studentName')}! ✅\n` +

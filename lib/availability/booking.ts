@@ -7,20 +7,18 @@ import { getStudent, updateStudent, findStudentByPhone, createStudent } from '@/
 import { normalizePhoneIL } from '@/lib/utils';
 import { resolveBookingLink } from '@/lib/booking-links';
 import { isSlotBookable } from '@/lib/availability';
-import { createActionToken } from '@/lib/tokens';
+import { insertEvent, cancelEvent } from '@/lib/google-calendar';
+import { addToCalendarUrl } from '@/lib/calendar-link';
 import { createCancelUrl } from '@/lib/availability/cancel';
 import { notify, notifyStudent } from '@/lib/notifications/dispatch';
 import { formatILDateTime } from '@/lib/time';
 
 // Core booking service used by /api/book. The student is identified from a
-// PERSONAL booking-link token (Ilanit sent them the link) — NOT from a name +
-// phone form. We re-check the slot, create a pending lesson with a price +
-// location snapshot, mint an approve action-token, and fire the two WhatsApp
-// notifications (pending → Ilanit, pending → student). The student may supply an
-// email (used for the Google Calendar invite). External calls are mocked in
-// tests.
-
-const APPROVE_TTL_MIN = 14 * 24 * 60; // approval links valid for 2 weeks
+// personal booking-link token or the permanent public link. We re-check the
+// slot, insert the Google Calendar event, create a CONFIRMED lesson immediately
+// (NO approval step), then fire two WhatsApp messages: "lesson scheduled" →
+// Ilanit, and a confirmation with an add-to-calendar + cancel link → the
+// student. External calls are mocked in tests.
 
 export interface BookRequest {
   /** Raw booking-link token identifying the student. */
@@ -199,8 +197,29 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
 
   const price = student.defaultPrice ?? null;
   const location = settings.locationAddress || null;
+  const datetime = formatILDateTime(start);
 
-  // 5) create the pending lesson with the price + location snapshot
+  // 5) Insert the Google Calendar event FIRST — a confirmed lesson must be backed
+  //    by a real calendar entry (Ilanit's source of truth). If this fails the
+  //    booking fails rather than leaving a confirmed lesson off her calendar.
+  let googleEventId: string;
+  try {
+    const event = await insertEvent({
+      summary: `שיעור – ${student.name}`,
+      startISO: req.startISO,
+      endISO: req.endISO,
+      location: location || undefined,
+      attendeeEmail: student.email ?? undefined,
+      description: req.notes?.trim() || undefined,
+      extendedPrivate: { type: 'individual', student_id: student.id },
+    });
+    googleEventId = event.id;
+  } catch (err) {
+    console.error('[booking] calendar insert failed:', err);
+    return { ok: false, error: 'internal', message: 'שגיאה בהוספה ליומן Google' };
+  }
+
+  // 6) Create the CONFIRMED lesson (no approval step) with price + location snapshot.
   let lesson: Lesson;
   try {
     const inserted = await db
@@ -211,10 +230,12 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
         studentId: student.id,
         startsAt: start,
         endsAt: end,
-        status: 'pending',
+        status: 'confirmed',
         needsMatch: false,
         price,
         location,
+        googleEventId,
+        confirmedAt: new Date(),
         bookedByName: student.name,
         bookedByPhone: student.phone,
         notes: req.notes?.trim() || null,
@@ -223,18 +244,21 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
     lesson = inserted[0];
   } catch (err) {
     console.error('[booking] failed to create lesson:', err);
+    // Don't strand the calendar event we just created.
+    try {
+      await cancelEvent(googleEventId);
+    } catch {
+      /* best-effort cleanup */
+    }
     return { ok: false, error: 'internal', message: 'שגיאה ביצירת השיעור' };
   }
 
-  // 6) approve action-token + notifications (best-effort; do not fail booking)
+  // 7) Notify (best-effort; a persisted lesson is never lost on notify failure):
+  //    Ilanit that a lesson was scheduled, and the student a confirmation with an
+  //    add-to-calendar link + a cancel link.
   try {
-    const rawToken = await createActionToken('approve', lesson.id, APPROVE_TTL_MIN);
-    const appUrl = env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
-    const actionUrl = `${appUrl}/a/${rawToken}`;
-    const datetime = formatILDateTime(start);
-
     await notify(
-      'booking_pending_ilanit',
+      'booking_scheduled_ilanit',
       env().ILANIT_PHONE,
       {
         studentName: student.name,
@@ -242,18 +266,23 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
         datetime,
         price: price ?? 0,
         notes: req.notes?.trim() ?? '',
-        actionUrl,
       },
-      `pending-ilanit:${lesson.id}`,
+      `scheduled-ilanit:${lesson.id}`,
       lesson.id,
     );
 
     const cancelUrl = await createCancelUrl(lesson.id);
     await notifyStudent(
       student,
-      'booking_pending_student',
-      { studentName: student.name, datetime, cancelUrl },
-      `pending-student:${lesson.id}`,
+      'booking_approved_student',
+      {
+        studentName: student.name,
+        datetime,
+        location: location ?? '',
+        calendarUrl: addToCalendarUrl({ title: 'שיעור עם אילנית', start, end, location }),
+        cancelUrl,
+      },
+      `approved:${lesson.id}`,
       lesson.id,
     );
   } catch (err) {

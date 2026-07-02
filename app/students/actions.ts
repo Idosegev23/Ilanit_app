@@ -15,7 +15,7 @@ import {
 import { getSettings } from '@/lib/settings';
 import { nowIL, parseILDateTime, formatILDateTime } from '@/lib/time';
 import { insertEvent } from '@/lib/google-calendar';
-import { hasSlotConflict } from '@/lib/availability';
+import { hasSlotConflict, overlappingLessons, type OverlappingLesson } from '@/lib/availability';
 import { createSeries } from '@/lib/recurrence';
 import { notifyStudent } from '@/lib/notifications/dispatch';
 import { addToCalendarUrl } from '@/lib/calendar-link';
@@ -227,18 +227,21 @@ export async function checkSlotConflictAction(
   date: string,
   time: string,
   durationMin: number,
-): Promise<{ conflict: boolean; error?: string }> {
-  if (!(await requireOwner())) return { conflict: false, error: 'אין הרשאה' };
-  if (!date || !time) return { conflict: false };
+): Promise<{ conflict: boolean; items: OverlappingLesson[]; error?: string }> {
+  if (!(await requireOwner())) return { conflict: false, items: [], error: 'אין הרשאה' };
+  if (!date || !time) return { conflict: false, items: [] };
   const minutes = Number.isFinite(durationMin) && durationMin > 0 ? durationMin : 60;
   try {
     const startsAt = parseILDateTime(date, time);
     const endsAt = new Date(startsAt.getTime() + minutes * 60 * 1000);
-    const conflict = await hasSlotConflict(startsAt.toISOString(), endsAt.toISOString());
-    return { conflict };
+    const [conflict, items] = await Promise.all([
+      hasSlotConflict(startsAt.toISOString(), endsAt.toISOString()),
+      overlappingLessons(startsAt.toISOString(), endsAt.toISOString()),
+    ]);
+    return { conflict, items };
   } catch (err) {
     console.error('[students] conflict check failed:', err);
-    return { conflict: false };
+    return { conflict: false, items: [] };
   }
 }
 
