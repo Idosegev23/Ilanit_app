@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
 import { availability, availabilityExceptions } from '@/db/schema';
@@ -148,8 +148,12 @@ export async function PUT(request: Request) {
     );
   }
 
-  // Same replace strategy for blocked/custom-date exceptions.
-  await db.delete(availabilityExceptions);
+  // Replace ONLY the blocked/custom exceptions this editor manages. The
+  // /availability calendar owns 'block_window' + 'force_open' rows — they must
+  // survive a settings save (else every save wipes her slot closes / overrides).
+  await db
+    .delete(availabilityExceptions)
+    .where(inArray(availabilityExceptions.type, ['blocked', 'custom']));
   if (exceptions.length > 0) {
     await db.insert(availabilityExceptions).values(
       exceptions.map((e) => ({

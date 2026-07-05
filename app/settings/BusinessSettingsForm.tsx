@@ -112,8 +112,9 @@ function NumberField({
         step={1}
         value={Number.isFinite(value) ? value : ''}
         onChange={(e) => {
-          const n = Math.trunc(Number(e.target.value));
-          onValue(Number.isFinite(n) ? n : min);
+          // Clamp into [min, max] so the field never holds a browser-"invalid" value.
+          const raw = Math.trunc(Number(e.target.value));
+          onValue(Number.isFinite(raw) ? Math.min(max, Math.max(min, raw)) : min);
         }}
         className="tabular-nums"
       />
