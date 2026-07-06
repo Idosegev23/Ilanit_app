@@ -68,6 +68,21 @@ export function EventDetailsDialog({
   const canMarkNotALesson =
     lesson.status !== 'cancelled' && lesson.status !== 'rejected';
 
+  function handleCancel() {
+    // Cancelling is destructive and irreversible — it also deletes the Google
+    // Calendar event and frees the slot. Require an explicit confirmation so a
+    // stray tap can't silently make a scheduled lesson disappear.
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        'לבטל את השיעור? הוא יימחק גם מיומן Google, הזמן יתפנה, ולא ניתן לשחזר.',
+      )
+    ) {
+      return;
+    }
+    onAction(lesson!.id, () => cancelLesson(lesson!.id));
+  }
+
   function handleNotALesson() {
     if (
       typeof window !== 'undefined' &&
@@ -213,9 +228,7 @@ export function EventDetailsDialog({
                   variant="danger"
                   loading={busy}
                   className="flex-1"
-                  onClick={() =>
-                    onAction(lesson!.id, () => cancelLesson(lesson!.id))
-                  }
+                  onClick={handleCancel}
                 >
                   <Ban className="size-4" aria-hidden="true" />
                   בטל

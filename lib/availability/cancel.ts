@@ -1,10 +1,11 @@
 import { createHash } from 'crypto';
 import { db } from '@/lib/db';
-import { lessons, actionTokens, type Lesson } from '@/db/schema';
+import { lessons, actionTokens, students, type Lesson } from '@/db/schema';
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import { env } from '@/lib/env';
 import { createActionToken, consumeActionToken } from '@/lib/tokens';
 import { cancelOne } from '@/lib/recurrence';
+import { notify } from '@/lib/notifications/dispatch';
 import { formatILDateTime } from '@/lib/time';
 
 // Self-service cancel / reschedule, reached from the "לשינוי או ביטול" link in
@@ -91,5 +92,43 @@ export async function cancelByToken(rawToken: string): Promise<CancelResult> {
     return { ok: false, error: 'internal', message: 'שגיאה בביטול השיעור' };
   }
 
+  // Tell Ilanit a lesson she scheduled was cancelled by the student, so it never
+  // just silently disappears from her calendar. Best-effort: a notification
+  // failure must not turn a successful cancel into an error for the student.
+  try {
+    await notifyIlanitOfSelfCancel(lesson);
+  } catch (err) {
+    console.error('[cancel] failed to notify Ilanit of self-cancel:', err);
+  }
+
   return { ok: true, datetime: formatILDateTime(lesson.startsAt) };
+}
+
+/**
+ * Notifies Ilanit that a student cancelled their own lesson via the self-service
+ * link. Resolves the display name from the linked student (if any) or the
+ * booking's captured name. Idempotent per lesson via `relatedId`.
+ */
+async function notifyIlanitOfSelfCancel(lesson: Lesson): Promise<void> {
+  let studentName = lesson.bookedByName?.trim() || 'תלמיד/ה';
+  if (lesson.studentId) {
+    const rows = await db
+      .select({ name: students.name })
+      .from(students)
+      .where(eq(students.id, lesson.studentId))
+      .limit(1);
+    if (rows[0]?.name) studentName = rows[0].name;
+  }
+
+  await notify(
+    'booking_cancelled_ilanit',
+    env().ILANIT_PHONE,
+    {
+      studentName,
+      phone: lesson.bookedByPhone ?? '',
+      datetime: formatILDateTime(lesson.startsAt),
+    },
+    `cancelled-ilanit:${lesson.id}`,
+    lesson.id,
+  );
 }
