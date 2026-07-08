@@ -187,14 +187,12 @@ function timeBlocksFor(dateISO: string, dayStartMs: number): Promise<Interval[]>
 }
 
 /**
- * DISABLED — force-open must NEVER reopen an already-booked slot to the PUBLIC
- * booking link (it caused uncontrolled double-booking). A taken slot always stays
- * taken for the public; only Ilanit can schedule over it via the admin flow
- * (scheduleStudentLesson, which bypasses this engine). Returns nothing so every
- * caller treats taken slots as taken.
+ * `force_open` exceptions — windows Ilanit explicitly opened for booking even
+ * though a lesson/event overlaps them. Subtracted from the busy set so the slot
+ * becomes bookable (an intentional override / possible double-book).
  */
-function forceOpenFor(_dateISO: string, _dayStartMs: number): Promise<Interval[]> {
-  return Promise.resolve([]);
+function forceOpenFor(dateISO: string, dayStartMs: number): Promise<Interval[]> {
+  return windowIntervalsFor(dateISO, dayStartMs, 'force_open');
 }
 
 /** Subtracts `holes` from `intervals` (interval difference). */
@@ -635,12 +633,18 @@ export async function monthDayStates(
     .where(and(gte(availabilityExceptions.date, fromISO), lte(availabilityExceptions.date, toISO)));
   const fullDay = new Set<string>();
   const blocksByDate = new Map<string, { startMin: number; endMin: number }[]>();
+  const forceByDate = new Map<string, { startMin: number; endMin: number }[]>();
   for (const b of blockRows) {
     if (b.type === 'blocked') fullDay.add(b.date);
     if (b.type === 'block_window' && b.startTime && b.endTime) {
       const arr = blocksByDate.get(b.date) ?? [];
       arr.push({ startMin: timeStrToMinutes(b.startTime), endMin: timeStrToMinutes(b.endTime) });
       blocksByDate.set(b.date, arr);
+    }
+    if (b.type === 'force_open' && b.startTime && b.endTime) {
+      const arr = forceByDate.get(b.date) ?? [];
+      arr.push({ startMin: timeStrToMinutes(b.startTime), endMin: timeStrToMinutes(b.endTime) });
+      forceByDate.set(b.date, arr);
     }
   }
 
@@ -658,6 +662,7 @@ export async function monthDayStates(
       endMs: dayStartMs + w.endMin * MS_PER_MIN,
     });
     const dbw = (blocksByDate.get(dateISO) ?? []).map(toMs);
+    const fo = (forceByDate.get(dateISO) ?? []).map(toMs);
 
     let open = 0;
     let total = 0;
@@ -666,6 +671,11 @@ export async function monthDayStates(
       const overlaps = (b: { startMs: number; endMs: number }) =>
         startMs < b.endMs && b.startMs < endMs;
       total += 1;
+      // Force-opened over a conflict → bookable (unless the whole day is blocked / past).
+      if (fo.some(overlaps) && !dayFullyBlocked && startMs >= earliestMs) {
+        open += 1;
+        continue;
+      }
       if (lessonIntervals.some(overlaps)) {
         taken += 1;
         continue;

@@ -175,18 +175,24 @@ describe('availableSlots (adapter)', () => {
     expect(slots.map((s) => s.label)).toEqual(['09:00–10:00', '11:00–12:00']);
   });
 
-  it('force_open does NOT reopen a booked slot to the public (double-booking disabled)', async () => {
+  it('force_open reopens a slot occupied by a lesson', async () => {
     data.availability = [
       { weekday, startTime: '09:00:00', endTime: '12:00:00', active: true },
     ];
     data.lessons = [
       { startsAt: parseILDateTime(DATE, '09:00'), endsAt: parseILDateTime(DATE, '10:00') },
     ];
-    // Even with a force_open row, the booked 09:00 slot stays taken for the public.
+    // Without a force_open the 09:00 slot is taken.
+    expect((await availableSlots(DATE)).map((s) => s.label)).toEqual([
+      '10:00–11:00',
+      '11:00–12:00',
+    ]);
+    // Force-open the 09:00 window → the slot returns despite the lesson.
     data.exceptions = [
       { date: DATE, type: 'force_open', startTime: '09:00:00', endTime: '10:00:00' },
     ];
     expect((await availableSlots(DATE)).map((s) => s.label)).toEqual([
+      '09:00–10:00',
       '10:00–11:00',
       '11:00–12:00',
     ]);
