@@ -50,6 +50,7 @@ export function EventDetailsDialog({
   onClose,
   onAction,
   onAssign,
+  onReplace,
   busy,
 }: {
   lesson: LessonRow | null;
@@ -57,6 +58,7 @@ export function EventDetailsDialog({
   onClose: () => void;
   onAction: (id: string, fn: () => Promise<ActionResult>) => void;
   onAssign: (lesson: LessonRow) => void;
+  onReplace: (lesson: LessonRow) => void;
   busy: boolean;
 }) {
   if (!lesson) return null;
@@ -223,16 +225,30 @@ export function EventDetailsDialog({
                 </>
               )}
               {lesson.status === 'confirmed' && (
-                <Button
-                  size="md"
-                  variant="danger"
-                  loading={busy}
-                  className="flex-1"
-                  onClick={handleCancel}
-                >
-                  <Ban className="size-4" aria-hidden="true" />
-                  בטל
-                </Button>
+                <>
+                  {!isGroup && (
+                    <Button
+                      size="md"
+                      variant="secondary"
+                      disabled={busy}
+                      className="flex-1"
+                      onClick={() => onReplace(lesson!)}
+                    >
+                      <Repeat className="size-4" aria-hidden="true" />
+                      החלף
+                    </Button>
+                  )}
+                  <Button
+                    size="md"
+                    variant="danger"
+                    loading={busy}
+                    className="flex-1"
+                    onClick={handleCancel}
+                  >
+                    <Ban className="size-4" aria-hidden="true" />
+                    בטל
+                  </Button>
+                </>
               )}
             </>
           )}

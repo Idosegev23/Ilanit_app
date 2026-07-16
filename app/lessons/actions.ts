@@ -6,7 +6,7 @@
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
-import { lessons, type Student } from '@/db/schema';
+import { lessons, type Student, type Lesson } from '@/db/schema';
 import { and, eq, isNull, isNotNull } from 'drizzle-orm';
 import {
   getStudent,
@@ -15,12 +15,14 @@ import {
   findOrCreateStudentByName,
 } from '@/lib/students';
 import { getSettings } from '@/lib/settings';
-import { nowIL, parseILDateTime, formatILDateTime } from '@/lib/time';
+import { nowIL, parseILDateTime, formatILDateTime, toILDateStr, toILTimeStr } from '@/lib/time';
 import { normalizePhoneIL } from '@/lib/utils';
+import { env } from '@/lib/env';
 import { insertEvent, getEvent } from '@/lib/google-calendar';
 import { cancelOne, createSeries } from '@/lib/recurrence';
 import { parseLessonTitle } from '@/lib/ai/parse-lesson';
-import { notifyStudent } from '@/lib/notifications/dispatch';
+import { notify, notifyStudent } from '@/lib/notifications/dispatch';
+import { scheduleStudentLesson } from '@/app/students/actions';
 import { addToCalendarUrl } from '@/lib/calendar-link';
 import { createCancelUrl } from '@/lib/availability/cancel';
 
@@ -135,6 +137,115 @@ export async function cancelLesson(lessonId: string): Promise<ActionResult> {
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : 'שגיאה בביטול השיעור' };
+  }
+}
+
+export interface ReplaceLessonInput {
+  originalLessonId: string;
+  /** Pick an existing student … */
+  studentId?: string;
+  /** … or add a new one (name + phone) inline. */
+  newStudentName?: string;
+  newStudentPhone?: string;
+  /** Optional ₪ override; defaults to the new student's price. */
+  price?: number | null;
+}
+
+/**
+ * Replaces a lesson: schedules a DIFFERENT student on the SAME slot, then cancels
+ * the original (removing its Google event) and messages the original student that
+ * it was cancelled. The replacement is created FIRST — if that fails the original
+ * is left intact, so a slot is never emptied by a failed replacement.
+ */
+export async function replaceLesson(input: ReplaceLessonInput): Promise<ActionResult> {
+  if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+  if (!input.originalLessonId) return { ok: false, error: 'מזהה שיעור חסר' };
+
+  // 1) Load the original; only an active (pending/confirmed) lesson can be replaced.
+  const rows = await db
+    .select()
+    .from(lessons)
+    .where(eq(lessons.id, input.originalLessonId))
+    .limit(1);
+  const original = rows[0];
+  if (!original) return { ok: false, error: 'השיעור המקורי לא נמצא' };
+  if (original.status !== 'pending' && original.status !== 'confirmed') {
+    return { ok: false, error: 'לא ניתן להחליף שיעור שאינו פעיל' };
+  }
+
+  // 2) Resolve the replacement student — existing pick or new name+phone.
+  let student: Student | null;
+  if (input.studentId) {
+    student = await getStudent(input.studentId);
+    if (!student) return { ok: false, error: 'התלמיד/ה שנבחר/ה לא נמצא/ה' };
+  } else {
+    const name = (input.newStudentName ?? '').trim();
+    const phoneRaw = (input.newStudentPhone ?? '').trim();
+    if (!name) return { ok: false, error: 'יש להזין שם תלמיד/ה' };
+    if (!phoneRaw) return { ok: false, error: 'יש להזין טלפון' };
+    const phone = normalizePhoneIL(phoneRaw);
+    student = (await findStudentByPhone(phone)) ?? (await createStudent({ name, phone }));
+  }
+
+  if (student.id === original.studentId) {
+    return { ok: false, error: 'התלמיד/ה זהה למקורי — לא נדרש שינוי' };
+  }
+
+  // 3) Schedule the replacement on the original's slot (same start + duration).
+  //    Reuses scheduleStudentLesson → confirmed lesson + Google event + the new
+  //    student's WhatsApp confirmation.
+  const minutes = Math.max(
+    1,
+    Math.round((original.endsAt.getTime() - original.startsAt.getTime()) / 60000),
+  );
+  const fd = new FormData();
+  fd.set('studentId', student.id);
+  fd.set('date', toILDateStr(original.startsAt));
+  fd.set('time', toILTimeStr(original.startsAt));
+  fd.set('durationMin', String(minutes));
+  if (input.price !== undefined && input.price !== null) fd.set('price', String(input.price));
+
+  const scheduled = await scheduleStudentLesson(fd);
+  if (!scheduled.ok) {
+    return { ok: false, error: scheduled.error ?? 'שגיאה בקביעת השיעור החדש' };
+  }
+
+  // 4) Replacement is booked — cancel the original + notify its student. Best-effort
+  //    from here: a hiccup must not undo the already-scheduled replacement.
+  try {
+    await cancelOne(original.id);
+  } catch (err) {
+    console.error('[replace] failed to cancel original lesson:', err);
+    return {
+      ok: false,
+      error: 'השיעור החדש נקבע, אך ביטול המקורי נכשל — יש לבטלו ידנית.',
+    };
+  }
+
+  try {
+    await notifyOriginalReplaced(original);
+  } catch (err) {
+    console.error('[replace] failed to notify original student:', err);
+  }
+
+  revalidatePath('/lessons');
+  return { ok: true };
+}
+
+/** Messages the original student that their lesson was cancelled, with the booking link. */
+async function notifyOriginalReplaced(original: Lesson): Promise<void> {
+  const bookingUrl = `${env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/book`;
+  const student = original.studentId ? await getStudent(original.studentId) : null;
+  const vars = {
+    studentName: student?.name ?? original.bookedByName ?? '',
+    datetime: formatILDateTime(original.startsAt),
+    bookingUrl,
+  };
+  const relatedId = `replaced:${original.id}`;
+  if (student) {
+    await notifyStudent(student, 'lesson_replaced_student', vars, relatedId, original.id);
+  } else if (original.bookedByPhone) {
+    await notify('lesson_replaced_student', original.bookedByPhone, vars, relatedId, original.id);
   }
 }
 

@@ -42,11 +42,13 @@ export function CalendarShell({
   lessons,
   onAction,
   onAssign,
+  onReplace,
   busyId,
 }: {
   lessons: LessonRow[];
   onAction: (id: string, fn: () => Promise<ActionResult>) => void;
   onAssign: (lesson: LessonRow) => void;
+  onReplace: (lesson: LessonRow) => void;
   busyId: string | null;
 }) {
   const todayKey = React.useMemo(() => dayKey(new Date()), []);
@@ -198,6 +200,10 @@ export function CalendarShell({
         onAction={onAction}
         onAssign={(l) => {
           onAssign(l);
+          setSelected(null);
+        }}
+        onReplace={(l) => {
+          onReplace(l);
           setSelected(null);
         }}
         busy={selected ? busyId === selected.id : false}

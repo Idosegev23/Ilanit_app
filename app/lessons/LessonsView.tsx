@@ -28,6 +28,7 @@ import { ManualLessonForm } from './ManualLessonForm';
 import { RecurringForm } from './RecurringForm';
 import { LessonDialog } from './LessonDialog';
 import { AssignStudentDialog } from './AssignStudentDialog';
+import { ReplaceLessonDialog } from './ReplaceLessonDialog';
 import { CalendarShell } from './calendar/CalendarShell';
 import type { LessonRow, StudentOption, GroupOption } from './data';
 
@@ -50,6 +51,7 @@ export function LessonsView({
   // useActionState (and thus the success/error message) starts fresh.
   const [formKey, setFormKey] = React.useState(0);
   const [assignTarget, setAssignTarget] = React.useState<LessonRow | null>(null);
+  const [replaceTarget, setReplaceTarget] = React.useState<LessonRow | null>(null);
   const [backfilling, setBackfilling] = React.useState(false);
   const [aiResolving, setAiResolving] = React.useState(false);
   const [notice, setNotice] = React.useState<string | null>(null);
@@ -270,6 +272,7 @@ export function LessonsView({
             lessons={lessons}
             onAction={handleAction}
             onAssign={setAssignTarget}
+            onReplace={setReplaceTarget}
             busyId={busyId}
           />
         </CardContent>
@@ -333,6 +336,14 @@ export function LessonsView({
         eventTitle={assignTarget?.studentName ?? null}
         studentOptions={studentOptions}
         onAssigned={() => setNotice('השיעור שויך בהצלחה')}
+      />
+
+      <ReplaceLessonDialog
+        open={replaceTarget !== null}
+        onClose={() => setReplaceTarget(null)}
+        lesson={replaceTarget}
+        studentOptions={studentOptions}
+        onReplaced={() => setNotice('השיעור הוחלף בהצלחה')}
       />
     </div>
   );

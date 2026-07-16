@@ -12,6 +12,7 @@ export type TemplateKey =
   | 'booking_cancelled_ilanit'
   | 'booking_approved_student'
   | 'booking_rejected_student'
+  | 'lesson_replaced_student'
   | 'reminder_day_before_individual'
   | 'reminder_day_before_group'
   | 'reminder_day_before_ilanit'
@@ -83,6 +84,13 @@ const builders: Record<TemplateKey, (v: Vars) => string> = {
   booking_rejected_student: (v) =>
     `שלום ${s(v, 'studentName')}, מצטערים — המועד שביקשת (${s(v, 'datetime')}) לא זמין.\n` +
     `אפשר לקבוע מועד אחר כאן: ${s(v, 'bookingUrl')}`,
+
+  lesson_replaced_student: (v) =>
+    `שלום ${s(v, 'studentName')},\n` +
+    `השיעור שהיה קבוע ל-${s(v, 'datetime')} בוטל.\n` +
+    (s(v, 'bookingUrl')
+      ? `לתיאום מועד חדש שמתאים לך: ${s(v, 'bookingUrl')}`
+      : 'נשמח לתאם מועד חדש בהמשך.'),
 
   reminder_day_before_individual: (v) =>
     `תזכורת 📚 שלום ${s(v, 'studentName')}!\n` +
