@@ -61,8 +61,10 @@ const mocks = vi.hoisted(() => ({
     leadTimeMin: 0,
     locationAddress: 'רחוב הדקל 1, חיפה',
   })),
+  unforceOpenSlot: vi.fn(async (..._a: unknown[]) => {}),
 }));
 
+vi.mock('@/lib/availability/blocks', () => ({ unforceOpenSlot: mocks.unforceOpenSlot }));
 vi.mock('@/lib/booking-links', () => ({ resolveBookingLink: mocks.resolveBookingLink }));
 vi.mock('@/lib/availability', () => ({
   isSlotBookable: mocks.isSlotBookable,
@@ -189,6 +191,38 @@ describe('bookLesson — slot guards', () => {
     const res = await bookLesson({ token: 'tok', startISO: FUTURE_START, endISO: FUTURE_END });
     expect(res).toMatchObject({ ok: false, error: 'slot_taken' });
     expect(state.insertedValues).toBeNull();
+  });
+});
+
+// Force-open is a ONE-SHOT override: Ilanit opens an already-taken slot for
+// exactly one extra booking. Once that booking lands the override is consumed,
+// so the slot re-locks instead of accepting unlimited pile-on bookings.
+describe('bookLesson — force-open is one-shot', () => {
+  it('books onto a force-opened taken slot AND consumes the override', async () => {
+    state.conflictRows = [{ id: 'existing-lesson' }]; // slot really is taken
+    mocks.isSlotForceOpen.mockResolvedValueOnce(true);
+
+    const res = await bookLesson({ token: 'tok', startISO: FUTURE_START, endISO: FUTURE_END });
+
+    expect(res.ok).toBe(true);
+    expect(mocks.unforceOpenSlot).toHaveBeenCalledWith('2026-06-08', '10:00', '11:00');
+  });
+
+  it('does NOT touch force-open on an ordinary (non-forced) booking', async () => {
+    const res = await bookLesson({ token: 'tok', startISO: FUTURE_START, endISO: FUTURE_END });
+
+    expect(res.ok).toBe(true);
+    expect(mocks.unforceOpenSlot).not.toHaveBeenCalled();
+  });
+
+  it('still books when consuming the override fails', async () => {
+    state.conflictRows = [{ id: 'existing-lesson' }];
+    mocks.isSlotForceOpen.mockResolvedValueOnce(true);
+    mocks.unforceOpenSlot.mockRejectedValueOnce(new Error('db down'));
+
+    const res = await bookLesson({ token: 'tok', startISO: FUTURE_START, endISO: FUTURE_END });
+
+    expect(res.ok).toBe(true);
   });
 });
 

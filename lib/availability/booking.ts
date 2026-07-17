@@ -10,7 +10,8 @@ import { insertEvent, cancelEvent } from '@/lib/google-calendar';
 import { addToCalendarUrl } from '@/lib/calendar-link';
 import { createCancelUrl } from '@/lib/availability/cancel';
 import { notify, notifyStudent } from '@/lib/notifications/dispatch';
-import { formatILDateTime } from '@/lib/time';
+import { formatILDateTime, toILDateStr, toILTimeStr } from '@/lib/time';
+import { unforceOpenSlot } from '@/lib/availability/blocks';
 
 // Core booking service used by /api/book. The student is identified from a
 // personal booking-link token or the permanent public link. We re-check the
@@ -55,8 +56,12 @@ export type BookResult =
  * inserting. A force-opened slot is a deliberate override → not a conflict, so a
  * booking there is allowed (a double-book Ilanit explicitly enabled).
  */
-async function hasConflict(startISO: string, endISO: string): Promise<boolean> {
-  if (await isSlotForceOpen(startISO, endISO)) return false;
+async function hasConflict(
+  startISO: string,
+  endISO: string,
+  forceOpened: boolean,
+): Promise<boolean> {
+  if (forceOpened) return false;
   const overlaps = await overlappingLessons(startISO, endISO);
   return overlaps.length > 0;
 }
@@ -170,8 +175,11 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
   if (!bookable) {
     return { ok: false, error: 'slot_taken', message: 'המועד כבר אינו פנוי' };
   }
-  // 3) final conflict guard against a concurrent booking
-  if (await hasConflict(req.startISO, req.endISO)) {
+  // 3) final conflict guard against a concurrent booking. A force-opened slot is a
+  //    deliberate ONE-SHOT override by Ilanit: it lets exactly ONE booking land on
+  //    an already-taken slot, and is consumed below so the slot re-locks.
+  const forceOpened = await isSlotForceOpen(req.startISO, req.endISO);
+  if (await hasConflict(req.startISO, req.endISO, forceOpened)) {
     return { ok: false, error: 'slot_taken', message: 'המועד כבר אינו פנוי' };
   }
 
@@ -278,6 +286,17 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
     );
   } catch (err) {
     console.error('[booking] notification step failed (lesson kept):', err);
+  }
+
+  // Consume the one-shot force-open: Ilanit opened this already-taken slot for
+  // exactly ONE extra booking. Now that it is filled, drop the override so the
+  // slot re-locks and nobody else can keep piling onto the same session.
+  if (forceOpened) {
+    try {
+      await unforceOpenSlot(toILDateStr(start), toILTimeStr(start), toILTimeStr(end));
+    } catch (err) {
+      console.error('[booking] failed to consume force-open (slot stays open):', err);
+    }
   }
 
   return { ok: true, lessonId: lesson.id };
