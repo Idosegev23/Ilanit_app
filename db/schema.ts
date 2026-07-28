@@ -312,6 +312,33 @@ export const bookingLinks = pgTable(
   }),
 );
 
+// Standby / waitlist. A visitor who found no suitable slot registers interest in
+// a set of weekdays + an hour range. When a lesson in that window is cancelled,
+// Ilanit is alerted and can place the waitlisted person on the freed slot.
+export const standbyRequests = pgTable(
+  'standby_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // Linked once matched/created; kept if the student is later removed.
+    studentId: uuid('student_id').references(() => students.id, { onDelete: 'set null' }),
+    name: text('name').notNull(),
+    phone: text('phone').notNull(),
+    email: text('email'),
+    // Wanted weekdays as a CSV of JS weekday numbers (0=Sun … 6=Sat), e.g. "0,2,4".
+    weekdays: text('weekdays').notNull(),
+    startTime: text('start_time').notNull(), // HH:mm (Asia/Jerusalem)
+    endTime: text('end_time').notNull(), // HH:mm (Asia/Jerusalem)
+    status: text('status', { enum: ['active', 'fulfilled', 'cancelled'] })
+      .notNull()
+      .default('active'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    fulfilledAt: timestamp('fulfilled_at', { withTimezone: true }),
+  },
+  (t) => ({
+    statusIdx: index('standby_status_idx').on(t.status),
+  }),
+);
+
 export const insightsCache = pgTable('insights_cache', {
   id: uuid('id').primaryKey().defaultRandom(),
   period: text('period').notNull(),
@@ -372,5 +399,7 @@ export type NewGroupBilling = typeof groupBilling.$inferInsert;
 export type StudentAlias = typeof studentAliases.$inferSelect;
 export type BookingLink = typeof bookingLinks.$inferSelect;
 export type NewBookingLink = typeof bookingLinks.$inferInsert;
+export type StandbyRequest = typeof standbyRequests.$inferSelect;
+export type NewStandbyRequest = typeof standbyRequests.$inferInsert;
 export type OpenWeek = typeof openWeeks.$inferSelect;
 export type NewOpenWeek = typeof openWeeks.$inferInsert;

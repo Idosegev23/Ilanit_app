@@ -82,6 +82,15 @@ export default async function TokenBookPage({
         studentGuardianPhone={student.guardianPhone}
         initialWeek={initialWeek}
       />
+      <p className="mt-6 text-center text-sm text-muted">
+        לא מצאת שעה מתאימה?{' '}
+        <a
+          href="/standby"
+          className="font-semibold text-primary-600 underline-offset-2 hover:underline"
+        >
+          הצטרפו לרשימת ההמתנה
+        </a>
+      </p>
     </AuthLayout>
   );
 }

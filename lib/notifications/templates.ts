@@ -13,6 +13,8 @@ export type TemplateKey =
   | 'booking_approved_student'
   | 'booking_rejected_student'
   | 'lesson_replaced_student'
+  | 'standby_registered_student'
+  | 'standby_slot_ilanit'
   | 'reminder_day_before_individual'
   | 'reminder_day_before_group'
   | 'reminder_day_before_ilanit'
@@ -91,6 +93,17 @@ const builders: Record<TemplateKey, (v: Vars) => string> = {
     (s(v, 'bookingUrl')
       ? `לתיאום מועד חדש שמתאים לך: ${s(v, 'bookingUrl')}`
       : 'נשמח לתאם מועד חדש בהמשך.'),
+
+  standby_registered_student: (v) =>
+    `נרשמת לרשימת ההמתנה! 📝\n` +
+    `${s(v, 'studentName')}, ברגע שיתפנה מקום ב${s(v, 'daysLabel')} בין ${s(v, 'startTime')}–${s(v, 'endTime')} — נעדכן אותך.\n` +
+    `תודה!`,
+
+  standby_slot_ilanit: (v) =>
+    `התפנה מקום מתאים לרשימת ההמתנה ⏳\n` +
+    `מתי: ${s(v, 'datetime')}\n` +
+    `בהמתנה שמתאימים: ${s(v, 'count')}\n` +
+    `לצפייה ואישור: ${s(v, 'actionUrl')}`,
 
   reminder_day_before_individual: (v) =>
     `תזכורת 📚 שלום ${s(v, 'studentName')}!\n` +
