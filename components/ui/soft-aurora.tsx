@@ -171,9 +171,18 @@ void main() {
     shift = (uMouse - 0.5) * uMouseInfluence;
   }
 
+  /*
+    Palette discipline. The cosine gradients are driven with EQUAL per-channel
+    frequency and phase, so each returns a NEUTRAL GRAY that varies only in
+    brightness; multiplying that by uColor1 / uColor2 can therefore only ever
+    produce those two hues. Upstream uses c = vec3(2,1,0) and d = vec3(.5,.2,.25),
+    which sweep the channels out of phase and paint a full rainbow — verified on
+    the rendered page as green and saturated red bands, which have no place in a
+    pink-and-peach system.
+  */
   vec3 col = vec3(0.0);
-  col += 0.99 * auroraGlow(t, shift) * cosineGradient(uv.x + uTime * uSpeed * 0.2 * uColorSpeed, vec3(0.5), vec3(0.5), vec3(1.0), vec3(0.3, 0.20, 0.20)) * uColor1;
-  col += 0.99 * auroraGlow(t + uLayerOffset, shift) * cosineGradient(uv.x + uTime * uSpeed * 0.1 * uColorSpeed, vec3(0.5), vec3(0.5), vec3(2.0, 1.0, 0.0), vec3(0.5, 0.20, 0.25)) * uColor2;
+  col += 0.99 * auroraGlow(t, shift) * cosineGradient(uv.x + uTime * uSpeed * 0.2 * uColorSpeed, vec3(0.62), vec3(0.34), vec3(1.0), vec3(0.25)) * uColor1;
+  col += 0.99 * auroraGlow(t + uLayerOffset, shift) * cosineGradient(uv.x + uTime * uSpeed * 0.1 * uColorSpeed, vec3(0.62), vec3(0.34), vec3(1.0), vec3(0.62)) * uColor2;
 
   col *= uBrightness;
   float alpha = clamp(length(col), 0.0, 1.0);

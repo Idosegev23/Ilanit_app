@@ -67,7 +67,9 @@ export function AuroraBackground() {
           <SoftAurora
             speed={0.45}
             scale={1.6}
-            brightness={1.15}
+            // Under multiply, brightness above ~1 turns the bands into
+            // saturated stripes instead of a wash. Tuned against the render.
+            brightness={0.9}
             color1="#fad5bb"
             color2="#f493be"
             noiseFrequency={2.2}

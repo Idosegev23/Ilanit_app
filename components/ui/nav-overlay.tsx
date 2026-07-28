@@ -42,6 +42,22 @@ export function NavOverlay({ open, onClose, returnFocusTo }: NavOverlayProps) {
   );
   const [highlight, setHighlight] = React.useState(activeIndex);
 
+  /*
+    The wheel's scale has to be chosen in JS, not by a breakpoint class. The
+    component writes --ow-font-size as an INLINE style, which outranks any
+    `lg:[--ow-font-size:…]` utility, and it also derives its row height from the
+    same number — so a CSS-only override would silently desync the layout math
+    from the rendered type. One source of truth, matched to the media query.
+  */
+  const [isDesktop, setIsDesktop] = React.useState(false);
+  React.useEffect(() => {
+    const q = window.matchMedia('(min-width: 1024px)');
+    const sync = () => setIsDesktop(q.matches);
+    sync();
+    q.addEventListener('change', sync);
+    return () => q.removeEventListener('change', sync);
+  }, []);
+
   // Re-centre on the current route each time the overlay opens.
   React.useEffect(() => {
     if (open) setHighlight(activeIndex);
@@ -130,10 +146,42 @@ export function NavOverlay({ open, onClose, returnFocusTo }: NavOverlayProps) {
           </button>
         </div>
 
-        {/* Body — preview panel (lg+) beside the wheel */}
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_minmax(0,520px)]">
-          {/* Preview — inline-start on desktop. Hidden on mobile, where the
-              wheel itself is the whole experience. */}
+        {/*
+          Body. Grid columns flow right-to-left under dir=rtl, so the WHEEL is
+          declared first to land on the visual right — the reading-side anchor,
+          and the thumb-side one — with the preview opposite it.
+        */}
+        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,520px)_1fr]">
+          {/* The wheel */}
+          <div className="relative min-h-0 flex-1">
+            <OptionWheel
+              items={NAV_ITEMS.map((item) => item.label)}
+              defaultSelected={activeIndex}
+              onChange={(index) => setHighlight(index)}
+              onCommit={(index) => go(index)}
+              side="right"
+              textColor="#6b6c74"
+              activeColor="#2e2f34"
+              fontSize={isDesktop ? 3 : 2.2}
+              spacing={1.5}
+              // A full-strength curve swings the outer options past the
+              // container's edge, where overflow clips them mid-word. Softened
+              // until the arc still reads as a wheel but nothing is cut.
+              curve={0.55}
+              tilt={7}
+              blur={1.6}
+              fade={0.26}
+              minOpacity={0.12}
+              smoothing={180}
+              inset={isDesktop ? 72 : 36}
+              loop={false}
+              draggable
+              ariaLabel="ניווט ראשי"
+            />
+          </div>
+
+          {/* Preview — opposite the wheel on desktop. Hidden on mobile, where
+              the wheel itself is the whole experience. */}
           <div className="hidden items-center px-12 lg:flex">
             <div key={previewed.href} className="animate-fade-in max-w-sm">
               <span className="mb-6 flex size-16 items-center justify-center rounded-3xl bg-primary text-ink shadow-glow">
@@ -159,32 +207,6 @@ export function NavOverlay({ open, onClose, returnFocusTo }: NavOverlayProps) {
                 <ArrowLeft className="size-4" aria-hidden="true" />
               </button>
             </div>
-          </div>
-
-          {/* The wheel */}
-          <div className="relative min-h-0 flex-1">
-            <OptionWheel
-              items={NAV_ITEMS.map((item) => item.label)}
-              defaultSelected={activeIndex}
-              onChange={(index) => setHighlight(index)}
-              onCommit={(index) => go(index)}
-              side="right"
-              textColor="#6b6c74"
-              activeColor="#2e2f34"
-              fontSize={2.1}
-              spacing={1.5}
-              curve={1}
-              tilt={7}
-              blur={1.6}
-              fade={0.26}
-              minOpacity={0.12}
-              smoothing={180}
-              inset={32}
-              loop={false}
-              draggable
-              ariaLabel="ניווט ראשי"
-              className="lg:[--ow-font-size:3rem]"
-            />
           </div>
         </div>
 
