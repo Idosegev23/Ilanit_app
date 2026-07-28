@@ -365,6 +365,29 @@ export async function createManualLesson(formData: FormData): Promise<ActionResu
       .set({ googleEventId: evt.id })
       .where(eq(lessons.id, lesson.id));
 
+    // Confirm to the student (parent when a guardian phone is set) that Ilanit
+    // scheduled the lesson — same as the student-card scheduler. Only for a
+    // FUTURE lesson: a retro walk-in (past date) is a record, not an invite, and
+    // must stay silent. The day-before reminder cron then covers the reminder.
+    if (startsAt.getTime() > nowIL().getTime()) {
+      try {
+        await notifyStudent(student, 'booking_approved_student', {
+          studentName: student.name,
+          datetime: formatILDateTime(startsAt),
+          location: location ?? '',
+          calendarUrl: addToCalendarUrl({
+            title: 'שיעור עם אילנית',
+            start: startsAt,
+            end: endsAt,
+            location,
+          }),
+          cancelUrl: await createCancelUrl(lesson.id),
+        });
+      } catch (err) {
+        console.error('[manual] schedule confirmation failed (lesson kept):', err);
+      }
+    }
+
     revalidatePath('/lessons');
     return { ok: true };
   } catch (err) {
