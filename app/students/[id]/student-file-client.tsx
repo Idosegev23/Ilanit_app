@@ -117,14 +117,16 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
   return (
     <div className="space-y-6">
       {/* ── Top bar: back + edit ── */}
-      <div className="flex items-center justify-between gap-3">
-        <Link href="/students">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* No focus override here — the global :focus-visible ring is the one
+            that meets WCAG 2.2, and suppressing it would blind keyboard users. */}
+        <Link href="/students" className="shrink-0">
           <Button variant="secondary" size="md">
             <ChevronRight className="size-4" aria-hidden="true" />
             לרשימת התלמידים
           </Button>
         </Link>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <StudentFormDialog
             student={student}
             settingsDefaultPrice={file.settingsDefaultPrice}
@@ -146,42 +148,51 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
         </div>
       </div>
 
-      {/* ── Profile hero ── */}
-      <Card className="relative overflow-hidden">
-        <div className="relative bg-gradient-warm px-6 pb-16 pt-6 sm:px-8">
+      {/*
+        ── Profile hero ──
+        The blush band is a surface, never a text bed for white: ink on the pink
+        stop is 6.2:1, white would be 2.15:1. The archived chip therefore sits on
+        a white glass pill with ink text.
+      */}
+      <Card className="rise relative overflow-hidden">
+        <div className="relative overflow-hidden bg-gradient-warm px-5 pb-16 pt-6 sm:px-8">
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -end-10 -top-12 size-44 rounded-full bg-white/15 blur-3xl"
+            className="pointer-events-none absolute -end-10 -top-12 size-44 rounded-full bg-white/55 blur-3xl"
           />
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute -start-8 bottom-0 size-32 rounded-full bg-white/10 blur-2xl"
+            className="pointer-events-none absolute -start-8 bottom-0 size-32 rounded-full bg-primary-200/70 blur-2xl"
+          />
+          <div
+            aria-hidden="true"
+            className="texture-dots pointer-events-none absolute inset-0 opacity-60"
           />
           {student.archived && (
-            <span className="relative inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-xs font-medium text-white ring-1 ring-white/30">
+            <span className="relative inline-flex items-center gap-1.5 rounded-full bg-white/80 px-3 py-1.5 text-xs font-semibold text-ink shadow-soft ring-1 ring-inset ring-white/70">
               <Archive className="size-3.5" aria-hidden="true" />
               התלמיד/ה בארכיון
             </span>
           )}
         </div>
 
-        <CardBody className="relative -mt-12 px-6 pt-0 sm:px-8">
+        <CardBody className="relative -mt-12 px-5 pt-0 sm:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
             <span
               aria-hidden="true"
-              className="flex size-24 shrink-0 items-center justify-center rounded-3xl bg-surface text-2xl font-bold text-primary-600 shadow-pop ring-4 ring-surface"
+              className="flex size-24 shrink-0 items-center justify-center rounded-3xl bg-surface text-2xl font-extrabold tracking-tight text-primary-700 shadow-pop ring-4 ring-surface"
             >
               {initials(student.name)}
             </span>
             <div className="min-w-0 flex-1 pb-1">
-              <h1 className="truncate text-2xl font-bold leading-tight text-ink sm:text-3xl">
+              <h1 className="truncate text-[28px] font-extrabold leading-tight tracking-tight text-ink sm:text-4xl">
                 {student.name}
               </h1>
               <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted">
                 <a
                   href={`tel:${student.phone}`}
                   dir="ltr"
-                  className="inline-flex items-center gap-1.5 rounded transition-colors duration-150 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-full transition-colors duration-150 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
                 >
                   <Phone className="size-4" aria-hidden="true" />
                   <span className="tabular-nums">{student.phone}</span>
@@ -190,7 +201,7 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
                   <a
                     href={`mailto:${student.email}`}
                     dir="ltr"
-                    className="inline-flex items-center gap-1.5 rounded transition-colors duration-150 hover:text-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="inline-flex min-h-11 items-center gap-1.5 rounded-full transition-colors duration-150 hover:text-primary-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
                   >
                     <Mail className="size-4" aria-hidden="true" />
                     {student.email}
@@ -199,8 +210,8 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
               </div>
 
               {student.guardianPhone && (
-                <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary-soft/70 px-2.5 py-1 text-xs font-medium text-primary-600 ring-1 ring-primary-100">
-                  <MessageCircle className="size-3.5" aria-hidden="true" />
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-primary-soft/80 px-3 py-1.5 text-xs font-semibold text-primary-700 ring-1 ring-inset ring-primary-100">
+                  <MessageCircle className="size-3.5 shrink-0" aria-hidden="true" />
                   <span>
                     ההודעות נשלחות להורה
                     {student.guardianName ? ` (${student.guardianName})` : ''}:{' '}
@@ -214,26 +225,30 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
           </div>
 
           {/* Quick-stat chips */}
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="stagger mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <HeroStat
+              index={0}
               icon={CircleDollarSign}
               tone="primary"
               label="מחיר שיעור פרטי"
               value={student.defaultPrice != null ? formatShekels(student.defaultPrice) : '—'}
             />
             <HeroStat
+              index={1}
               icon={Clock}
               tone="accent"
               label="משך שיעור"
               value={`${student.defaultDurationMin} דק׳`}
             />
             <HeroStat
+              index={2}
               icon={ReceiptText}
               tone="success"
               label="נגבה עד היום"
               value={formatShekels(collected)}
             />
             <HeroStat
+              index={3}
               icon={CalendarDays}
               tone={outstanding > 0 ? 'warning' : 'success'}
               label="לתשלום"
@@ -245,10 +260,15 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
 
       {/* ── Tabs ── */}
       <div>
+        {/*
+          The selected tab uses the ink fill: it is the single highest-emphasis
+          state on the page, white on ink is 13.4:1, and it keeps the blush for
+          accents instead of spending it on a control that repeats five times.
+        */}
         <div
           role="tablist"
           aria-label="חלקי תיק התלמיד"
-          className="flex flex-wrap gap-1.5 rounded-2xl border border-line bg-surface p-1.5 shadow-soft"
+          className="glass-strong flex gap-1.5 overflow-x-auto rounded-full p-1.5 shadow-soft"
         >
           {tabs.map((t) => {
             const TabIcon = t.icon;
@@ -263,9 +283,11 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
                 aria-controls={`panel-${t.id}`}
                 onClick={() => setActive(t.id)}
                 className={cn(
-                  'inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:flex-none',
+                  // Never shrink: below `sm:` the strip scrolls horizontally
+                  // rather than squashing five Hebrew labels into 390px.
+                  'inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full px-3.5 text-sm font-semibold transition-[background-color,color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink',
                   selected
-                    ? 'bg-gradient-warm text-white shadow-card'
+                    ? 'bg-ink text-white shadow-card'
                     : 'text-muted hover:bg-primary-50 hover:text-ink',
                 )}
               >
@@ -274,8 +296,8 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
                 {t.count != null && t.count > 0 && (
                   <span
                     className={cn(
-                      'flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums',
-                      selected ? 'bg-white/25 text-white' : 'bg-primary-soft text-primary-600',
+                      'flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold tabular-nums',
+                      selected ? 'bg-white/25 text-white' : 'bg-primary-soft text-primary-700',
                     )}
                   >
                     {t.count}
@@ -286,7 +308,7 @@ export function StudentFileClient({ file }: { file: StudentFileVM }) {
           })}
         </div>
 
-        <div className="mt-4">
+        <div className="mt-5">
           {active === 'details' && (
             <Panel id="details">
               <DetailsPanel student={student} settingsDefaultPrice={file.settingsDefaultPrice} />
@@ -349,7 +371,7 @@ function DetailsPanel({
 }) {
   return (
     <Card>
-      <CardBody className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+      <CardBody className="grid grid-cols-1 gap-x-8 gap-y-5 p-5 sm:grid-cols-2 sm:p-6">
         <DetailRow icon={Phone} label="טלפון">
           <span dir="ltr" className="tabular-nums">
             {student.phone}
@@ -360,7 +382,7 @@ function DetailsPanel({
             <a
               href={`mailto:${student.email}`}
               dir="ltr"
-              className="rounded text-primary-600 underline-offset-2 transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="rounded-full font-medium text-primary-700 underline-offset-4 transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
             >
               {student.email}
             </a>
@@ -380,7 +402,7 @@ function DetailsPanel({
             <a
               href={`tel:${student.guardianPhone}`}
               dir="ltr"
-              className="rounded tabular-nums text-primary-600 underline-offset-2 transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="rounded-full font-medium tabular-nums text-primary-700 underline-offset-4 transition-colors duration-150 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
             >
               {student.guardianPhone}
             </a>
@@ -390,7 +412,7 @@ function DetailsPanel({
         </DetailRow>
         {student.guardianPhone && (
           <div className="sm:col-span-2">
-            <p className="flex items-start gap-2 rounded-xl bg-primary-soft/50 px-3.5 py-2.5 text-sm text-primary-600">
+            <p className="flex items-start gap-2 rounded-2xl bg-primary-soft/70 px-4 py-3 text-sm text-primary-700 ring-1 ring-inset ring-white/60">
               <MessageCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               <span>
                 כל ההודעות (לינק לתיאום, תזכורות, בקשות תשלום וקבלות) נשלחות לטלפון ההורה.
@@ -450,39 +472,40 @@ function LessonsPanel({ lessons }: { lessons: StudentFileVM['lessons'] }) {
       />
     );
   }
+  // `Table` already provides the glass-strong shell + horizontal scroll, so it
+  // stands on its own — a Card around it would double the surface. The min-width
+  // keeps four columns readable at 390px by scrolling instead of crushing.
   return (
-    <Card className="overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>מועד</TableHead>
-            <TableHead>סטטוס שיעור</TableHead>
-            <TableHead className="text-end">מחיר</TableHead>
-            <TableHead>תשלום</TableHead>
+    <Table className="min-w-[520px]">
+      <TableHeader>
+        <TableRow>
+          <TableHead>מועד</TableHead>
+          <TableHead>סטטוס שיעור</TableHead>
+          <TableHead className="text-end">מחיר</TableHead>
+          <TableHead>תשלום</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {lessons.map((l) => (
+          <TableRow key={l.id}>
+            <TableCell className="whitespace-nowrap tabular-nums">{l.when}</TableCell>
+            <TableCell>
+              <StatusPill status={l.status} />
+            </TableCell>
+            <TableNumCell>
+              {l.price != null ? (
+                <span className="font-semibold">{formatShekels(l.price)}</span>
+              ) : (
+                <span className="text-muted">—</span>
+              )}
+            </TableNumCell>
+            <TableCell>
+              {l.payStatus ? <StatusPill status={l.payStatus} /> : <span className="text-muted">—</span>}
+            </TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {lessons.map((l) => (
-            <TableRow key={l.id}>
-              <TableCell>{l.when}</TableCell>
-              <TableCell>
-                <StatusPill status={l.status} />
-              </TableCell>
-              <TableNumCell>
-                {l.price != null ? (
-                  <span className="font-medium">{formatShekels(l.price)}</span>
-                ) : (
-                  <span className="text-muted">—</span>
-                )}
-              </TableNumCell>
-              <TableCell>
-                {l.payStatus ? <StatusPill status={l.payStatus} /> : <span className="text-muted">—</span>}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -497,40 +520,38 @@ function PaymentsPanel({ payments }: { payments: StudentFileVM['payments'] }) {
     );
   }
   return (
-    <Card className="overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="text-end">סכום</TableHead>
-            <TableHead>סטטוס</TableHead>
-            <TableHead>אמצעי</TableHead>
-            <TableHead>שולם בתאריך</TableHead>
+    <Table className="min-w-[520px]">
+      <TableHeader>
+        <TableRow>
+          <TableHead className="text-end">סכום</TableHead>
+          <TableHead>סטטוס</TableHead>
+          <TableHead>אמצעי</TableHead>
+          <TableHead>שולם בתאריך</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {payments.map((p) => (
+          <TableRow key={p.id}>
+            <TableNumCell>
+              <span className="font-semibold">{formatShekels(p.amount)}</span>
+            </TableNumCell>
+            <TableCell>
+              <StatusPill status={p.status} />
+            </TableCell>
+            <TableCell>
+              {p.method ? (
+                <span className="text-muted">{METHOD_LABEL[p.method] ?? p.method}</span>
+              ) : (
+                <span className="text-muted">—</span>
+              )}
+            </TableCell>
+            <TableCell className="whitespace-nowrap tabular-nums">
+              {p.paidAt ? p.paidAt : <span className="text-muted">—</span>}
+            </TableCell>
           </TableRow>
-        </TableHeader>
-        <TableBody>
-          {payments.map((p) => (
-            <TableRow key={p.id}>
-              <TableNumCell>
-                <span className="font-medium">{formatShekels(p.amount)}</span>
-              </TableNumCell>
-              <TableCell>
-                <StatusPill status={p.status} />
-              </TableCell>
-              <TableCell>
-                {p.method ? (
-                  <span className="text-muted">{METHOD_LABEL[p.method] ?? p.method}</span>
-                ) : (
-                  <span className="text-muted">—</span>
-                )}
-              </TableCell>
-              <TableCell>
-                {p.paidAt ? p.paidAt : <span className="text-muted">—</span>}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
@@ -545,43 +566,41 @@ function ReceiptsPanel({ receipts }: { receipts: StudentFileVM['receipts'] }) {
     );
   }
   return (
-    <Card>
-      <CardBody>
-        <ul className="divide-y divide-line">
-          {receipts.map((r) => (
-            <li
-              key={r.id}
-              className="flex flex-wrap items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-600 shadow-soft">
-                  <ReceiptText className="size-5" aria-hidden="true" />
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {receipts.map((r) => (
+        <li
+          key={r.id}
+          className="glass flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
+              <ReceiptText className="size-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <p className="font-semibold text-ink">
+                קבלה מס׳{' '}
+                <span dir="ltr" className="tabular-nums">
+                  {r.number}
                 </span>
-                <div className="min-w-0">
-                  <p className="font-medium text-ink">
-                    קבלה מס׳{' '}
-                    <span dir="ltr" className="tabular-nums">
-                      {r.number}
-                    </span>
-                  </p>
-                  <p className="text-sm tabular-nums text-muted">{formatShekels(r.amount)}</p>
-                </div>
-              </div>
-              <a
-                href={r.pdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                download
-                className="inline-flex h-10 items-center gap-2 rounded-xl border border-line bg-surface px-3.5 text-sm font-medium text-ink shadow-soft transition-colors duration-150 hover:border-primary-200 hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-cream focus-visible:ring-primary"
-              >
-                <Download className="size-4" aria-hidden="true" />
-                הורדת PDF
-              </a>
-            </li>
-          ))}
-        </ul>
-      </CardBody>
-    </Card>
+              </p>
+              <p className="text-sm font-medium tabular-nums text-muted">
+                {formatShekels(r.amount)}
+              </p>
+            </div>
+          </div>
+          <a
+            href={r.pdfUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            download
+            className="inline-flex h-11 shrink-0 items-center gap-2 rounded-full border border-line bg-white/80 px-4 text-sm font-semibold text-ink shadow-soft backdrop-blur transition-colors duration-150 hover:border-primary-300 hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-cream focus-visible:ring-ink"
+          >
+            <Download className="size-4" aria-hidden="true" />
+            הורדת PDF
+          </a>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -593,97 +612,111 @@ function GroupsPanel({
   groupBilling: StudentFileVM['groupBilling'];
 }) {
   return (
-    <Card>
-      <CardBody className="space-y-6">
-        {memberships.length > 0 && (
-          <div className="space-y-3">
-            <p className="flex items-center gap-2 text-sm font-medium text-muted">
-              <Users className="size-4" aria-hidden="true" />
+    <div className="space-y-6">
+      {memberships.length > 0 && (
+        <Card>
+          <CardBody className="space-y-3 p-5 sm:p-6">
+            <p className="flex items-center gap-2 text-lg font-bold tracking-tight text-ink">
+              <Users className="size-4 shrink-0 text-primary-700" aria-hidden="true" />
               חברות בקבוצות
             </p>
             <ul className="flex flex-wrap gap-2">
               {memberships.map((m) => (
                 <li
                   key={m.groupId}
-                  className="inline-flex items-center gap-2 rounded-xl border border-line bg-cream/50 px-3 py-2 text-sm"
+                  className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-white/70 px-4 py-2 text-sm shadow-soft backdrop-blur"
                 >
-                  <span className="font-medium text-ink">{m.groupName}</span>
+                  <span className="font-semibold text-ink">{m.groupName}</span>
                   <Badge tone={m.active ? 'success' : 'muted'}>{m.active ? 'פעילה' : 'לא פעילה'}</Badge>
                 </li>
               ))}
             </ul>
-          </div>
-        )}
+          </CardBody>
+        </Card>
+      )}
 
-        {groupBilling.length > 0 && (
-          <div className="space-y-3">
-            <p className="flex items-center gap-2 text-sm font-medium text-muted">
-              <CircleDollarSign className="size-4" aria-hidden="true" />
-              חיובים חודשיים
-            </p>
-            <div className="overflow-hidden rounded-2xl border border-line">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>חודש</TableHead>
-                    <TableHead className="text-end">סכום</TableHead>
-                    <TableHead>סטטוס</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {groupBilling.map((b) => (
-                    <TableRow key={b.id}>
-                      <TableCell>
-                        <span dir="ltr" className="tabular-nums">
-                          {b.month}
-                        </span>
-                      </TableCell>
-                      <TableNumCell>
-                        <span className="font-medium">{formatShekels(b.amount)}</span>
-                      </TableNumCell>
-                      <TableCell>
-                        <StatusPill status={b.status} />
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </div>
-        )}
-      </CardBody>
-    </Card>
+      {groupBilling.length > 0 && (
+        <div className="space-y-3">
+          <p className="flex items-center gap-2 text-lg font-bold tracking-tight text-ink">
+            <CircleDollarSign className="size-4 shrink-0 text-primary-700" aria-hidden="true" />
+            חיובים חודשיים
+          </p>
+          <Table className="min-w-[420px]">
+            <TableHeader>
+              <TableRow>
+                <TableHead>חודש</TableHead>
+                <TableHead className="text-end">סכום</TableHead>
+                <TableHead>סטטוס</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {groupBilling.map((b) => (
+                <TableRow key={b.id}>
+                  <TableCell>
+                    <span dir="ltr" className="tabular-nums">
+                      {b.month}
+                    </span>
+                  </TableCell>
+                  <TableNumCell>
+                    <span className="font-semibold">{formatShekels(b.amount)}</span>
+                  </TableNumCell>
+                  <TableCell>
+                    <StatusPill status={b.status} />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
   );
 }
 
 // ── Small building blocks ─────────────────────────────────────────────────────
+
+// Every tinted glyph chip below uses primary-700 (4.9:1), never primary-600
+// (2.8:1 on the blush chip) — an icon that carries meaning needs ≥3:1.
+const CHIP_TONE: Record<'primary' | 'accent' | 'success' | 'warning', string> = {
+  primary: 'bg-primary-soft text-primary-700',
+  accent: 'bg-accent-soft text-accent-text',
+  success: 'bg-success-soft text-success',
+  warning: 'bg-warning-soft text-warning',
+};
 
 function HeroStat({
   icon: Icon,
   tone,
   label,
   value,
+  index,
 }: {
   icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean | 'true' }>;
   tone: 'primary' | 'accent' | 'success' | 'warning';
   label: string;
   value: string;
+  /** Position in the `.stagger` grid — drives the entrance cascade. */
+  index: number;
 }) {
-  const chip = {
-    primary: 'bg-primary-soft text-primary-600',
-    accent: 'bg-accent-soft text-accent-text',
-    success: 'bg-success-soft text-success',
-    warning: 'bg-warning-soft text-warning',
-  }[tone];
   return (
-    <div className="rounded-2xl border border-line bg-surface-2/50 p-3.5">
+    <div
+      style={{ '--i': index } as React.CSSProperties}
+      className="rounded-2xl border border-line bg-white/70 p-3.5 shadow-soft backdrop-blur transition-shadow duration-200 hover:shadow-card"
+    >
       <div className="flex items-center gap-2">
-        <span className={cn('flex size-8 items-center justify-center rounded-lg', chip)}>
+        <span
+          className={cn(
+            'flex size-9 shrink-0 items-center justify-center rounded-xl shadow-soft ring-1 ring-inset ring-white/70',
+            CHIP_TONE[tone],
+          )}
+        >
           <Icon className="size-4" aria-hidden="true" />
         </span>
-        <p className="text-xs font-medium text-muted">{label}</p>
+        <p className="min-w-0 text-xs font-medium text-muted">{label}</p>
       </div>
-      <p className="mt-2 text-lg font-bold tabular-nums text-ink">{value}</p>
+      <p className="mt-2.5 text-xl font-extrabold tracking-tight tabular-nums text-ink">
+        {value}
+      </p>
     </div>
   );
 }
@@ -699,11 +732,11 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-600">
+      <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
         <Icon className="size-4" aria-hidden="true" />
       </span>
       <div className="min-w-0">
-        <p className="text-xs font-medium text-muted">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</p>
         <div className="mt-1 text-sm text-ink">{children}</div>
       </div>
     </div>

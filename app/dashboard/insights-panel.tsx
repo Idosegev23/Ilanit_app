@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Sparkles, AlertCircle } from 'lucide-react';
+import { useState, type CSSProperties } from 'react';
+import { Sparkles, AlertCircle, Clock3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toBullets } from './format';
 
@@ -59,9 +59,11 @@ export function InsightsPanel({
   const bullets = text ? toBullets(text) : [];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="text-xs tabular-nums text-muted">
+        {/* Provenance chip — quiet, but present, so "how fresh is this?" is answerable. */}
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-3 py-1.5 text-xs tabular-nums text-muted ring-1 ring-inset ring-white/60">
+          <Clock3 className="size-3.5 shrink-0" aria-hidden="true" />
           {generatedAt ? (
             <span dir="rtl">
               עודכן {generatedAt}
@@ -70,8 +72,8 @@ export function InsightsPanel({
           ) : (
             <span>טרם הופקו תובנות</span>
           )}
-        </div>
-        <Button size="md" onClick={regenerate} loading={loading}>
+        </span>
+        <Button size="md" onClick={regenerate} loading={loading} className="w-full sm:w-auto">
           <Sparkles className="size-4" aria-hidden="true" />
           {loading ? 'מפיק תובנות…' : 'הפק תובנות חדשות'}
         </Button>
@@ -80,7 +82,7 @@ export function InsightsPanel({
       {error && (
         <p
           role="alert"
-          className="flex items-center gap-2 rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger"
+          className="flex items-center gap-2 rounded-2xl bg-danger-soft px-4 py-3 text-sm text-danger ring-1 ring-inset ring-white/50"
         >
           <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
           {error}
@@ -88,14 +90,29 @@ export function InsightsPanel({
       )}
 
       {bullets.length > 0 ? (
-        <ul className="list-disc space-y-2 pe-5 text-sm leading-relaxed text-ink marker:text-primary">
+        /*
+          Each insight is its own soft card rather than a `list-disc` row: the
+          native marker inherits `color`, and a pink marker on white is 2.15:1.
+          A drawn dot is decorative, sits on a ring, and can carry the blush.
+        */
+        <ul className="stagger space-y-2.5">
           {bullets.map((b, i) => (
-            <li key={i}>{b}</li>
+            <li
+              key={i}
+              style={{ '--i': i } as CSSProperties}
+              className="flex items-start gap-3 rounded-2xl border border-line bg-white/70 px-4 py-3 text-sm leading-relaxed text-ink shadow-soft backdrop-blur transition-shadow duration-200 hover:shadow-card"
+            >
+              <span
+                aria-hidden="true"
+                className="mt-[9px] size-2 shrink-0 rounded-full bg-primary ring-2 ring-primary-100"
+              />
+              <span className="min-w-0">{b}</span>
+            </li>
           ))}
         </ul>
       ) : (
         !error && (
-          <p className="text-sm text-muted">
+          <p className="rounded-2xl border border-dashed border-line bg-primary-50/50 px-4 py-6 text-center text-sm text-muted">
             לחצי על &quot;הפק תובנות חדשות&quot; כדי לקבל ניתוח AI של הלו&quot;ז וההכנסות.
           </p>
         )

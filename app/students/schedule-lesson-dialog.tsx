@@ -259,37 +259,40 @@ export function ScheduleLessonDialog({
           <button
             type="button"
             aria-label="סגירת החלון"
-            className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
             onClick={close}
           />
 
           <div
             ref={panelRef}
-            className="relative z-10 flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-line bg-surface shadow-pop sm:rounded-3xl"
+            className="relative z-10 flex max-h-[92vh] w-full max-w-lg animate-scale-in flex-col overflow-hidden rounded-t-3xl border border-white/70 bg-surface/95 shadow-pop backdrop-blur-2xl sm:rounded-3xl"
           >
-            {/* Gradient header band */}
-            <div className="relative shrink-0 overflow-hidden bg-gradient-warm px-6 py-5">
+            {/*
+              Blush header band — ink text throughout. White on the pink stop is
+              2.15:1; ink is 6.2:1 there and 9.7:1 on the peach end.
+            */}
+            <div className="relative shrink-0 overflow-hidden bg-gradient-warm px-5 py-5 sm:px-6">
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute -end-8 -top-10 size-32 rounded-full bg-white/15 blur-2xl"
+                className="pointer-events-none absolute -end-8 -top-10 size-32 rounded-full bg-white/50 blur-2xl"
               />
               <div className="relative flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="flex size-11 items-center justify-center rounded-2xl bg-white/20 text-white ring-1 ring-white/30">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-ink text-white shadow-card">
                     <CalendarPlus className="size-5" aria-hidden="true" />
                   </span>
-                  <div>
-                    <h2 id={titleId} className="text-lg font-bold text-white">
+                  <div className="min-w-0">
+                    <h2 id={titleId} className="text-lg font-extrabold tracking-tight text-ink">
                       קביעת שיעור
                     </h2>
-                    <p className="text-sm text-white/80">{student.name}</p>
+                    <p className="truncate text-sm font-medium text-ink">{student.name}</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={close}
                   aria-label="סגירת החלון"
-                  className="flex size-9 items-center justify-center rounded-xl text-white/90 transition-colors duration-200 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="flex size-11 shrink-0 items-center justify-center rounded-full text-ink transition-colors duration-200 hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
                 >
                   <X className="size-5" aria-hidden="true" />
                 </button>
@@ -297,11 +300,11 @@ export function ScheduleLessonDialog({
             </div>
 
             {/* Mode switch */}
-            <div className="shrink-0 border-b border-line bg-cream/40 p-3">
+            <div className="shrink-0 border-b border-line bg-primary-50/50 p-3">
               <div
                 role="tablist"
                 aria-label="סוג קביעה"
-                className="flex gap-1.5 rounded-2xl border border-line bg-surface p-1.5 shadow-soft"
+                className="flex gap-1.5 rounded-full border border-line bg-surface p-1.5 shadow-soft"
               >
                 <ModeTab
                   active={mode === 'one-off'}
@@ -332,7 +335,7 @@ export function ScheduleLessonDialog({
             >
               <input type="hidden" name="studentId" value={student.id} />
 
-              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">
                 {mode === 'one-off' ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
@@ -397,7 +400,7 @@ export function ScheduleLessonDialog({
 
                     {conflict && !done && (
                       <div
-                        className="flex items-start gap-2 rounded-xl bg-warning-soft px-3.5 py-3 text-sm text-warning"
+                        className="flex items-start gap-2 rounded-2xl bg-warning-soft px-3.5 py-3 text-sm text-warning ring-1 ring-inset ring-white/50"
                         role="status"
                       >
                         <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -483,7 +486,8 @@ export function ScheduleLessonDialog({
                         />
                       </Field>
                     </div>
-                    <p className="flex items-start gap-2 rounded-xl bg-primary-soft/50 px-3.5 py-2.5 text-sm text-primary-600">
+                    {/* primary-700, not primary-600 — #e06b9f on the blush tint is 2.8:1. */}
+                    <p className="flex items-start gap-2 rounded-2xl bg-primary-soft/70 px-3.5 py-3 text-sm text-primary-700 ring-1 ring-inset ring-white/60">
                       <Repeat className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                       <span>
                         ייווצרו שיעורים מאושרים שבועיים, ואירוע מחזורי אחד ביומן עד תום האופק.
@@ -495,7 +499,7 @@ export function ScheduleLessonDialog({
                 {error && (
                   <div
                     role="alert"
-                    className="flex items-start gap-2 rounded-xl bg-danger-soft px-3.5 py-3 text-sm text-danger"
+                    className="flex items-start gap-2 rounded-2xl bg-danger-soft px-3.5 py-3 text-sm text-danger ring-1 ring-inset ring-white/50"
                   >
                     <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                     <span>{error}</span>
@@ -504,7 +508,7 @@ export function ScheduleLessonDialog({
                 {done && (
                   <div
                     role="status"
-                    className="flex items-start gap-2 rounded-xl bg-success-soft px-3.5 py-3 text-sm text-success"
+                    className="flex items-start gap-2 rounded-2xl bg-success-soft px-3.5 py-3 text-sm text-success ring-1 ring-inset ring-white/50"
                   >
                     <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                     <span>{done}</span>
@@ -512,7 +516,7 @@ export function ScheduleLessonDialog({
                 )}
               </div>
 
-              <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-line bg-surface/80 p-5 sm:flex-row">
+              <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-line bg-gradient-tint p-4 sm:flex-row sm:p-5">
                 <Button
                   type="button"
                   variant="ghost"
@@ -556,9 +560,10 @@ function ModeTab({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        'inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl px-3 text-sm font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+        'inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-full px-3 text-sm font-semibold transition-[background-color,color,box-shadow] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink',
+        // Pink fill carries INK text (6.2:1) — never white (2.15:1).
         active
-          ? 'bg-gradient-warm text-white shadow-card'
+          ? 'bg-primary text-primary-fg shadow-glow'
           : 'text-muted hover:bg-primary-50 hover:text-ink',
       )}
     >

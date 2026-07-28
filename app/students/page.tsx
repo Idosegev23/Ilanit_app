@@ -24,8 +24,9 @@ export default async function StudentsPage() {
   }));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <PageHeader
+        className="rise"
         eyebrow="מאגר"
         title="תלמידים"
         subtitle={

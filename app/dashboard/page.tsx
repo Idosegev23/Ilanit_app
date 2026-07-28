@@ -28,7 +28,6 @@ import { PageHeader } from '@/components/ui/page-header';
 import { ilHour, nowIL } from '@/lib/time';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Badge } from '@/components/ui/badge';
-import { buttonVariants } from '@/components/ui/button';
 import {
   SendBookingLinkDialog,
   type BookingLinkStudent,
@@ -59,11 +58,38 @@ export const dynamic = 'force-dynamic';
 
 const PERIOD_DAYS = 30;
 
+/*
+  Tone → chip recipe, shared by every small glyph badge on this page.
+  The primary tone deliberately uses primary-700 (#b84a7b, 4.9:1 on the blush
+  chip) rather than primary/primary-600: a meaningful icon needs ≥3:1, and
+  #f493be on a light chip is 2.15:1.
+*/
+const CHIP_TONE: Record<StatTone, string> = {
+  primary: 'bg-primary-soft text-primary-700',
+  accent: 'bg-accent-soft text-accent-text',
+  success: 'bg-success-soft text-success',
+  warning: 'bg-warning-soft text-warning',
+  danger: 'bg-danger-soft text-danger',
+};
+
+// ── Section heading — icon chip + bold title + a hairline that runs to the edge ─
+function SectionTitle({ icon: Icon, title }: { icon: LucideIcon; title: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
+        <Icon className="size-[18px]" aria-hidden="true" />
+      </span>
+      <h2 className="text-lg font-bold tracking-tight text-ink">{title}</h2>
+      <span aria-hidden="true" className="h-px flex-1 bg-line" />
+    </div>
+  );
+}
+
 // ── KPI row ────────────────────────────────────────────────────────────────
 function KpiRow({ kpis }: { kpis: DashboardKpis }) {
   const totalLessons = Object.values(kpis.lessonsByStatus).reduce((s, n) => s + n, 0);
   return (
-    <div className="stagger grid grid-cols-2 gap-4 lg:grid-cols-5">
+    <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
       <StatCard
         style={{ '--i': 0 } as CSSProperties}
         label="הכנסות (30 ימים)"
@@ -93,8 +119,11 @@ function KpiRow({ kpis }: { kpis: DashboardKpis }) {
         icon={Users}
         tone="primary"
       />
+      {/* Five tiles over a two-column phone grid leaves an orphan — let the
+          money tile span the full width instead of stranding half a row. */}
       <StatCard
         style={{ '--i': 4 } as CSSProperties}
+        className="col-span-2 lg:col-span-1"
         label="חובות פתוחים"
         value={formatShekels(kpis.outstandingAmount)}
         hint={`${kpis.outstandingCount} תשלומים`}
@@ -120,7 +149,7 @@ function ChartCard({
   return (
     <Card className="overflow-hidden">
       <CardHeader variant="gradient" className="flex-row items-center gap-3">
-        <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-600 shadow-soft">
+        <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
           <Icon className="size-5" aria-hidden="true" />
         </span>
         <div className="min-w-0">
@@ -128,7 +157,7 @@ function ChartCard({
           <CardDescription>{subtitle}</CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="pt-4">{children}</CardContent>
+      <CardContent className="pt-5">{children}</CardContent>
     </Card>
   );
 }
@@ -151,21 +180,14 @@ function ActionCard({
   hrefLabel?: string;
   children: React.ReactNode;
 }) {
-  const chipTone: Record<StatTone, string> = {
-    primary: 'bg-primary-soft text-primary-600',
-    accent: 'bg-accent-soft text-accent-text',
-    success: 'bg-success-soft text-success',
-    warning: 'bg-warning-soft text-warning',
-    danger: 'bg-danger-soft text-danger',
-  };
   return (
     <Card className="flex flex-col overflow-hidden">
       <CardHeader variant="tint" className="flex-row items-center justify-between gap-3">
         <CardTitle className="flex items-center gap-2.5">
           <span
             className={cn(
-              'flex size-9 shrink-0 items-center justify-center rounded-xl shadow-soft',
-              chipTone[tone],
+              'flex size-9 shrink-0 items-center justify-center rounded-xl shadow-soft ring-1 ring-inset ring-white/70',
+              CHIP_TONE[tone],
             )}
           >
             <Icon className="size-[18px]" aria-hidden="true" />
@@ -180,7 +202,7 @@ function ActionCard({
         {href && (
           <Link
             href={href}
-            className="-me-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2.5 py-2 text-sm font-medium text-primary-600 transition-colors duration-200 hover:bg-primary-50 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="-me-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-full px-3 py-2 text-sm font-semibold text-primary-700 transition-colors duration-200 hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
           >
             {hrefLabel}
             <ChevronLeft className="size-4" aria-hidden="true" />
@@ -204,30 +226,23 @@ function ActionRow({
   tone?: StatTone;
   trailing: React.ReactNode;
 }) {
-  const chipTone: Record<StatTone, string> = {
-    primary: 'bg-primary-soft text-primary-600',
-    accent: 'bg-accent-soft text-accent-text',
-    success: 'bg-success-soft text-success',
-    warning: 'bg-warning-soft text-warning',
-    danger: 'bg-danger-soft text-danger',
-  };
   const initial = name.trim().charAt(0) || '•';
   return (
-    <li className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-2.5 transition-colors duration-150 hover:bg-cream/70">
+    <li className="-mx-2 flex min-h-[56px] items-center gap-3 rounded-2xl px-2 py-2 transition-colors duration-150 hover:bg-primary-50/70">
       <span
         aria-hidden="true"
         className={cn(
-          'flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold',
-          chipTone[tone],
+          'flex size-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ring-1 ring-inset ring-white/70',
+          CHIP_TONE[tone],
         )}
       >
         {initial}
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="truncate font-medium leading-tight text-ink">{name}</span>
+        <span className="truncate font-semibold leading-tight text-ink">{name}</span>
         <span className="text-xs tabular-nums text-muted">{meta}</span>
       </div>
-      <div className="flex shrink-0 items-center gap-2">{trailing}</div>
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">{trailing}</div>
     </li>
   );
 }
@@ -277,7 +292,7 @@ function UnpaidList({ rows }: { rows: UnpaidRow[] }) {
           meta={formatILShort(r.startsAt)}
           trailing={
             <>
-              <span className="font-semibold tabular-nums text-ink">
+              <span className="font-bold tabular-nums text-ink">
                 {formatShekels(r.amount)}
               </span>
               <StatusPill status="due" />
@@ -308,8 +323,9 @@ export default async function DashboardPage() {
     hour < 12 ? 'בוקר טוב' : hour < 17 ? 'צהריים טובים' : hour < 21 ? 'ערב טוב' : 'לילה טוב';
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       <PageHeader
+        className="rise"
         eyebrow="המערכת שלך"
         title={`${greeting}, אילנית 🌸`}
         subtitle="הנה מה שקורה אצלך ב-30 הימים האחרונים — ההכנסות, התפוסה והפעולות שממתינות לך."
@@ -318,42 +334,36 @@ export default async function DashboardPage() {
         }
       />
 
-      {/* Hero action — send a PERSONAL booking link to a student. */}
-      <Card className="relative isolate overflow-hidden rounded-3xl border-transparent bg-gradient-warm text-primary-fg shadow-pop">
-        {/* decorative warm blobs + dotted relief — no empty void */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 texture-dots opacity-60" />
-        <span
-          aria-hidden="true"
-          className="blob -top-16 start-[-40px] size-56 bg-white/30"
-        />
-        <span
-          aria-hidden="true"
-          className="blob -bottom-20 end-[-30px] size-64 bg-[#1f5249]/50"
-        />
-        {/*
-          Contrast scrim — the 135deg calm ramp brightens toward the bottom-end
-          (sage → sand) where bare white text drops below AA. The text column is
-          anchored at the inline-start (visual right in RTL), so we darken the
-          start band + bottom with a deep-teal ink scrim. After compositing,
-          white body text clears ≥4.5:1 at any card width.
-        */}
+      {/*
+        Hero action — send a PERSONAL booking link to a student.
+        v4 carries this on the blush→peach ramp with INK text throughout: ink is
+        6.2:1 on the pink stop and 9.7:1 on the peach one, so the whole panel
+        clears AA without the scrim stack the old sage gradient needed. The old
+        deep-teal blob and rgba scrim are gone with it.
+        `.blob` sits at z-index 0, so the content column is explicitly `z-10`.
+      */}
+      <section className="rise relative isolate overflow-hidden rounded-3xl border border-white/60 bg-gradient-warm p-6 shadow-pop sm:p-9">
+        <span aria-hidden="true" className="blob -top-24 start-[-70px] size-72 bg-white/60" />
+        <span aria-hidden="true" className="blob -bottom-28 end-[-50px] size-80 bg-primary-200/80" />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_left,rgba(18,48,43,0.52)_0%,rgba(18,48,43,0.48)_50%,rgba(18,48,43,0.1)_82%,rgba(18,48,43,0)_100%)]"
+          className="texture-dots pointer-events-none absolute inset-0 z-0 opacity-70"
         />
-        <CardContent className="relative z-10 flex flex-col gap-5 p-6 sm:flex-row sm:items-center sm:justify-between sm:p-8">
+
+        <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-start gap-4">
-            <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-primary-fg shadow-[0_8px_24px_-8px_rgba(18,48,43,0.5)] ring-1 ring-white/40 backdrop-blur-sm">
+            {/* Ink chip: the one place white text is safe here (13.4:1). */}
+            <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-ink text-white shadow-pop">
               <Send className="size-6" aria-hidden="true" />
             </span>
-            <div className="max-w-md">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-[0.14em] text-primary-fg/80">
+            <div className="max-w-xl">
+              <p className="mb-1.5 text-[11px] font-extrabold uppercase tracking-[0.2em] text-ink">
                 פעולה מהירה
               </p>
-              <h2 className="text-2xl font-bold leading-tight drop-shadow-[0_1px_2px_rgba(18,48,43,0.35)]">
+              <h2 className="text-2xl font-extrabold leading-tight tracking-tight text-ink sm:text-3xl">
                 שליחת לינק לתיאום
               </h2>
-              <p className="mt-2 text-sm font-medium leading-relaxed text-primary-fg drop-shadow-[0_1px_3px_rgba(18,48,43,0.5)]">
+              <p className="mt-2.5 text-sm font-medium leading-relaxed text-ink">
                 בחרי תלמיד/ה (או הוסיפי חדש/ה) ונשלח לו/ה לינק אישי לתיאום שיעור בוואטסאפ —
                 הדרך המהירה למלא את הלו&quot;ז.
               </p>
@@ -362,20 +372,17 @@ export default async function DashboardPage() {
           <SendBookingLinkDialog
             students={dialogStudents}
             triggerVariant="secondary"
-            className="w-full shrink-0 sm:w-auto"
+            className="w-full shrink-0 lg:w-auto"
           />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <KpiRow kpis={data.kpis} />
 
       {/* Charts */}
-      <section className="space-y-4">
-        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted">
-          <TrendingUp className="size-4 text-primary-600" aria-hidden="true" />
-          ניתוח ומגמות
-        </h2>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <section className="space-y-5">
+        <SectionTitle icon={TrendingUp} title="ניתוח ומגמות" />
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
           <ChartCard
             title="הכנסה לאורך זמן"
             subtitle="סך התשלומים שהתקבלו בכל יום"
@@ -410,7 +417,7 @@ export default async function DashboardPage() {
       {/* AI insights */}
       <Card className="overflow-hidden">
         <CardHeader variant="gradient" className="flex-row items-center gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-text shadow-soft">
+          <span className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-accent-soft text-accent-text shadow-soft ring-1 ring-inset ring-white/70">
             <Sparkles className="size-5" aria-hidden="true" />
           </span>
           <div className="min-w-0">
@@ -431,12 +438,9 @@ export default async function DashboardPage() {
       </Card>
 
       {/* Action lists */}
-      <section className="space-y-4">
-        <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted">
-          <ClipboardCheck className="size-4 text-primary-600" aria-hidden="true" />
-          פעולות פתוחות
-        </h2>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <section className="space-y-5">
+        <SectionTitle icon={ClipboardCheck} title="פעולות פתוחות" />
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-6">
           <ActionCard
             title="שיעורי השבוע"
             icon={CalendarClock}

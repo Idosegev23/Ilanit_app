@@ -195,30 +195,33 @@ export function StudentFormDialog({
           <button
             type="button"
             aria-label="סגירת החלון"
-            className="absolute inset-0 bg-ink/40 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-ink/40 backdrop-blur-sm"
             onClick={close}
           />
 
           <div
             ref={panelRef}
-            className="relative z-10 flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-t-3xl border border-line bg-surface shadow-pop sm:rounded-3xl"
+            className="relative z-10 flex max-h-[92vh] w-full max-w-lg animate-scale-in flex-col overflow-hidden rounded-t-3xl border border-white/70 bg-surface/95 shadow-pop backdrop-blur-2xl sm:rounded-3xl"
           >
-            {/* Gradient header band */}
-            <div className="relative shrink-0 overflow-hidden bg-gradient-warm px-6 py-5">
+            {/*
+              Blush header band. Every glyph and every word on it is ink or sits
+              on an ink chip — white on #f493be is 2.15:1, ink on it is 6.2:1.
+            */}
+            <div className="relative shrink-0 overflow-hidden bg-gradient-warm px-5 py-5 sm:px-6">
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute -end-8 -top-10 size-32 rounded-full bg-white/15 blur-2xl"
+                className="pointer-events-none absolute -end-8 -top-10 size-32 rounded-full bg-white/50 blur-2xl"
               />
               <div className="relative flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="flex size-11 items-center justify-center rounded-2xl bg-white/20 text-white ring-1 ring-white/30">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-ink text-white shadow-card">
                     <Icon className="size-5" aria-hidden="true" />
                   </span>
-                  <div>
-                    <h2 id={titleId} className="text-lg font-bold text-white">
+                  <div className="min-w-0">
+                    <h2 id={titleId} className="truncate text-lg font-extrabold tracking-tight text-ink">
                       {isEdit ? 'עריכת תלמיד' : 'הוספת תלמיד חדש'}
                     </h2>
-                    <p className="text-sm text-white/80">
+                    <p className="truncate text-sm font-medium text-ink">
                       {isEdit ? student?.name : 'פרטי קשר, מחיר ומשך שיעור'}
                     </p>
                   </div>
@@ -227,7 +230,7 @@ export function StudentFormDialog({
                   type="button"
                   onClick={close}
                   aria-label="סגירת החלון"
-                  className="flex size-9 items-center justify-center rounded-xl text-white/90 transition-colors duration-200 hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+                  className="flex size-11 shrink-0 items-center justify-center rounded-full text-ink transition-colors duration-200 hover:bg-white/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
                 >
                   <X className="size-5" aria-hidden="true" />
                 </button>
@@ -235,12 +238,12 @@ export function StudentFormDialog({
             </div>
 
             {justCreated ? (
-              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
-                <div className="flex items-start gap-3 rounded-2xl bg-success-soft px-4 py-4 text-success">
+              <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
+                <div className="flex items-start gap-3 rounded-2xl bg-success-soft px-4 py-4 text-success ring-1 ring-inset ring-white/60">
                   <CheckCircle2 className="mt-0.5 size-5 shrink-0" aria-hidden="true" />
                   <div className="min-w-0">
-                    <p className="font-semibold">{justCreated.name} נוסף/ה למאגר</p>
-                    <p className="mt-0.5 text-sm text-success/90">
+                    <p className="font-bold">{justCreated.name} נוסף/ה למאגר</p>
+                    <p className="mt-0.5 text-sm text-success">
                       אפשר לקבוע שיעור עכשיו, או לסיים ולקבוע מאוחר יותר.
                     </p>
                   </div>
@@ -268,7 +271,7 @@ export function StudentFormDialog({
               </div>
             ) : (
             <form action={onSubmit} className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
+              <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">
                 {isEdit && <input type="hidden" name="id" value={student!.id} />}
 
                 <Field id={`${titleId}-name`} label="שם מלא" icon={User} required>
@@ -311,13 +314,13 @@ export function StudentFormDialog({
 
                 {/* Guardian (parent) contact — recommended for children. When a
                     guardian phone is set, all WhatsApp for this student goes there. */}
-                <div className="space-y-4 rounded-2xl border border-line bg-cream/40 p-4">
-                  <div className="flex items-center gap-2">
-                    <span className="flex size-7 items-center justify-center rounded-lg bg-primary-soft text-primary-600">
+                <div className="space-y-4 rounded-2xl border border-line bg-primary-50/60 p-4">
+                  <div className="flex items-center gap-2.5">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
                       <UserCog className="size-4" aria-hidden="true" />
                     </span>
                     <div>
-                      <p className="text-sm font-semibold text-ink">פרטי הורה</p>
+                      <p className="text-sm font-bold tracking-tight text-ink">פרטי הורה</p>
                       <p className="text-xs text-muted">
                         מומלץ לילדים — כל ההודעות (לינק, תזכורות, קבלות) יישלחו לטלפון ההורה.
                       </p>
@@ -424,18 +427,22 @@ export function StudentFormDialog({
                 </Field>
 
                 {isEdit && (
-                  <label className="flex items-center justify-between gap-3 rounded-xl border border-line bg-cream/50 px-3.5 py-3 transition-colors duration-150 hover:bg-cream">
+                  <label className="flex min-h-[52px] cursor-pointer items-center justify-between gap-3 rounded-2xl border border-line bg-primary-50/60 px-3.5 py-3 transition-colors duration-150 hover:bg-primary-50">
                     <span className="flex items-center gap-2.5 text-sm font-medium text-ink">
-                      <span className="flex size-8 items-center justify-center rounded-lg bg-primary-soft text-primary-600">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
                         <Archive className="size-4" aria-hidden="true" />
                       </span>
                       העברה לארכיון
                     </span>
+                    {/*
+                      accent-ink, not accent-primary: the UA paints the checkmark
+                      white on the accent color, and white on #f493be is 2.15:1.
+                    */}
                     <input
                       type="checkbox"
                       name="archived"
                       defaultChecked={student?.archived ?? false}
-                      className="size-5 shrink-0 cursor-pointer rounded-md border-line text-primary accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+                      className="size-5 shrink-0 cursor-pointer rounded-md border-line accent-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
                     />
                   </label>
                 )}
@@ -443,7 +450,7 @@ export function StudentFormDialog({
                 {error && (
                   <div
                     role="alert"
-                    className="flex items-start gap-2 rounded-xl bg-danger-soft px-3.5 py-3 text-sm text-danger"
+                    className="flex items-start gap-2 rounded-2xl bg-danger-soft px-3.5 py-3 text-sm text-danger ring-1 ring-inset ring-white/50"
                   >
                     <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                     <span>{error}</span>
@@ -451,7 +458,7 @@ export function StudentFormDialog({
                 )}
               </div>
 
-              <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-line bg-surface/80 p-5 sm:flex-row">
+              <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-line bg-gradient-tint p-4 sm:flex-row sm:p-5">
                 <Button
                   type="button"
                   variant="ghost"
