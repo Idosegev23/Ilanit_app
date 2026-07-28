@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 // Receipt description editor used inside the "mark paid + issue receipt" form.
@@ -39,6 +40,8 @@ export function ReceiptDescriptionField({
         placeholder={defaultValue}
         className="text-sm"
       />
+      {/* Preset pills. `aria-pressed` already carries the state for AT, and the
+         selected pill adds a ✓ so the choice is not conveyed by fill alone. */}
       <div className="flex flex-wrap gap-1.5">
         {PRESETS.map((preset) => {
           const active = value.trim() === preset;
@@ -48,12 +51,13 @@ export function ReceiptDescriptionField({
               type="button"
               onClick={() => setValue(preset)}
               aria-pressed={active}
-              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-cream ${
+              className={`inline-flex min-h-11 items-center gap-1.5 rounded-full px-4 text-xs font-bold transition-[background-color,border-color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-cream ${
                 active
-                  ? 'bg-primary text-primary-fg'
-                  : 'bg-primary-soft text-primary-600 hover:bg-primary-100'
+                  ? 'border border-primary bg-primary text-primary-fg shadow-glow'
+                  : 'border border-line bg-surface text-ink hover:border-primary-300 hover:bg-primary-50'
               }`}
             >
+              {active && <Check className="size-3.5 shrink-0" aria-hidden="true" />}
               {preset}
             </button>
           );

@@ -53,7 +53,7 @@ export function AddMembersSection({
     <>
       {atCapacity && (
         <div
-          className="flex items-start gap-2 rounded-xl border border-accent/40 bg-accent-soft/60 px-3.5 py-3 text-sm font-medium text-accent-text"
+          className="flex items-start gap-2.5 rounded-2xl border border-accent-600/40 bg-accent-soft px-4 py-3.5 text-sm font-medium text-accent-text shadow-soft"
           role="alert"
         >
           <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -73,8 +73,8 @@ export function AddMembersSection({
         className="space-y-3 border-t border-line pt-5"
       >
         <input type="hidden" name="groupId" value={groupId} />
-        <div className="flex items-center gap-2 text-sm font-semibold text-ink">
-          <span className="flex size-7 items-center justify-center rounded-lg bg-primary-soft text-primary-600">
+        <div className="flex items-center gap-2.5 text-sm font-bold text-ink">
+          <span className="flex size-8 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
             <UserPlus className="size-4" aria-hidden="true" />
           </span>
           הוספת ילד/ה לקבוצה
@@ -119,11 +119,11 @@ export function AddMembersSection({
             autoComplete="off"
           />
         </div>
-        <p className="flex items-start gap-1.5 text-xs text-muted">
+        <p className="flex items-start gap-1.5 text-xs leading-relaxed text-muted">
           <ShieldCheck className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
           כל ההודעות (חיוב וקבלות) יישלחו לטלפון ההורה.
         </p>
-        <Button type="submit" className="w-full sm:w-auto">
+        <Button type="submit" size="lg" className="w-full sm:w-auto">
           <UserPlus className="size-4" aria-hidden="true" />
           הוספת הילד/ה
         </Button>
@@ -150,17 +150,17 @@ export function AddMembersSection({
               ))}
             </Select>
           </div>
-          <Button type="submit" variant="secondary" className="sm:w-auto">
+          <Button type="submit" variant="secondary" size="lg" className="sm:w-auto">
             <UserPlus className="size-4" aria-hidden="true" />
             הוספה
           </Button>
         </form>
       )}
 
-      <p className="flex items-start gap-2 rounded-xl bg-accent-soft px-3.5 py-3 text-xs leading-relaxed text-accent-text">
+      <p className="flex items-start gap-2.5 rounded-2xl bg-accent-soft px-4 py-3.5 text-xs leading-relaxed text-accent-text ring-1 ring-inset ring-white/50">
         <UserPlus className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
         <span>
-          כל חברה מחויבת <span className="font-semibold tabular-nums">{monthlyPriceLabel}</span>{' '}
+          כל חברה מחויבת <span className="font-bold tabular-nums">{monthlyPriceLabel}</span>{' '}
           החיוב נוצר אוטומטית ב-1 לכל חודש לכל חברה פעילה.
         </span>
       </p>

@@ -65,6 +65,7 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-8">
       <PageHeader
+        className="rise"
         eyebrow="ניהול העסק"
         title="הגדרות"
         subtitle="זמינות שבועית, חריגים, תמחור ופרטי העסק — אלה קובעים את הזמנים והמחירים בלינק התיאום."

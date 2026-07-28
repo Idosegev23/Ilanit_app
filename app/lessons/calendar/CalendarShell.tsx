@@ -160,8 +160,9 @@ export function CalendarShell({
         onToggleCancelled={() => setShowCancelled((s) => !s)}
       />
 
-      {/* Week view scrolls horizontally only inside its own container on very
-          narrow widths — never breaks the page layout. */}
+      {/* The two 7-column views scroll horizontally inside their OWN container
+          on narrow widths — the page itself must never scroll sideways. The day
+          view is the phone-native surface and always fits. */}
       <div>
         {view === 'day' && (
           <DayView
@@ -171,7 +172,7 @@ export function CalendarShell({
           />
         )}
         {view === 'week' && (
-          <div className="overflow-x-auto">
+          <div className="-mx-1 overflow-x-auto px-1 pb-1">
             <div className="min-w-[640px]">
               <WeekView
                 anchorKey={startOfWeekKey(anchorKey)}
@@ -183,13 +184,17 @@ export function CalendarShell({
           </div>
         )}
         {view === 'month' && (
-          <MonthView
-            anchorKey={anchorKey}
-            events={visibleEvents}
-            todayKey={todayKey}
-            onEventClick={setSelected}
-            onDayClick={handleDayClick}
-          />
+          <div className="-mx-1 overflow-x-auto px-1 pb-1">
+            <div className="min-w-[600px] sm:min-w-0">
+              <MonthView
+                anchorKey={anchorKey}
+                events={visibleEvents}
+                todayKey={todayKey}
+                onEventClick={setSelected}
+                onDayClick={handleDayClick}
+              />
+            </div>
+          </div>
         )}
       </div>
 

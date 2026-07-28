@@ -54,16 +54,18 @@ export default async function GroupDetailPage({
 
   return (
     <div className="space-y-8">
-      <div>
+      <div className="rise">
         <Link
           href="/groups"
-          className="mb-4 inline-flex items-center gap-1 rounded-lg text-sm text-muted transition-colors duration-150 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+          className="mb-4 inline-flex min-h-11 items-center gap-1 rounded-full px-1 text-sm font-medium text-muted transition-colors duration-150 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
         >
           <ChevronRight className="size-4" aria-hidden="true" />
           כל הקבוצות
         </Link>
 
-        {/* Hero card — group identity + key facts + the primary billing action. */}
+        {/* Hero card — group identity + key facts + the primary billing action.
+           `.blob` sits at z-index 0 (a negative index would hide it behind the
+           card's own background), so the real content carries `relative z-10`. */}
         <Card className="relative overflow-hidden">
           <div
             aria-hidden="true"
@@ -71,11 +73,15 @@ export default async function GroupDetailPage({
           />
           <div
             aria-hidden="true"
-            className="blob -end-10 -top-16 size-48 bg-accent-soft"
+            className="blob -end-10 -top-16 size-48 bg-primary-200"
           />
-          <CardContent className="relative flex flex-col gap-6 p-6 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
+          <div
+            aria-hidden="true"
+            className="blob -start-16 bottom-[-5rem] size-56 bg-accent"
+          />
+          <CardContent className="relative z-10 flex flex-col gap-6 p-6 sm:p-7 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex min-w-0 items-start gap-4">
-              <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-fg shadow-card">
+              <span className="flex size-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-fg shadow-glow">
                 <Users className="size-7" aria-hidden="true" />
               </span>
               <div className="min-w-0">
@@ -115,15 +121,15 @@ export default async function GroupDetailPage({
               </div>
             </div>
 
-            <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
-              <div className="rounded-2xl border border-line bg-surface/80 px-4 py-3 text-start shadow-soft backdrop-blur-sm lg:text-end">
-                <p className="text-xs text-muted">הכנסה חודשית צפויה</p>
-                <p className="text-2xl font-bold tabular-nums text-primary-600">
+            <div className="flex shrink-0 flex-col items-stretch gap-3 lg:items-end">
+              <div className="rounded-2xl border border-white/70 bg-surface px-5 py-3.5 text-start shadow-card lg:text-end">
+                <p className="text-xs font-medium text-muted">הכנסה חודשית צפויה</p>
+                <p className="mt-0.5 text-3xl font-extrabold tracking-tight tabular-nums text-primary-700">
                   {formatShekels(projectedMonthly)}
                 </p>
               </div>
               <Link href={`/groups/${id}/billing/${currentMonth}`} className="w-full">
-                <Button className="w-full">
+                <Button size="lg" className="w-full">
                   <Receipt className="size-4" aria-hidden="true" />
                   רוסטר חיוב — <span className="tabular-nums">{currentMonth}</span>
                 </Button>
@@ -133,12 +139,15 @@ export default async function GroupDetailPage({
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Edit group */}
-        <Card>
-          <CardHeader variant="tint">
-            <CardTitle className="flex items-center gap-2">
-              <Settings2 className="size-5 text-primary-600" aria-hidden="true" />
+      <div className="stagger grid items-start gap-6 lg:grid-cols-2">
+        {/* Edit group — a long form, so the surface is solid: a moving wash
+           behind a stack of fields costs more legibility than it buys. */}
+        <Card solid className="overflow-hidden">
+          <CardHeader variant="gradient">
+            <CardTitle className="flex items-center gap-2.5">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
+                <Settings2 className="size-5" aria-hidden="true" />
+              </span>
               פרטי הקבוצה
             </CardTitle>
           </CardHeader>
@@ -153,13 +162,13 @@ export default async function GroupDetailPage({
               </div>
 
               {/* Prominent pricing field — money per member, integer shekels. */}
-              <div className="space-y-1.5 rounded-2xl border border-primary-100 bg-primary-soft/40 p-4">
+              <div className="space-y-2 rounded-2xl border border-primary-200 bg-gradient-tint p-4 shadow-soft">
                 <Label
                   htmlFor="monthlyPrice"
                   required
                   className="flex items-center gap-1.5"
                 >
-                  <Banknote className="size-4 text-primary-600" aria-hidden="true" />
+                  <Banknote className="size-4 text-primary-700" aria-hidden="true" />
                   מחיר חודשי לחבר (₪)
                 </Label>
                 <div className="relative">
@@ -199,7 +208,7 @@ export default async function GroupDetailPage({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="maxMembers" className="flex items-center gap-1.5">
-                  <Users className="size-4 text-primary-600" aria-hidden="true" />
+                  <Users className="size-4 text-primary-700" aria-hidden="true" />
                   מקסימום משתתפים
                 </Label>
                 <Input
@@ -226,16 +235,18 @@ export default async function GroupDetailPage({
                   defaultValue={group.description ?? ''}
                 />
               </div>
-              <label className="flex items-center gap-2.5 rounded-xl border border-line bg-cream/50 px-3.5 py-3 text-sm text-ink">
+              {/* Whole pill is the hit zone (≥44px) — a bare 16px checkbox is
+                 not a touch target. */}
+              <label className="flex min-h-12 cursor-pointer select-none items-center gap-2.5 rounded-xl border border-line bg-primary-50/60 px-4 py-3 text-sm font-medium text-ink transition-colors duration-200 hover:border-primary-200 hover:bg-primary-50">
                 <input
                   type="checkbox"
                   name="active"
                   defaultChecked={group.active}
-                  className="size-4 rounded border-line text-primary accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+                  className="size-5 rounded border-line accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
                 />
                 קבוצה פעילה
               </label>
-              <Button type="submit" className="w-full">
+              <Button type="submit" variant="ink" size="lg" className="w-full">
                 שמירת שינויים
               </Button>
             </form>
@@ -243,14 +254,18 @@ export default async function GroupDetailPage({
         </Card>
 
         {/* Members */}
-        <Card>
-          <CardHeader variant="tint">
-            <CardTitle className="flex items-center gap-2">
-              <Users className="size-5 text-primary-600" aria-hidden="true" />
+        <Card solid className="overflow-hidden">
+          <CardHeader variant="gradient">
+            <CardTitle className="flex flex-wrap items-center gap-2.5">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
+                <Users className="size-5" aria-hidden="true" />
+              </span>
               חברוֹת
               <span
-                className={`text-sm font-semibold tabular-nums ${
-                  atCapacity ? 'text-accent-text' : 'text-muted'
+                className={`rounded-full px-2.5 py-1 text-xs font-bold tabular-nums ${
+                  atCapacity
+                    ? 'bg-accent-soft text-accent-text'
+                    : 'bg-primary-50 text-muted'
                 }`}
               >
                 {activeMembers.length}/{group.maxMembers} רשומים
@@ -270,12 +285,12 @@ export default async function GroupDetailPage({
                 {activeMembers.map((m) => (
                   <li
                     key={m.membershipId}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-line bg-cream/40 px-4 py-3 transition-colors duration-150 hover:bg-primary-50/60"
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-primary-50/50 px-3.5 py-3 transition-colors duration-200 hover:border-primary-200 hover:bg-primary-50"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <span
                         aria-hidden="true"
-                        className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary-600"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-200 text-sm font-bold text-ink shadow-soft ring-1 ring-inset ring-white/60"
                       >
                         {m.name.trim().charAt(0)}
                       </span>
@@ -305,13 +320,14 @@ export default async function GroupDetailPage({
                         </p>
                       </div>
                     </div>
-                    <form action={removeMemberAction}>
+                    <form action={removeMemberAction} className="shrink-0">
                       <input type="hidden" name="groupId" value={group.id} />
                       <input type="hidden" name="studentId" value={m.studentId} />
                       <Button
                         type="submit"
                         variant="ghost"
                         size="md"
+                        className="text-muted hover:bg-danger-soft hover:text-danger"
                         aria-label={`הסרת ${m.name} מהקבוצה`}
                       >
                         <UserMinus className="size-4" aria-hidden="true" />

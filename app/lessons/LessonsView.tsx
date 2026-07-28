@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import type { CSSProperties } from 'react';
 import {
   Plus,
   Check,
@@ -131,7 +132,7 @@ export function LessonsView({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <PageHeader
         eyebrow="ניהול יומן"
         title="שיעורים"
@@ -161,7 +162,10 @@ export function LessonsView({
               <Plus className="size-4" aria-hidden="true" />
               הוספת שיעור חד-פעמי
             </Button>
-            <Button variant="gradient" onClick={() => openCreate('recurring')}>
+            {/* The single highest-emphasis action on the page → `ink`. Pink is
+                reserved for the AI action and the hero band below, so the
+                blush never becomes wallpaper. */}
+            <Button variant="ink" onClick={() => openCreate('recurring')}>
               <Repeat className="size-4" aria-hidden="true" />
               שיעור קבוע (מחזורי)
             </Button>
@@ -170,8 +174,9 @@ export function LessonsView({
       />
 
       {/* Summary strip — kills the empty void with at-a-glance hierarchy */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="stagger grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <StatCard
+          style={{ '--i': 0 } as CSSProperties}
           label="ממתינים לאישור"
           value={counts.pending}
           icon={Clock}
@@ -179,6 +184,7 @@ export function LessonsView({
           hint="דורשים החלטה"
         />
         <StatCard
+          style={{ '--i': 1 } as CSSProperties}
           label="שיעורים קרובים"
           value={upcomingConfirmed}
           icon={CalendarClock}
@@ -186,12 +192,14 @@ export function LessonsView({
           hint="מאושרים ועתידיים"
         />
         <StatCard
+          style={{ '--i': 2 } as CSSProperties}
           label="מאושרים"
           value={counts.confirmed}
           icon={CalendarCheck2}
           tone="success"
         />
         <StatCard
+          style={{ '--i': 3 } as CSSProperties}
           label="סך הכל ביומן"
           value={counts.all}
           icon={CalendarDays}
@@ -200,74 +208,82 @@ export function LessonsView({
       </div>
 
       {/* Prominent primary action for existing regulars — a recurring weekly
-          series (individual). Auto-scheduled, NOT gated by open-weeks. */}
-      <div className="flex flex-col gap-4 rounded-2xl border border-primary-200 bg-gradient-tint p-5 shadow-soft sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <span
-            className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-warm text-primary-fg shadow-soft"
-            aria-hidden="true"
-          >
-            <Repeat className="size-5" />
-          </span>
-          <div className="min-w-0">
-            <h2 className="text-base font-bold text-ink">
-              הוספת שיעור קבוע (מחזורי)
-            </h2>
-            <p className="mt-0.5 text-sm text-muted">
-              לתלמידים קבועים עם שיעור שבועי — נוצרים אוטומטית ואינם תלויים בפתיחת שבוע.
-            </p>
+          series (individual). Auto-scheduled, NOT gated by open-weeks.
+          Glass hero band: the `.blob` behind it sits at z-0, so the content
+          layer is explicitly raised to z-10. */}
+      <Card className="rise relative isolate overflow-hidden">
+        <span aria-hidden="true" className="blob -top-20 -start-16 size-56 bg-primary" />
+        <span aria-hidden="true" className="blob -bottom-24 -end-10 size-48 bg-accent" />
+        <div className="relative z-10 flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+          <div className="flex items-start gap-3">
+            <span
+              className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-warm text-primary-fg shadow-glow"
+              aria-hidden="true"
+            >
+              <Repeat className="size-5" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-lg font-extrabold tracking-tight text-ink">
+                הוספת שיעור קבוע (מחזורי)
+              </h2>
+              <p className="mt-1 text-sm text-muted">
+                לתלמידים קבועים עם שיעור שבועי — נוצרים אוטומטית ואינם תלויים בפתיחת שבוע.
+              </p>
+            </div>
           </div>
+          <Button
+            variant="gradient"
+            size="lg"
+            onClick={() => openCreate('recurring')}
+            className="shrink-0 max-sm:w-full"
+          >
+            <Repeat className="size-4" aria-hidden="true" />
+            הוספת שיעור קבוע
+          </Button>
         </div>
-        <Button
-          variant="gradient"
-          size="lg"
-          onClick={() => openCreate('recurring')}
-          className="shrink-0 max-sm:w-full"
-        >
-          <Repeat className="size-4" aria-hidden="true" />
-          הוספת שיעור קבוע
-        </Button>
-      </div>
+      </Card>
 
       {error && (
         <div
-          className="flex items-center gap-2 rounded-xl border border-danger/30 bg-danger-soft px-4 py-3 text-sm font-medium text-danger"
+          className="flex animate-fade-in items-center gap-2.5 rounded-2xl border border-danger bg-danger-soft px-4 py-3.5 text-sm font-semibold text-danger shadow-soft"
           role="alert"
         >
-          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+          <AlertCircle className="size-5 shrink-0" aria-hidden="true" />
           {error}
         </div>
       )}
 
       {notice && (
         <div
-          className="flex items-center gap-2 rounded-xl border border-success/30 bg-success-soft px-4 py-3 text-sm font-medium text-success"
+          className="flex animate-fade-in items-center gap-2.5 rounded-2xl border border-success bg-success-soft px-4 py-3.5 text-sm font-semibold text-success shadow-soft"
           role="status"
         >
-          <Check className="size-4 shrink-0" aria-hidden="true" />
+          <Check className="size-5 shrink-0" aria-hidden="true" />
           {notice}
         </div>
       )}
 
-      {/* The calendar — replaces the old flat list. Day / week / month views. */}
-      <Card>
-        <CardHeader variant="gradient">
+      {/* The calendar — replaces the old flat list. Day / week / month views.
+          The shell stays glass; the dense grids inside opt into solid surfaces
+          so a moving aurora never sits behind small time labels. */}
+      <Card className="rise overflow-hidden">
+        <CardHeader variant="gradient" className="p-5 pb-4 sm:p-6 sm:pb-4">
           <div className="flex items-center gap-3">
             <span
-              className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-warm text-primary-fg shadow-soft"
+              className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-warm text-primary-fg shadow-glow"
               aria-hidden="true"
             >
               <CalendarDays className="size-5" />
             </span>
-            <div>
-              <CardTitle>יומן שיעורים</CardTitle>
+            <div className="min-w-0">
+              <CardTitle className="text-xl">יומן שיעורים</CardTitle>
               <p className="text-sm text-muted">
                 לחיצה על שיעור פותחת את הפרטים והפעולות
               </p>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-3 pt-4 sm:p-5 sm:pt-5">
           <CalendarShell
             lessons={lessons}
             onAction={handleAction}
@@ -285,7 +301,7 @@ export function LessonsView({
         description="שיעור חד-פעמי או סדרה שבועית חוזרת."
       >
         <div
-          className="mb-5 flex gap-1.5 rounded-xl bg-primary-50 p-1"
+          className="mb-5 flex gap-1 rounded-full border border-white/60 bg-primary-50 p-1 shadow-soft"
           role="tablist"
           aria-label="סוג יצירה"
         >
@@ -304,9 +320,9 @@ export function LessonsView({
                 aria-selected={active}
                 onClick={() => setTab(key)}
                 className={cn(
-                  'flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-medium transition-[background-color,color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                  'flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2.5 text-sm font-semibold transition-[background-color,color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
                   active
-                    ? 'bg-surface text-primary-600 shadow-soft'
+                    ? 'bg-surface text-primary-700 shadow-card ring-1 ring-inset ring-white/70'
                     : 'text-muted hover:text-ink',
                 )}
               >

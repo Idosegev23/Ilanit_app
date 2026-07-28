@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils';
   consuming component.
 */
 export const fieldClasses =
-  'w-full rounded-xl border border-line bg-white/80 px-4 text-base text-ink shadow-soft backdrop-blur transition-[border-color,box-shadow,background-color] duration-200 ease-out placeholder:text-muted/70 hover:border-primary-300 hover:bg-white focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-ink disabled:cursor-not-allowed disabled:opacity-50';
+  'w-full rounded-xl border border-line bg-white/80 px-4 text-base text-ink shadow-soft backdrop-blur transition-[border-color,box-shadow,background-color] duration-200 ease-out placeholder:text-muted hover:border-primary-300 hover:bg-white focus:outline-none focus:border-primary focus:bg-white focus:ring-2 focus:ring-ink disabled:cursor-not-allowed disabled:opacity-50';
 
 export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
   /** Renders the field in an error state (danger border + aria-invalid). */

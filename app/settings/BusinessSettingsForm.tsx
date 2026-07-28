@@ -55,25 +55,27 @@ function Section({
       className={cn(
         'rounded-2xl border p-5 transition-colors duration-200 sm:p-6',
         highlight
-          ? 'border-primary-200 bg-gradient-tint shadow-soft ring-1 ring-primary-100'
-          : 'border-line/70 bg-cream/40',
+          ? 'border-primary-200 bg-gradient-tint shadow-card'
+          : 'border-line bg-primary-50/45',
       )}
     >
       <legend className="mb-1 flex w-full items-center gap-2.5">
         <span
           className={cn(
-            'flex size-9 items-center justify-center rounded-xl shadow-soft',
+            'flex size-10 items-center justify-center rounded-xl shadow-soft ring-1 ring-inset ring-white/70',
             highlight
-              ? 'bg-gradient-warm text-primary-fg'
-              : 'bg-primary-soft text-primary-600 ring-1 ring-primary-100',
+              ? 'bg-gradient-cta text-primary-fg'
+              : 'bg-primary-soft text-primary-700',
           )}
         >
           <Icon className="size-5" aria-hidden="true" />
         </span>
-        <span className="text-base font-bold text-ink">{title}</span>
+        <span className="text-base font-bold tracking-tight text-ink sm:text-lg">
+          {title}
+        </span>
       </legend>
       {description && (
-        <p className="mb-4 ps-[46px] text-xs leading-relaxed text-muted">
+        <p className="mb-5 ps-[50px] text-xs leading-relaxed text-muted">
           {description}
         </p>
       )}
@@ -135,21 +137,23 @@ export function BusinessSettingsForm({ values, onChange }: BusinessSettingsFormP
     Number.isFinite(values.defaultPrivatePrice);
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader variant="gradient">
-        <CardTitle className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary-600 shadow-soft">
+    // Long form → solid surface. Glass is for panels with room to breathe; a
+    // moving wash behind twelve stacked fields costs legibility.
+    <Card solid className="overflow-hidden">
+      <CardHeader variant="gradient" className="p-5 sm:p-6">
+        <CardTitle className="flex items-center gap-2.5 text-xl">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
             <Building2 className="size-5" aria-hidden="true" />
           </span>
           פרטי העסק, תמחור והזמנה
         </CardTitle>
-        <CardDescription className="ps-[46px]">
+        <CardDescription className="ps-[50px] leading-relaxed">
           הכתובת נכנסת אוטומטית להזמנת היומן. משך השיעור וה־buffer קובעים את חלוקת
           הסלוטים בלינק התיאום, והמחיר משמש כברירת-מחדל לתלמידים ללא מחיר משלהם.
         </CardDescription>
       </CardHeader>
 
-      <CardBody className="space-y-5">
+      <CardBody className="space-y-5 p-5 pt-5 sm:p-6">
         {/* ── זהות העסק ── */}
         <Section icon={Building2} title="זהות העסק">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -200,7 +204,7 @@ export function BusinessSettingsForm({ values, onChange }: BusinessSettingsFormP
               {/* Inline ₪ adornment at the inline-start (RTL aware). */}
               <span
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-4 text-xl font-bold text-primary-600"
+                className="pointer-events-none absolute inset-y-0 start-0 flex items-center ps-4 text-xl font-bold text-primary-700"
               >
                 ₪
               </span>
@@ -225,7 +229,7 @@ export function BusinessSettingsForm({ values, onChange }: BusinessSettingsFormP
                     Number.isFinite(n) && n >= 0 ? n : null,
                   );
                 }}
-                className={cn('h-14 ps-11 text-2xl font-bold tabular-nums')}
+                className="h-14 ps-11 text-2xl font-extrabold tracking-tight tabular-nums"
                 aria-describedby="defaultPrivatePrice-help"
               />
             </div>

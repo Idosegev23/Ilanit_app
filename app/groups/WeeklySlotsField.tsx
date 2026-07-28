@@ -58,9 +58,11 @@ export function WeeklySlotsField({
   }
 
   return (
-    <fieldset className="space-y-3 rounded-2xl border border-line bg-cream/40 p-4">
-      <legend className="flex items-center gap-1.5 px-1 text-sm font-medium text-ink">
-        <CalendarClock className="size-4 text-primary-600" aria-hidden="true" />
+    <fieldset className="space-y-3 rounded-2xl border border-line bg-primary-50/60 p-4">
+      <legend className="flex items-center gap-2 px-1 text-sm font-semibold text-ink">
+        <span className="flex size-7 items-center justify-center rounded-lg bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
+          <CalendarClock className="size-4" aria-hidden="true" />
+        </span>
         מפגשים שבועיים קבועים (אופציונלי)
       </legend>
 
@@ -68,10 +70,10 @@ export function WeeklySlotsField({
         {slots.map((slot, i) => (
           <div
             key={i}
-            className="space-y-3 rounded-xl border border-line bg-surface/70 p-3"
+            className="space-y-3 rounded-2xl border border-line bg-surface p-3.5 shadow-soft transition-colors duration-200 hover:border-primary-200"
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-muted">
+              <span className="rounded-full bg-primary-200 px-2.5 py-1 text-[11px] font-bold tabular-nums text-ink">
                 מפגש {i + 1}
               </span>
               {slots.length > 1 && (
@@ -79,7 +81,7 @@ export function WeeklySlotsField({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="text-muted hover:text-danger"
+                  className="text-muted hover:bg-danger-soft hover:text-danger"
                   onClick={() => removeRow(i)}
                   aria-label={`הסרת מפגש ${i + 1}`}
                 >

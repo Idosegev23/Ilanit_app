@@ -51,9 +51,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="space-y-4 rounded-2xl border border-line bg-gradient-tint p-4">
-      <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-accent-text">
-        <Icon className="size-4" aria-hidden="true" />
+    <div className="space-y-4 rounded-2xl border border-white/70 bg-gradient-tint p-4 shadow-soft">
+      <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-primary-700">
+        <span
+          className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary-soft text-primary-700 ring-1 ring-inset ring-white/70"
+          aria-hidden="true"
+        >
+          <Icon className="size-4" />
+        </span>
         {title}
       </p>
       {children}
@@ -136,19 +141,25 @@ export function ManualLessonForm({ onSuccess }: { onSuccess?: () => void }) {
       </Section>
 
       {state.error && (
-        <p className="flex items-center gap-1.5 text-sm text-danger" role="alert">
+        <p
+          className="flex animate-fade-in items-center gap-2 rounded-2xl border border-danger bg-danger-soft px-3.5 py-3 text-sm font-semibold text-danger"
+          role="alert"
+        >
           <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
           {state.error}
         </p>
       )}
       {succeeded && (
-        <p className="flex items-center gap-1.5 text-sm text-success" role="status">
+        <p
+          className="flex animate-fade-in items-center gap-2 rounded-2xl border border-success bg-success-soft px-3.5 py-3 text-sm font-semibold text-success"
+          role="status"
+        >
           <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
           השיעור נוצר.
         </p>
       )}
 
-      <Button type="submit" variant="gradient" size="lg" loading={pending} className="w-full">
+      <Button type="submit" variant="primary" size="lg" loading={pending} className="w-full">
         {pending ? 'יוצר…' : 'צור שיעור'}
       </Button>
     </form>

@@ -52,20 +52,21 @@ export function AvailabilityEditor({ windows, onChange }: AvailabilityEditorProp
   const hasAny = windows.length > 0;
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader variant="gradient">
-        <CardTitle className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary-600 shadow-soft">
+    // Long form → solid surface (glass is reserved for panels with air).
+    <Card solid className="overflow-hidden">
+      <CardHeader variant="gradient" className="p-5 sm:p-6">
+        <CardTitle className="flex items-center gap-2.5 text-xl">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
             <CalendarClock className="size-5" aria-hidden="true" />
           </span>
           זמינות שבועית
         </CardTitle>
-        <CardDescription className="ps-[46px]">
+        <CardDescription className="ps-[50px] leading-relaxed">
           הוסיפי חלונות זמן לכל יום. תלמידים יראו סלוטים פנויים רק בתוך החלונות
           הפעילים, לפי משך השיעור וה־buffer שהוגדרו למטה.
         </CardDescription>
       </CardHeader>
-      <CardBody className="space-y-3">
+      <CardBody className="space-y-3 p-4 pt-5 sm:p-6">
         {!hasAny && (
           <EmptyState
             icon={CalendarClock}
@@ -88,22 +89,24 @@ export function AvailabilityEditor({ windows, onChange }: AvailabilityEditorProp
             <div
               key={weekday}
               className={cn(
-                'relative overflow-hidden rounded-2xl border p-4 transition-[background-color,box-shadow] duration-200 sm:p-5',
+                'relative overflow-hidden rounded-2xl border p-4 transition-[background-color,border-color,box-shadow] duration-200 sm:p-5',
                 hasWindows
                   ? 'border-line bg-surface shadow-soft'
-                  : 'border-dashed border-line bg-cream/40',
+                  : 'border-dashed border-line bg-primary-50/40',
               )}
             >
               {/* Inline-start accent bar marks an active booking day. */}
               {isActiveDay && (
                 <span
                   aria-hidden="true"
-                  className="absolute inset-y-3 start-0 w-1 rounded-full bg-gradient-warm"
+                  className="absolute inset-y-3 start-0 w-1.5 rounded-full bg-gradient-warm"
                 />
               )}
-              <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <h3 className="text-base font-bold text-ink">יום {label}</h3>
+                  <h3 className="text-base font-bold tracking-tight text-ink sm:text-lg">
+                    יום {label}
+                  </h3>
                   {hasWindows && (
                     <Badge tone={isActiveDay ? 'success' : 'muted'}>
                       {isActiveDay
@@ -124,7 +127,7 @@ export function AvailabilityEditor({ windows, onChange }: AvailabilityEditorProp
               </div>
 
               {dayIndices.length === 0 ? (
-                <p className="mt-3 text-sm text-muted">
+                <p className="mt-3 text-sm leading-relaxed text-muted">
                   אין זמינות ביום זה — הוסיפי חלון כדי לפתוח אותו להזמנות.
                 </p>
               ) : (
@@ -135,10 +138,10 @@ export function AvailabilityEditor({ windows, onChange }: AvailabilityEditorProp
                       <li
                         key={i}
                         className={cn(
-                          'flex flex-wrap items-end gap-3 rounded-xl border bg-cream/50 p-3.5 transition-[background-color,border-color,opacity] duration-200',
+                          'flex flex-wrap items-end gap-3 rounded-2xl border bg-primary-50/50 p-3.5 transition-[background-color,border-color,opacity] duration-200',
                           invalid
-                            ? 'border-danger/60 bg-danger-soft/50'
-                            : 'border-line hover:border-primary-200',
+                            ? 'border-danger/60 bg-danger-soft/60'
+                            : 'border-line hover:border-primary-200 hover:bg-primary-50',
                           !w.active && !invalid && 'opacity-65',
                         )}
                       >
@@ -180,10 +183,10 @@ export function AvailabilityEditor({ windows, onChange }: AvailabilityEditorProp
                             (rule: touch-target-size) with a larger checkbox. */}
                         <label
                           className={cn(
-                            'flex min-h-11 cursor-pointer select-none items-center gap-2 rounded-xl border px-3 text-sm font-medium transition-colors duration-200',
+                            'flex min-h-11 cursor-pointer select-none items-center gap-2 rounded-full border px-4 text-sm font-semibold transition-colors duration-200',
                             w.active
-                              ? 'border-success/40 bg-success-soft text-success'
-                              : 'border-line bg-surface text-muted hover:border-primary-200',
+                              ? 'border-success/45 bg-success-soft text-success'
+                              : 'border-line bg-surface text-muted hover:border-primary-200 hover:bg-primary-50',
                           )}
                         >
                           <input
@@ -192,7 +195,7 @@ export function AvailabilityEditor({ windows, onChange }: AvailabilityEditorProp
                             onChange={(e) =>
                               updateWindow(i, { active: e.target.checked })
                             }
-                            className="size-5 rounded border-line accent-[var(--color-success)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                            className="size-5 rounded border-line accent-success focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
                           />
                           פעיל
                         </label>

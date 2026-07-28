@@ -2,8 +2,15 @@ import type { Config } from 'tailwindcss';
 
 // Ilanit design system v4 — "Blush Aurora".
 // Palette = blush pink / light pink / peach on ink, over a live WebGL aurora.
-// Every color is exposed BOTH as a Tailwind color AND backed by a CSS var
-// (--color-*) defined in globals.css, so the theme retints in one place.
+// Every color is backed by a CSS var in globals.css, so the theme retints in
+// one place.
+//
+// FORMAT — `rgb(var(--color-x-rgb) / <alpha-value>)`, never a bare
+// `var(--color-x)`. Tailwind 3 can only apply an opacity modifier to a color it
+// can parse or interpolate; given a bare var() it drops the modifier AND the
+// entire utility, so `bg-ink/40` compiles to nothing and the element renders
+// with no background at all. The failure is silent — no warning, no error, just
+// a missing class. Hence the RGB-triple storage in globals.css.
 //
 // THE ONE RULE: `ink` is the only text color; pink/peach are backgrounds only.
 // `primary-fg` (text ON primary) is therefore DARK — white on pink is 2.15:1.
@@ -22,69 +29,69 @@ const config: Config = {
       },
       colors: {
         // ── Surfaces & text ──
-        cream: 'var(--color-cream)',
+        cream: 'rgb(var(--color-cream-rgb) / <alpha-value>)',
         surface: {
-          DEFAULT: 'var(--color-surface)',
-          2: 'var(--color-surface-2)',
+          DEFAULT: 'rgb(var(--color-surface-rgb) / <alpha-value>)',
+          2: 'rgb(var(--color-surface-2-rgb) / <alpha-value>)',
         },
-        'surface-2': 'var(--color-surface-2)',
-        ink: 'var(--color-ink)',
-        muted: 'var(--color-muted)',
-        line: 'var(--color-line)',
+        'surface-2': 'rgb(var(--color-surface-2-rgb) / <alpha-value>)',
+        ink: 'rgb(var(--color-ink-rgb) / <alpha-value>)',
+        muted: 'rgb(var(--color-muted-rgb) / <alpha-value>)',
+        line: 'rgb(var(--color-line-rgb) / <alpha-value>)',
 
         // ── Primary (blush pink) ──
         primary: {
-          DEFAULT: 'var(--color-primary)',
-          50: 'var(--color-primary-50)',
-          100: 'var(--color-primary-100)',
-          200: 'var(--color-primary-200)',
-          300: 'var(--color-primary-300)',
-          500: 'var(--color-primary)',
-          600: 'var(--color-primary-600)',
-          700: 'var(--color-primary-700)', // pink TEXT token (4.9:1 on white)
-          fg: 'var(--color-primary-fg)', // DARK — text placed ON primary
-          soft: 'var(--color-primary-soft)',
+          DEFAULT: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
+          50: 'rgb(var(--color-primary-50-rgb) / <alpha-value>)',
+          100: 'rgb(var(--color-primary-100-rgb) / <alpha-value>)',
+          200: 'rgb(var(--color-primary-200-rgb) / <alpha-value>)',
+          300: 'rgb(var(--color-primary-300-rgb) / <alpha-value>)',
+          500: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
+          600: 'rgb(var(--color-primary-600-rgb) / <alpha-value>)',
+          700: 'rgb(var(--color-primary-700-rgb) / <alpha-value>)', // pink TEXT token (4.9:1 on white)
+          fg: 'rgb(var(--color-primary-fg-rgb) / <alpha-value>)', // DARK — text placed ON primary
+          soft: 'rgb(var(--color-primary-soft-rgb) / <alpha-value>)',
         },
-        'primary-600': 'var(--color-primary-600)',
-        'primary-700': 'var(--color-primary-700)',
+        'primary-600': 'rgb(var(--color-primary-600-rgb) / <alpha-value>)',
+        'primary-700': 'rgb(var(--color-primary-700-rgb) / <alpha-value>)',
 
         // ── Accent (peach) ──
         accent: {
-          DEFAULT: 'var(--color-accent)',
-          500: 'var(--color-accent)',
-          600: 'var(--color-accent-600)',
-          text: 'var(--color-accent-text)',
-          soft: 'var(--color-accent-soft)',
+          DEFAULT: 'rgb(var(--color-accent-rgb) / <alpha-value>)',
+          500: 'rgb(var(--color-accent-rgb) / <alpha-value>)',
+          600: 'rgb(var(--color-accent-600-rgb) / <alpha-value>)',
+          text: 'rgb(var(--color-accent-text-rgb) / <alpha-value>)',
+          soft: 'rgb(var(--color-accent-soft-rgb) / <alpha-value>)',
         },
 
         // ── Semantic ──
         success: {
-          DEFAULT: 'var(--color-success)',
-          soft: 'var(--color-success-soft)',
+          DEFAULT: 'rgb(var(--color-success-rgb) / <alpha-value>)',
+          soft: 'rgb(var(--color-success-soft-rgb) / <alpha-value>)',
         },
         warning: {
-          DEFAULT: 'var(--color-warning)',
-          soft: 'var(--color-warning-soft)',
+          DEFAULT: 'rgb(var(--color-warning-rgb) / <alpha-value>)',
+          soft: 'rgb(var(--color-warning-soft-rgb) / <alpha-value>)',
         },
         danger: {
-          DEFAULT: 'var(--color-danger)',
-          soft: 'var(--color-danger-soft)',
+          DEFAULT: 'rgb(var(--color-danger-rgb) / <alpha-value>)',
+          soft: 'rgb(var(--color-danger-soft-rgb) / <alpha-value>)',
         },
         // Alias kept so any `destructive` references resolve cleanly.
         destructive: {
-          DEFAULT: 'var(--color-danger)',
-          soft: 'var(--color-danger-soft)',
+          DEFAULT: 'rgb(var(--color-danger-rgb) / <alpha-value>)',
+          soft: 'rgb(var(--color-danger-soft-rgb) / <alpha-value>)',
         },
 
         // ── Legacy brand alias (back-compat for any not-yet-restyled markup) ──
         brand: {
-          DEFAULT: 'var(--color-primary)',
-          dark: 'var(--color-primary-600)',
-          light: 'var(--color-primary-50)',
+          DEFAULT: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
+          dark: 'rgb(var(--color-primary-600-rgb) / <alpha-value>)',
+          light: 'rgb(var(--color-primary-50-rgb) / <alpha-value>)',
         },
       },
       borderColor: {
-        DEFAULT: 'var(--color-line)',
+        DEFAULT: 'rgb(var(--color-line-rgb) / <alpha-value>)',
       },
       // v4 radius scale — softer and rounder than v3 across the board.
       borderRadius: {
@@ -124,7 +131,7 @@ const config: Config = {
         13: '3.25rem',
       },
       ringColor: {
-        DEFAULT: 'var(--color-ring)',
+        DEFAULT: 'rgb(var(--color-ring-rgb) / <alpha-value>)',
       },
       backdropBlur: {
         xs: '2px',

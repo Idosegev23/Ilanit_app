@@ -97,9 +97,11 @@ export function ReplaceLessonDialog({
       <form className="space-y-4" onSubmit={submit}>
         {/* Original lesson being replaced */}
         {lesson && (
-          <div className="rounded-xl border border-line bg-cream/60 px-4 py-3">
-            <p className="text-xs font-medium text-muted">מחליפים את</p>
-            <p className="mt-0.5 text-sm font-semibold text-ink">
+          <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-3 shadow-soft backdrop-blur">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              מחליפים את
+            </p>
+            <p className="mt-1 text-sm font-bold text-ink">
               {lesson.studentName ?? 'שיעור'}
               {' · '}
               <span dir="ltr" className="tabular-nums">
@@ -124,11 +126,12 @@ export function ReplaceLessonDialog({
                 setMode(m);
                 setError(null);
               }}
+              aria-pressed={mode === m}
               className={cn(
-                'flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors duration-150',
+                'flex min-h-11 items-center justify-center gap-1.5 rounded-full border px-3 py-2.5 text-sm font-semibold transition-[background-color,border-color,color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
                 mode === m
-                  ? 'border-primary-300 bg-primary-50 text-primary-700 shadow-soft'
-                  : 'border-line bg-surface text-muted hover:bg-surface-2',
+                  ? 'border-primary-300 bg-primary-200 text-ink shadow-card'
+                  : 'border-line bg-white/70 text-muted backdrop-blur hover:bg-white hover:text-ink',
               )}
             >
               <Icon className="size-4" aria-hidden="true" />
@@ -195,8 +198,8 @@ export function ReplaceLessonDialog({
           </div>
         )}
 
-        <div className="flex items-start gap-2 rounded-xl bg-primary-soft/50 px-3.5 py-2.5 text-sm text-primary-600">
-          <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <div className="flex items-start gap-2.5 rounded-2xl border border-primary-200 bg-primary-50 px-3.5 py-3 text-sm text-ink shadow-soft">
+          <Info className="mt-0.5 size-4 shrink-0 text-primary-700" aria-hidden="true" />
           <span>
             השיעור החדש ייקבע על אותה משבצת והתלמיד/ה יקבל/ת אישור. השיעור המקורי יבוטל,
             יוסר מהיומן, והתלמיד/ה המקורי/ת יקבל/ת הודעה על הביטול.
@@ -206,14 +209,14 @@ export function ReplaceLessonDialog({
         {error && (
           <div
             role="alert"
-            className="flex items-start gap-2 rounded-xl border border-danger/20 bg-danger-soft p-3"
+            className="flex animate-fade-in items-start gap-2 rounded-2xl border border-danger bg-danger-soft p-3.5 shadow-soft"
           >
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
-            <p className="text-sm text-danger">{error}</p>
+            <p className="text-sm font-semibold text-danger">{error}</p>
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 pt-1 sm:flex-row">
           <Button type="submit" variant="primary" size="lg" className="flex-1" loading={busy}>
             {!busy && <Repeat className="size-5" aria-hidden="true" />}
             החלף שיעור

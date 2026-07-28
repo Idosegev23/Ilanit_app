@@ -75,21 +75,22 @@ export function ExceptionsEditor({ exceptions, windows, onChange }: ExceptionsEd
   }
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader variant="gradient">
-        <CardTitle className="flex items-center gap-2.5">
-          <span className="flex size-9 items-center justify-center rounded-xl bg-primary-soft text-primary-600 shadow-soft">
+    // Long form → solid surface (glass is reserved for panels with air).
+    <Card solid className="overflow-hidden">
+      <CardHeader variant="gradient" className="p-5 sm:p-6">
+        <CardTitle className="flex items-center gap-2.5 text-xl">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
             <CalendarX2 className="size-5" aria-hidden="true" />
           </span>
           זמינות לפי תאריך ספציפי
         </CardTitle>
-        <CardDescription className="ps-[46px]">
+        <CardDescription className="ps-[50px] leading-relaxed">
           שליטה ליום מסוים: לחסום תאריך (חופש/מחלה), או להגדיר לו שעות מיוחדות —
           למשל להוסיף/לשנות שעות רק לתאריך אחד (שבוע חזרות וכד׳). גובר על התבנית
           השבועית באותו יום.
         </CardDescription>
       </CardHeader>
-      <CardBody className="space-y-3">
+      <CardBody className="space-y-4 p-4 pt-5 sm:p-6">
         {exceptions.length === 0 ? (
           <EmptyState
             icon={CalendarX2}
@@ -120,23 +121,23 @@ export function ExceptionsEditor({ exceptions, windows, onChange }: ExceptionsEd
                     key={i}
                     className={
                       customInvalid
-                        ? 'flex flex-wrap items-end gap-3 rounded-xl border border-danger/60 bg-danger-soft/50 p-3.5'
-                        : 'flex flex-wrap items-end gap-3 rounded-xl border border-line bg-surface p-3.5 shadow-soft transition-colors duration-200 hover:border-primary-200'
+                        ? 'flex flex-wrap items-end gap-3 rounded-2xl border border-danger/60 bg-danger-soft/60 p-3.5'
+                        : 'flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-surface p-3.5 shadow-soft transition-colors duration-200 hover:border-primary-200 hover:bg-primary-50/50'
                     }
                   >
                     <label className="flex flex-col gap-1">
-                      <span className="text-xs font-medium text-muted">תאריך</span>
+                      <span className="text-xs font-semibold text-muted">תאריך</span>
                       <Input
                         type="date"
                         value={e.date}
                         onChange={(ev) => updateException(i, { date: ev.target.value })}
-                        className="w-44 tabular-nums"
+                        className="date-field w-44 tabular-nums"
                         aria-label="תאריך חריג"
                       />
                     </label>
 
                     <label className="flex flex-col gap-1">
-                      <span className="text-xs font-medium text-muted">סוג</span>
+                      <span className="text-xs font-semibold text-muted">סוג</span>
                       <Select
                         value={e.type}
                         onChange={(ev) =>
@@ -155,14 +156,14 @@ export function ExceptionsEditor({ exceptions, windows, onChange }: ExceptionsEd
                     {e.type === 'custom' && (
                       <div className="flex items-end gap-2" dir="ltr">
                         <label className="flex flex-col gap-1">
-                          <span className="text-xs font-medium text-muted">התחלה</span>
+                          <span className="text-xs font-semibold text-muted">התחלה</span>
                           <Input
                             type="time"
                             value={e.startTime ?? ''}
                             onChange={(ev) =>
                               updateException(i, { startTime: ev.target.value })
                             }
-                            className="w-32"
+                            className="w-32 tabular-nums"
                             error={customInvalid}
                             aria-label="שעת התחלה מותאמת"
                           />
@@ -171,14 +172,14 @@ export function ExceptionsEditor({ exceptions, windows, onChange }: ExceptionsEd
                           –
                         </span>
                         <label className="flex flex-col gap-1">
-                          <span className="text-xs font-medium text-muted">סיום</span>
+                          <span className="text-xs font-semibold text-muted">סיום</span>
                           <Input
                             type="time"
                             value={e.endTime ?? ''}
                             onChange={(ev) =>
                               updateException(i, { endTime: ev.target.value })
                             }
-                            className="w-32"
+                            className="w-32 tabular-nums"
                             error={customInvalid}
                             aria-label="שעת סיום מותאמת"
                           />
@@ -215,7 +216,7 @@ export function ExceptionsEditor({ exceptions, windows, onChange }: ExceptionsEd
                 );
               })}
             </ul>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 border-t border-line pt-4">
               <Button type="button" size="md" variant="secondary" onClick={addCustom}>
                 <Plus className="size-4" aria-hidden="true" />
                 שעות מיוחדות לתאריך

@@ -115,12 +115,10 @@ export function EventDetailsDialog({
         <div className="flex flex-wrap items-center gap-2">
           <span
             className={cn(
-              'flex size-10 shrink-0 items-center justify-center rounded-xl shadow-soft',
-              unassignedImport
+              'flex size-11 shrink-0 items-center justify-center rounded-2xl shadow-soft ring-1 ring-inset ring-white/70',
+              unassignedImport || isGroup
                 ? 'bg-accent-soft text-accent-text'
-                : isGroup
-                  ? 'bg-accent-soft text-accent-text'
-                  : 'bg-primary-soft text-primary-600',
+                : 'bg-primary-soft text-primary-700',
             )}
             aria-hidden="true"
           >
@@ -131,7 +129,7 @@ export function EventDetailsDialog({
             )}
           </span>
           {unassignedImport ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-text">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent-text ring-1 ring-inset ring-white/50">
               <AlertCircle className="size-3.5" aria-hidden="true" />
               ממתין לשיוך תלמיד
             </span>
@@ -139,7 +137,7 @@ export function EventDetailsDialog({
             <StatusPill status={lessonStatusKind(lesson.status)} />
           )}
           {lesson.recurrenceId && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-medium text-muted">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary-50 px-2.5 py-1 text-xs font-semibold text-muted ring-1 ring-inset ring-white/50">
               <Repeat className="size-3.5" aria-hidden="true" />
               חוזר
             </span>
@@ -147,31 +145,34 @@ export function EventDetailsDialog({
         </div>
 
         {/* Details grid */}
-        <dl className="space-y-2.5 text-sm">
-          <div className="flex items-center gap-2 text-ink">
-            <Clock className="size-4 shrink-0 text-muted" aria-hidden="true" />
-            <span className="tabular-nums font-medium" dir="ltr">
+        <dl className="space-y-2 rounded-2xl border border-white/70 bg-white/70 p-3.5 text-sm shadow-soft backdrop-blur">
+          <div className="flex items-center gap-2.5 text-ink">
+            <Clock className="size-4 shrink-0 text-primary-700" aria-hidden="true" />
+            <span className="font-bold tabular-nums" dir="ltr">
               {timeLabel(lesson.startsAt)}–{timeLabel(lesson.endsAt)}
             </span>
           </div>
           {lesson.price != null && (
-            <div className="flex items-center gap-2 text-ink">
-              <span className="inline-flex size-4 shrink-0 items-center justify-center text-muted">
+            <div className="flex items-center gap-2.5 text-ink">
+              <span
+                className="inline-flex size-4 shrink-0 items-center justify-center font-bold text-primary-700"
+                aria-hidden="true"
+              >
                 ₪
               </span>
-              <span className="tabular-nums font-medium">
+              <span className="font-bold tabular-nums">
                 {formatShekels(lesson.price)}
               </span>
             </div>
           )}
           {lesson.location && (
-            <div className="flex items-center gap-2 text-muted">
+            <div className="flex items-center gap-2.5 text-muted">
               <MapPin className="size-4 shrink-0" aria-hidden="true" />
               <span>{lesson.location}</span>
             </div>
           )}
           {lesson.notes && (
-            <div className="flex items-start gap-2 rounded-lg bg-cream px-3 py-2 text-muted">
+            <div className="flex items-start gap-2.5 rounded-xl bg-primary-50 px-3 py-2.5 text-muted">
               <StickyNote
                 className="mt-0.5 size-4 shrink-0"
                 aria-hidden="true"
@@ -187,7 +188,7 @@ export function EventDetailsDialog({
             <>
               <Button
                 size="md"
-                variant="gradient"
+                variant="primary"
                 className="flex-1"
                 onClick={() => onAssign(lesson!)}
               >
@@ -257,7 +258,7 @@ export function EventDetailsDialog({
               size="md"
               variant="ghost"
               disabled={busy}
-              className="text-muted hover:text-danger"
+              className="w-full text-muted hover:bg-danger-soft hover:text-danger sm:w-auto"
               onClick={handleNotALesson}
               title="סימון שזה אינו שיעור — יפסיק לתפוס שעה ביומן"
             >

@@ -36,9 +36,9 @@ type SaveState =
 
 /**
  * A single live summary chip in the settings hero band. The chip sits on a
- * fully opaque white surface (not a translucent tint over the gradient), so the
- * ink/muted text always clears WCAG AA regardless of the gradient stop behind
- * it. A soft hover-lift gives the band tactile depth.
+ * fully opaque white surface, so ink/muted text always clears WCAG AA no matter
+ * what the aurora is doing behind the band. The glyph uses primary-700, not
+ * primary: #f493be on white is 2.15:1, below the 3:1 a meaningful icon needs.
  */
 function SummaryStat({
   icon: Icon,
@@ -50,13 +50,15 @@ function SummaryStat({
   value: string;
 }) {
   return (
-    <div className="hover-lift group flex items-center gap-3.5 rounded-2xl border border-white/40 bg-surface px-4 py-3.5 shadow-card ring-1 ring-black/[0.03]">
-      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-gradient-tint text-primary-600 shadow-soft ring-1 ring-primary-100">
+    // Stacks on the phone: at 390px a 2-up row leaves ~90px beside the glyph,
+    // which would truncate every label. From `sm:` it becomes a side-by-side.
+    <div className="hover-lift group flex flex-col items-start gap-2.5 rounded-2xl border border-white/70 bg-surface px-4 py-3.5 shadow-card sm:flex-row sm:items-center sm:gap-3.5">
+      <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
         <Icon className="size-5" aria-hidden="true" />
       </span>
       <div className="min-w-0">
-        <p className="truncate text-xs font-medium text-muted">{label}</p>
-        <p className="text-xl font-extrabold leading-tight tabular-nums text-ink">
+        <p className="text-xs font-medium leading-snug text-muted">{label}</p>
+        <p className="text-2xl font-extrabold leading-tight tracking-tight tabular-nums text-ink">
           {value}
         </p>
       </div>
@@ -148,51 +150,44 @@ export function SettingsView({
   return (
     <div className="space-y-10">
       {/* ── Hero overview band ──────────────────────────────────────────────
-          Premium full-bleed warm composition: brand mark + value prop + live
-          figures. WCAG: the descriptive copy sits in a dedicated dark-terracotta
-          scrim panel (not raw over the honey/peach stops), so full-opacity white
-          text clears 4.5:1 across the whole region; the live-stat chips ride on
-          opaque white surfaces. */}
-      <section className="relative overflow-hidden rounded-[28px] bg-gradient-warm p-6 shadow-pop sm:p-9">
-        {/* Decorative depth: dotted relief + soft blurred color blobs. */}
-        <div aria-hidden="true" className="texture-dots absolute inset-0 opacity-50" />
+          v4 replaces the v3 warm-gradient-plus-rescue-scrim composition with a
+          glass panel: the live aurora reads straight through it, and every glyph
+          of copy is ink on near-white (13.4:1) instead of white on a mid-tone
+          gradient that needed a darkening layer to survive AA.
+
+          `.blob` is z-index 0, so the real content carries `relative z-10`. */}
+      <section className="glass rise relative overflow-hidden rounded-[28px] p-6 shadow-pop sm:p-9">
         <div
           aria-hidden="true"
-          className="blob -top-20 end-[-4rem] size-64 bg-[var(--grad-warm-3)]"
+          className="blob -top-24 end-[-4rem] size-64 bg-primary"
         />
         <div
           aria-hidden="true"
-          className="blob bottom-[-5rem] start-[-3rem] size-56 bg-white/50"
-        />
-        {/* Inline-start vertical sheen for a crafted, lit edge. */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-y-0 start-0 w-1/3 bg-gradient-to-l from-transparent to-white/10"
+          className="blob bottom-[-5rem] start-[-3rem] size-56 bg-accent"
         />
 
-        <div className="relative">
+        <div className="relative z-10">
           {/* Brand lockup — wordmark + calendar-heart mark. */}
           <div className="flex items-center gap-2.5">
-            <span className="flex size-9 items-center justify-center rounded-xl bg-white/20 text-white shadow-soft ring-1 ring-white/30 backdrop-blur-sm">
+            <span className="flex size-10 items-center justify-center rounded-2xl bg-primary text-primary-fg shadow-glow">
               <CalendarHeart className="size-5" aria-hidden="true" />
             </span>
-            <span className="text-lg font-extrabold tracking-tight text-white drop-shadow-sm">
+            <span className="text-lg font-extrabold tracking-tight text-ink">
               אילנית
             </span>
           </div>
 
-          {/* Copy lives in its own deep-teal scrim → guaranteed contrast. */}
-          <div className="mt-5 max-w-2xl rounded-2xl bg-[#12302b]/60 p-5 ring-1 ring-white/10 backdrop-blur-[2px]">
-            <p className="text-xs font-bold tracking-wide text-white">
+          <div className="mt-6 max-w-2xl">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary-700">
               תצוגה מהירה של ההגדרות
             </p>
-            <p className="mt-2 text-base font-medium leading-relaxed text-white">
+            <p className="mt-2.5 text-lg font-medium leading-relaxed text-ink sm:text-xl">
               כך נראית הזמינות שלך כרגע. כל שינוי כאן משפיע ישירות על הסלוטים
               והמחירים שתלמידים רואים בלינק התיאום.
             </p>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
+          <div className="mt-7 grid grid-cols-2 gap-3.5 lg:grid-cols-4">
             <SummaryStat
               icon={CalendarCheck2}
               label="ימים פעילים בשבוע"
@@ -217,24 +212,27 @@ export function SettingsView({
         </div>
       </section>
 
-      <div className="space-y-8">
+      <div className="stagger space-y-8">
         <AvailabilityEditor windows={windows} onChange={handleWindows} />
         <ExceptionsEditor exceptions={exceptions} windows={windows} onChange={handleExceptions} />
         <BusinessSettingsForm values={settings} onChange={handleSettings} />
       </div>
 
-      {/* Sticky save bar — feedback lives next to the action, raised on a soft
-          ring + warm shadow so it reads as a floating action shelf. */}
-      <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-2xl border border-white/60 bg-surface/95 p-4 shadow-pop ring-1 ring-primary-100/60 backdrop-blur-md sm:flex-row sm:items-center sm:justify-between">
+      {/* Sticky save bar — feedback lives next to the action, floating on glass
+          so the aurora keeps moving underneath the shelf. */}
+      <div className="glass-strong sticky bottom-4 z-20 flex flex-col gap-3 rounded-3xl p-4 shadow-pop sm:flex-row sm:items-center sm:justify-between sm:ps-6">
         <div aria-live="polite" className="min-h-6 text-sm">
           {save.kind === 'saved' && (
-            <span className="inline-flex items-center gap-1.5 font-semibold text-success">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-3 py-1.5 font-bold text-success">
               <Check className="size-4" aria-hidden="true" />
               ההגדרות נשמרו
             </span>
           )}
           {save.kind === 'error' && (
-            <span className="inline-flex items-center gap-1.5 font-semibold text-danger" role="alert">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full bg-danger-soft px-3 py-1.5 font-bold text-danger"
+              role="alert"
+            >
               <AlertCircle className="size-4" aria-hidden="true" />
               {save.message}
             </span>
@@ -245,13 +243,14 @@ export function SettingsView({
             </span>
           )}
         </div>
+        {/* The one highest-emphasis action on the page → the ink variant. */}
         <Button
           type="button"
-          variant="gradient"
+          variant="ink"
           size="lg"
           onClick={onSave}
           loading={saving}
-          className="sm:w-auto"
+          className="w-full sm:w-auto"
         >
           {!saving && <Save className="size-5" aria-hidden="true" />}
           שמירת הגדרות

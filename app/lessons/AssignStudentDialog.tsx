@@ -103,9 +103,11 @@ export function AssignStudentDialog({
     >
       <form className="space-y-4" onSubmit={submit}>
         {eventTitle && (
-          <div className="rounded-xl border border-line bg-cream/60 px-4 py-3">
-            <p className="text-xs font-medium text-muted">כותרת מהיומן</p>
-            <p className="mt-0.5 truncate text-sm font-semibold text-ink" title={eventTitle}>
+          <div className="rounded-2xl border border-white/70 bg-white/70 px-4 py-3 shadow-soft backdrop-blur">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              כותרת מהיומן
+            </p>
+            <p className="mt-1 truncate text-sm font-bold text-ink" title={eventTitle}>
               {eventTitle}
             </p>
           </div>
@@ -113,19 +115,22 @@ export function AssignStudentDialog({
 
         {suggestedName && (
           <div
-            className="flex items-start gap-2 rounded-xl border border-primary-200 bg-primary-50 px-3 py-2.5 text-sm text-ink"
+            className="flex items-start gap-2.5 rounded-2xl border border-primary-200 bg-primary-50 px-3.5 py-3 text-sm text-ink shadow-soft"
             role="note"
           >
-            <Sparkles className="mt-0.5 size-4 shrink-0 text-primary-600" aria-hidden="true" />
+            <Sparkles
+              className="mt-0.5 size-4 shrink-0 text-primary-700"
+              aria-hidden="true"
+            />
             <span>
               הצעה אוטומטית לפי הכותרת:{' '}
-              <span className="font-semibold text-primary-600">{suggestedName}</span>
+              <span className="font-bold text-primary-700">{suggestedName}</span>
             </span>
           </div>
         )}
 
         {showCreate && (
-          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-accent/30 bg-accent-soft/40 px-3 py-2.5 text-sm text-ink">
+          <div className="flex flex-wrap items-center gap-2.5 rounded-2xl border border-accent bg-accent-soft px-3.5 py-3 text-sm text-ink shadow-soft">
             <span className="min-w-0 flex-1">
               לא נמצא תלמיד/ה תואם/ת לכותרת. אפשר ליצור חדש/ה ולשייך מיד.
             </span>
@@ -171,14 +176,17 @@ export function AssignStudentDialog({
         {error && (
           <div
             role="alert"
-            className="flex items-start gap-2 rounded-xl border border-danger/20 bg-danger-soft p-3"
+            className="flex animate-fade-in items-start gap-2 rounded-2xl border border-danger bg-danger-soft p-3.5 shadow-soft"
           >
-            <AlertTriangle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
-            <p className="text-sm text-danger">{error}</p>
+            <AlertTriangle
+              className="mt-0.5 size-4 shrink-0 text-danger"
+              aria-hidden="true"
+            />
+            <p className="text-sm font-semibold text-danger">{error}</p>
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 pt-1 sm:flex-row">
           <Button type="submit" variant="primary" size="lg" className="flex-1" loading={busy}>
             {!busy && <UserCheck className="size-5" aria-hidden="true" />}
             שייך תלמיד

@@ -81,11 +81,11 @@ function WeekCard({
   return (
     <div
       className={cn(
-        'flex shrink-0 snap-start flex-col gap-3 rounded-2xl border p-4 shadow-soft transition-[border-color,box-shadow,background-color] duration-200 ease-out',
+        'hover-lift flex shrink-0 snap-start flex-col gap-3 rounded-2xl border p-4 shadow-card backdrop-blur transition-[border-color,box-shadow,background-color] duration-200 ease-out',
         'w-44',
         isOpen
-          ? 'border-success/40 bg-success-soft'
-          : 'border-line bg-surface',
+          ? 'border-success bg-success-soft'
+          : 'border-white/70 bg-white/75',
       )}
     >
       <div className="flex items-center justify-between gap-2">
@@ -94,8 +94,8 @@ function WeekCard({
         </span>
         <span
           className={cn(
-            'inline-flex size-7 shrink-0 items-center justify-center rounded-lg',
-            isOpen ? 'bg-success/15 text-success' : 'bg-primary-50 text-muted',
+            'inline-flex size-7 shrink-0 items-center justify-center rounded-full ring-1 ring-inset ring-white/70',
+            isOpen ? 'bg-success-soft text-success' : 'bg-primary-50 text-muted',
           )}
           aria-hidden="true"
         >
@@ -115,10 +115,10 @@ function WeekCard({
         disabled={busy}
         onClick={() => onToggle(week)}
         className={cn(
-          'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold transition-[background-color,color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60',
+          'inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full px-3 py-2.5 text-sm font-semibold transition-[background-color,color,box-shadow] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60',
           isOpen
-            ? 'bg-success text-white shadow-soft hover:brightness-95'
-            : 'border border-line bg-surface text-ink shadow-soft hover:bg-primary-50 hover:border-primary-200',
+            ? 'bg-success text-white shadow-card hover:brightness-110'
+            : 'border border-line bg-surface text-ink shadow-soft hover:border-primary-200 hover:bg-primary-50',
         )}
       >
         {busy ? (
@@ -230,7 +230,7 @@ export function WeekStrip() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <span
-              className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-warm text-primary-fg shadow-soft"
+              className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-warm text-primary-fg shadow-glow"
               aria-hidden="true"
             >
               <CalendarRange className="size-5" />
@@ -245,17 +245,18 @@ export function WeekStrip() {
           {weeks && (
             <div className="flex items-center gap-2">
               <span
-                className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-3 py-1 text-xs font-semibold tabular-nums text-success"
+                className="inline-flex items-center gap-1.5 rounded-full bg-success-soft px-3 py-1.5 text-xs font-semibold tabular-nums text-success ring-1 ring-inset ring-white/60"
                 aria-hidden="true"
               >
                 <LockOpen className="size-3.5" />
                 {openCount} פתוחים
               </span>
+              {/* Pink fill carries INK text — white on primary is 2.15:1. */}
               <button
                 type="button"
                 onClick={() => handleOpenUpcoming(6)}
                 disabled={bulkBusy}
-                className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-primary px-3.5 py-2 text-sm font-semibold text-white shadow-soft transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60"
+                className="inline-flex min-h-11 items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-fg shadow-glow transition-[background-color,box-shadow,transform] duration-200 ease-out hover:-translate-y-px hover:bg-primary-600 hover:shadow-glow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface disabled:opacity-60"
               >
                 {bulkBusy ? (
                   <Loader2 className="size-4 animate-spin" aria-hidden="true" />
@@ -271,7 +272,7 @@ export function WeekStrip() {
       <CardContent>
         {error && (
           <div
-            className="mb-4 flex items-center gap-2 rounded-xl border border-danger/30 bg-danger-soft px-4 py-3 text-sm font-medium text-danger"
+            className="mb-4 flex animate-fade-in items-center gap-2 rounded-2xl border border-danger bg-danger-soft px-4 py-3.5 text-sm font-semibold text-danger shadow-soft"
             role="alert"
           >
             <AlertCircle className="size-4 shrink-0" aria-hidden="true" />

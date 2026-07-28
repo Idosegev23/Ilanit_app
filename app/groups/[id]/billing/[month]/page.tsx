@@ -79,10 +79,10 @@ export default async function GroupBillingRosterPage({
 
   return (
     <div className="space-y-8">
-      <div>
+      <div className="rise">
         <Link
           href={`/groups/${id}`}
-          className="mb-4 inline-flex items-center gap-1 rounded-lg text-sm text-muted transition-colors duration-150 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+          className="mb-4 inline-flex min-h-11 items-center gap-1 rounded-full px-1 text-sm font-medium text-muted transition-colors duration-150 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
         >
           <ChevronRight className="size-4" aria-hidden="true" />
           {group.name}
@@ -97,7 +97,7 @@ export default async function GroupBillingRosterPage({
 
       {roster.length > 0 && (
         <>
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="stagger grid grid-cols-2 gap-4 lg:grid-cols-4">
             <StatCard
               label="שילמו"
               value={
@@ -136,15 +136,15 @@ export default async function GroupBillingRosterPage({
           </div>
 
           {/* Collection progress — at-a-glance how close the month is to fully paid. */}
-          <div className="rounded-2xl border border-line bg-surface p-5 shadow-card">
-            <div className="mb-2 flex items-end justify-between gap-3">
-              <p className="text-sm font-medium text-ink">התקדמות גבייה</p>
-              <p className="text-sm font-semibold tabular-nums text-primary-600">
+          <div className="glass rounded-2xl p-5 sm:p-6">
+            <div className="mb-2.5 flex items-end justify-between gap-3">
+              <p className="text-sm font-semibold text-ink">התקדמות גבייה</p>
+              <p className="text-2xl font-extrabold leading-none tracking-tight tabular-nums text-primary-700">
                 {paidPct}%
               </p>
             </div>
             <div
-              className="h-2.5 w-full overflow-hidden rounded-full bg-primary-50"
+              className="h-3 w-full overflow-hidden rounded-full bg-primary-50 ring-1 ring-inset ring-primary-100"
               role="progressbar"
               aria-valuenow={paidPct}
               aria-valuemin={0}
@@ -152,7 +152,7 @@ export default async function GroupBillingRosterPage({
               aria-label="אחוז החברוֹת ששילמו"
             >
               <div
-                className="h-full rounded-full bg-gradient-warm transition-[width] duration-300 ease-out motion-reduce:transition-none"
+                className="h-full rounded-full bg-gradient-warm shadow-glow transition-[width] duration-500 ease-out motion-reduce:transition-none"
                 style={{ width: `${paidPct}%` }}
               />
             </div>
@@ -160,10 +160,12 @@ export default async function GroupBillingRosterPage({
         </>
       )}
 
-      <Card>
-        <CardHeader variant="tint">
-          <CardTitle className="flex items-center gap-2">
-            <Receipt className="size-5 text-primary-600" aria-hidden="true" />
+      <Card solid className="overflow-hidden">
+        <CardHeader variant="gradient">
+          <CardTitle className="flex items-center gap-2.5">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
+              <Receipt className="size-5" aria-hidden="true" />
+            </span>
             חברוֹת הקבוצה
           </CardTitle>
         </CardHeader>
@@ -194,14 +196,14 @@ export default async function GroupBillingRosterPage({
                       <span className="flex items-center gap-3">
                         <span
                           aria-hidden="true"
-                          className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-semibold text-primary-600"
+                          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary-200 text-sm font-bold text-ink shadow-soft ring-1 ring-inset ring-white/60"
                         >
                           {r.name.trim().charAt(0)}
                         </span>
-                        <span className="font-medium text-ink">{r.name}</span>
+                        <span className="font-semibold text-ink">{r.name}</span>
                       </span>
                     </TableCell>
-                    <TableNumCell className="font-semibold">
+                    <TableNumCell className="text-base font-bold">
                       {formatShekels(r.amount)}
                     </TableNumCell>
                     <TableCell>
@@ -216,7 +218,12 @@ export default async function GroupBillingRosterPage({
                           <input type="hidden" name="billingId" value={r.billingId} />
                           <input type="hidden" name="groupId" value={id} />
                           <input type="hidden" name="month" value={month} />
-                          <Button type="submit" variant="ghost" size="md">
+                          <Button
+                            type="submit"
+                            variant="ghost"
+                            size="md"
+                            className="text-muted hover:bg-danger-soft hover:text-danger"
+                          >
                             <Undo2 className="size-4" aria-hidden="true" />
                             ביטול סימון
                           </Button>
@@ -256,7 +263,7 @@ export default async function GroupBillingRosterPage({
                                 </option>
                               ))}
                             </Select>
-                            <Button type="submit" size="md">
+                            <Button type="submit" variant="ink" size="md">
                               <Receipt className="size-4" aria-hidden="true" />
                               סמני כשולם + קבלה
                             </Button>
@@ -271,7 +278,7 @@ export default async function GroupBillingRosterPage({
           )}
 
           {roster.length > 0 && (
-            <p className="mt-4 flex items-start gap-2 rounded-xl bg-accent-soft px-3.5 py-3 text-xs leading-relaxed text-accent-text">
+            <p className="mt-5 flex items-start gap-2.5 rounded-2xl bg-accent-soft px-4 py-3.5 text-xs leading-relaxed text-accent-text ring-1 ring-inset ring-white/50">
               <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               <span>
                 סימון &quot;שולם&quot; מפיק קבלה רשמית (Morning) עם תיאור הקבלה

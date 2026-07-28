@@ -18,8 +18,9 @@ export default async function AvailabilityPage() {
   const initialStates = await monthDayStates(grid[0], grid[grid.length - 1]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7 sm:space-y-8">
       <PageHeader
+        className="rise"
         title="זמינות"
         subtitle="לוח חודשי של הימים והשעות. בתוך שעות הפעילות הכל פתוח — לוחצים על משבצת כדי לסמן פנוי/סגור. שיעורים שנקבעו תפוסים אוטומטית."
       />
