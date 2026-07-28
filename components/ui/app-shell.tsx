@@ -2,12 +2,12 @@
 
 import * as React from 'react';
 import { usePathname } from 'next/navigation';
-import { X } from 'lucide-react';
-import { Sidebar } from './sidebar';
 import { Topbar } from './topbar';
+import { NavOverlay } from './nav-overlay';
 
 // Route prefixes that are STANDALONE (no app shell): public booking, login, and
-// the single-action token pages Ilanit opens from her phone.
+// the single-action token pages Ilanit opens from her phone. These still get the
+// aurora — it lives in the root layout, above this component.
 const STANDALONE_PREFIXES = ['/book', '/login', '/a/', '/m/', '/p/', '/c/'];
 
 function isStandalone(pathname: string): boolean {
@@ -21,16 +21,23 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-// RTL app shell: a RIGHT-side sidebar with main content to its left, plus a
-// Topbar. Collapses to a top bar + drawer on mobile. Only wraps authenticated
-// owner pages — standalone routes render bare.
+/*
+  App shell (v4). The v3 right-hand sidebar is gone: navigation is now the
+  full-screen OptionWheel overlay at every breakpoint, opened from the topbar.
+  That leaves one centred content column with no sidebar offset to reason about,
+  which is what makes the mobile layout the primary case rather than a
+  fallback — the phone and the desktop now run the same structure.
+
+  Only wraps authenticated owner pages; standalone routes render bare.
+*/
 export function AppShell({ children }: AppShellProps) {
   const pathname = usePathname();
-  const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
 
-  // Close the drawer whenever the route changes.
+  // Close the menu whenever the route changes.
   React.useEffect(() => {
-    setDrawerOpen(false);
+    setMenuOpen(false);
   }, [pathname]);
 
   if (isStandalone(pathname)) {
@@ -38,47 +45,22 @@ export function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className="relative min-h-screen bg-cream">
-      {/* Faint warm wash at the top so content never floats in a flat void. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-gradient-to-b from-surface-2/70 to-transparent"
+    <div className="min-h-screen">
+      <Topbar
+        onOpenMenu={() => setMenuOpen(true)}
+        menuOpen={menuOpen}
+        triggerRef={triggerRef}
       />
 
-      {/* Desktop: fixed right sidebar (RTL → right edge), content to its left. */}
-      <aside className="fixed inset-y-0 end-0 z-30 hidden w-64 border-s border-line shadow-soft lg:block">
-        <Sidebar />
-      </aside>
+      <main className="mx-auto w-full max-w-6xl px-4 pb-24 pt-6 sm:px-6 sm:pb-16 sm:pt-8">
+        {children}
+      </main>
 
-      {/* Mobile drawer */}
-      {drawerOpen && (
-        <div className="fixed inset-0 z-40 lg:hidden">
-          <div
-            className="absolute inset-0 bg-ink/40"
-            onClick={() => setDrawerOpen(false)}
-            aria-hidden="true"
-          />
-          <aside className="absolute inset-y-0 end-0 w-72 max-w-[85%] border-s border-line shadow-pop">
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(false)}
-              aria-label="סגור תפריט"
-              className="absolute start-3 top-4 z-10 flex size-9 items-center justify-center rounded-xl text-ink hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <X className="size-5" aria-hidden="true" />
-            </button>
-            <Sidebar onNavigate={() => setDrawerOpen(false)} />
-          </aside>
-        </div>
-      )}
-
-      {/* Main column — offset by the sidebar width on desktop (logical end). */}
-      <div className="relative lg:me-64">
-        <Topbar onOpenMenu={() => setDrawerOpen(true)} />
-        <main className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
-          {children}
-        </main>
-      </div>
+      <NavOverlay
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+        returnFocusTo={triggerRef}
+      />
     </div>
   );
 }

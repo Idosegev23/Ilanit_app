@@ -40,9 +40,11 @@ export { StatCard, type StatCardProps, type StatTone } from './stat-card';
 export { EmptyState, type EmptyStateProps } from './empty-state';
 export { PageHeader, type PageHeaderProps } from './page-header';
 export { Skeleton } from './skeleton';
-export { Sidebar } from './sidebar';
 export { Topbar } from './topbar';
 export { AppShell } from './app-shell';
+export { AuroraBackground } from './aurora-background';
+export { NavOverlay, NavTrigger } from './nav-overlay';
+export { default as OptionWheel, type OptionWheelProps } from './option-wheel';
 export {
   SendBookingLinkDialog,
   type BookingLinkStudent,

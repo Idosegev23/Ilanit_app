@@ -3,86 +3,99 @@
 @tailwind utilities;
 
 /*
-  Ilanit design system v3 — "Calm Sage & Sand" (restful premium soft-UI).
+  Ilanit design system v4 — "Blush Aurora".
   Palette tokens live here as CSS vars and are mirrored in tailwind.config.ts.
-  v3 swaps the loud terracotta for a soothing sage-teal primary set against
-  warm sand neutrals, with a sand/honey accent as the warm counterpoint. The
-  warm/cool balance (cool brand on warm paper) is what makes it feel calm and
-  comfortable. All token NAMES from v1/v2 are preserved (additive) so existing
-  markup keeps working untouched.
-  Contrast verified ≥ 4.5:1 for EVERY text/bg pair (ink on cream/surface/
-  surface-2; muted on all surfaces; white on primary/primary-600/CTA-end;
-  primary-600 on soft/50; accent/semantic text on their soft backgrounds).
+
+  THE ONE RULE: --color-ink (#2e2f34) is the only text color; the three warm
+  hues (pink / light pink / peach) are BACKGROUNDS ONLY. Ink measures 13.4:1 on
+  white, 9.7:1 on peach, 8.9:1 on light pink, 6.2:1 on pink — every pairing
+  clears AA, most clear AAA. The inverse (white on pink) is 2.15:1 and is
+  forbidden everywhere; --color-primary-fg is therefore DARK, not white.
+
+  All token NAMES from v1/v2/v3 are preserved (additive) so existing markup
+  keeps working untouched — retired v3 names survive as retinted aliases.
+  Spec: docs/superpowers/specs/2026-07-28-blush-aurora-design.md
 */
 :root {
-  /* Surfaces & text — warm sand paper, crisp white cards, soft sage mist tint */
-  --color-cream: #f5f3ec; /* page background — warm sand */
-  --color-surface: #ffffff; /* cards */
-  --color-surface-2: #ebf1ed; /* tinted second surface (sage mist) */
-  --color-ink: #222826; /* primary text — ~13.5:1 on cream */
-  --color-muted: #5c665f; /* secondary text — ~5.4:1 on cream */
-  --color-line: #e5e2d8; /* borders — warm sand hairline */
+  /* ── Surfaces & text ── */
+  --color-cream: #fff9fb; /* page base — rose-milk; the aurora paints on this */
+  --color-surface: #ffffff; /* solid cards */
+  --color-surface-2: #fdeff5; /* tinted second surface */
+  --color-glass: 255, 255, 255; /* rgb, for glass alpha recipes */
+  --color-ink: #2e2f34; /* THE text color — 13.4:1 on white */
+  --color-muted: #6b6c74; /* secondary text — 5.2:1 on white */
+  --color-line: #f2dce6; /* rosy hairline — decorative only */
 
-  /* Primary — sage-teal (calm, confident, cool counterpoint to the sand) */
-  --color-primary: #2f7a6e; /* 500 — white text 5.08:1 */
-  --color-primary-600: #256358; /* hover — white text 6.99:1 */
-  --color-primary-fg: #ffffff;
-  --color-primary-50: #eaf3f0;
-  --color-primary-100: #d4e8e2;
-  --color-primary-200: #a9d2c8;
-  --color-primary-300: #79b5a8;
-  --color-primary-soft: #e8f2ee;
+  /* ── Primary — blush pink ── */
+  --color-primary: #f493be; /* 500 — fills; ink text on it = 6.2:1 */
+  --color-primary-50: #fef3f8;
+  --color-primary-100: #fde7f1;
+  --color-primary-200: #f9c5dc; /* = palette light pink */
+  --color-primary-300: #f6aacb;
+  --color-primary-600: #e06b9f; /* hover fill */
+  --color-primary-700: #b84a7b; /* pink TEXT token — 4.9:1 on white */
+  --color-primary-fg: #2e2f34; /* text ON primary — DARK. Never white. */
+  --color-primary-soft: #fdeff5;
 
-  /* Accent — warm sand / honey (the single warm accent) */
-  --color-accent: #c2913f; /* sand-honey */
-  --color-accent-600: #8a6526; /* deep amber */
-  --color-accent-text: #7e5c22; /* readable on light/soft bg ≈ 5.3:1 */
-  --color-accent-soft: #f6eedc;
+  /* ── Accent — peach ── */
+  --color-accent: #fad5bb; /* surface only */
+  --color-accent-600: #f3bd97;
+  --color-accent-text: #96591f; /* 5.6:1 on white */
+  --color-accent-soft: #fdf0e6;
 
-  /* Decorative hero/brand gradient stops (scrim-protected): teal → sage → sand */
-  --grad-warm-1: #2e6f65;
-  --grad-warm-2: #4c8c7c;
-  --grad-warm-3: #cba56a;
-  --grad-soft-1: #eaf3f0;
-  --grad-soft-2: #f5f3ec;
+  /* ── Semantic — deep, warm-family, AA as text on white AND on their soft bg ── */
+  --color-success: #2e7d5b; /* 5.0:1 on white */
+  --color-success-soft: #e4f1ea;
+  --color-warning: #96591f; /* 5.6:1 on white */
+  --color-warning-soft: #faebda;
+  --color-danger: #c0325b; /* 5.5:1 on white */
+  --color-danger-soft: #fbe4ea;
 
-  /* Safe CTA gradient (small buttons, no scrim): stays dark enough for white text */
-  --grad-cta-1: #2f7a6e;
-  --grad-cta-2: #235d53;
+  /*
+    ── Focus ring — INK, not pink ──
+    WCAG 2.2 (1.4.11 / 2.4.11) wants a focus indicator ≥ 3:1 against what's
+    adjacent. Pink on white is 2.15:1 and fails; ink is 13.4:1.
+  */
+  --color-ring: #2e2f34;
 
-  /* Brand panel ink base (deep teal) — white text ≈ 14:1; rgb form for scrims */
-  --brand-panel-ink: #12302b;
-  --brand-panel-ink-rgb: 18, 48, 43;
+  /* ── Shadow tint (rgb) — PINK, never gray. Gray over a pink wash reads muddy. ── */
+  --shadow-tint: 216, 110, 158;
 
-  /* Semantic (every label clears AA on its soft bg and on white) */
-  --color-success: #2a744c; /* on success-soft 4.90:1, on white 5.67:1 */
-  --color-success-soft: #e6f1ea;
-  --color-warning: #8a6526; /* on warning-soft 4.58:1, on white 5.5:1 */
-  --color-warning-soft: #f6eedc;
-  --color-danger: #bc3b33; /* on danger-soft 4.63:1, on white 5.5:1 */
-  --color-danger-soft: #fbe7e4;
+  /* ── Aurora stops (consumed by AuroraBackground + the static fallback) ── */
+  --aurora-1: #fad5bb;
+  --aurora-2: #f493be;
 
-  /* Focus ring */
-  --color-ring: #2f7a6e;
+  /* ── Decorative gradient stops (v3 names kept, retinted to blush) ── */
+  --grad-warm-1: #f493be;
+  --grad-warm-2: #f9c5dc;
+  --grad-warm-3: #fad5bb;
+  --grad-soft-1: #fdeff5;
+  --grad-soft-2: #fff9fb;
 
-  /* Cool-neutral shadow tint (rgb) — shared by soft-UI elevation recipes */
-  --shadow-tint: 28, 48, 43;
+  /* Hero CTA gradient — pink→peach. Carries DARK text (ink), never white. */
+  --grad-cta-1: #f493be;
+  --grad-cta-2: #fad5bb;
 
-  /* Back-compat aliases for the old slate/indigo design */
+  /* Brand panel ink base — white text ≈ 13.4:1; rgb form for scrims */
+  --brand-panel-ink: #2e2f34;
+  --brand-panel-ink-rgb: 46, 47, 52;
+
+  /* Back-compat aliases for the original slate/indigo design */
   --background: var(--color-cream);
   --foreground: var(--color-ink);
 }
 
 html {
   -webkit-text-size-adjust: 100%;
+  background-color: var(--color-cream);
 }
 
 body {
-  background-color: var(--color-cream);
+  background-color: transparent; /* the aurora layer owns the page base */
   color: var(--color-ink);
   font-family: var(--font-heebo), system-ui, sans-serif;
   font-size: 1rem;
-  line-height: 1.6;
+  line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -98,7 +111,8 @@ body {
   h4 {
     color: var(--color-ink);
     font-weight: 700;
-    line-height: 1.3;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
     text-wrap: balance;
   }
 
@@ -106,11 +120,13 @@ body {
     font-weight: 500;
   }
 
-  /* Consistent, visible keyboard focus everywhere. */
+  /* Consistent, visible keyboard focus everywhere — white spacer + ink ring. */
   :focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--color-surface), 0 0 0 4px var(--color-ring);
-    border-radius: 4px;
+    box-shadow:
+      0 0 0 2px var(--color-surface),
+      0 0 0 4px var(--color-ring);
+    border-radius: 6px;
   }
 
   /* Keep technical strings (phones, emails, times) left-to-right inside RTL. */
@@ -120,6 +136,59 @@ body {
 }
 
 @layer utilities {
+  /*
+    ── Aurora background layers ──
+    `.aurora-static` is BOTH the SSR/first-paint layer under the canvas and the
+    complete fallback when prefers-reduced-motion is set or WebGL is missing.
+  */
+  .aurora-static {
+    background-image:
+      radial-gradient(
+        60% 45% at 20% 18%,
+        rgba(244, 147, 190, 0.3),
+        transparent 70%
+      ),
+      radial-gradient(
+        55% 40% at 82% 30%,
+        rgba(250, 213, 187, 0.36),
+        transparent 72%
+      ),
+      radial-gradient(
+        70% 50% at 50% 92%,
+        rgba(249, 197, 220, 0.28),
+        transparent 75%
+      );
+  }
+
+  /*
+    The GL canvas MULTIPLIES onto the rose-milk base. An additive aurora is
+    invisible on a light page (white + pink light = white); multiplying makes the
+    bands darken the base into pink/peach washes instead. The wrapper must NOT
+    set `isolation`, or the blend gets trapped in its own stacking context.
+  */
+  .aurora-blend canvas {
+    mix-blend-mode: multiply;
+  }
+
+  /* ── Glass surfaces — the core material of v4 ── */
+  .glass {
+    background-color: rgba(var(--color-glass), 0.72);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow:
+      0 8px 30px -12px rgba(var(--shadow-tint), 0.22),
+      0 2px 8px -4px rgba(var(--shadow-tint), 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  }
+  /* Denser variant for data-heavy surfaces where blur hurts legibility. */
+  .glass-strong {
+    background-color: rgba(var(--color-glass), 0.9);
+    backdrop-filter: blur(24px) saturate(1.3);
+    -webkit-backdrop-filter: blur(24px) saturate(1.3);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+  }
+
   /* ── Brand gradients ── */
   .bg-gradient-warm {
     background-image: linear-gradient(
@@ -129,7 +198,7 @@ body {
       var(--grad-warm-3) 100%
     );
   }
-  /* Safe solid-feel CTA gradient: stays dark enough for white text everywhere. */
+  /* Hero CTA — pink→peach. Pairs ONLY with ink text (white would be ~2:1). */
   .bg-gradient-cta {
     background-image: linear-gradient(
       135deg,
@@ -137,31 +206,33 @@ body {
       var(--grad-cta-2) 100%
     );
   }
+  .bg-gradient-soft {
+    background-image: linear-gradient(
+      160deg,
+      var(--grad-soft-1) 0%,
+      var(--grad-soft-2) 100%
+    );
+  }
+  /* Subtle blush sheen for card headers / hero panels. */
+  .bg-gradient-tint {
+    background-image: linear-gradient(
+      160deg,
+      var(--color-surface-2) 0%,
+      var(--color-surface) 70%
+    );
+  }
 
   /*
-    ── Auth/booking brand panel (WCAG-AA SAFE) ──
-    The decorative gradient runs teal → sage → sand; bare white text over the
-    sage/sand band measures well below AA. This panel keeps the calm identity for
-    the eye but guarantees white text ≥ 4.5:1 by:
-      1) a deep-teal base (--brand-panel-ink #12302b, ~14:1 vs white),
-      2) the gradient layered on top but RICHER (sand pushed past the far corner)
-         so the mid-panel text band stays at teal or darker,
-      3) a directional scrim (::before) darkening the vertical center + the
-         inline-start text column, fading out toward the decorative blob corner.
-    Net: every white text pixel sits on a background no lighter than the teal
-    primary (#2f7a6e → white 5.08:1). Single source of truth — consumed by
-    AuthLayout and /book/[token] so the contrast fix lives in ONE place.
+    ── Auth/booking brand panel ──
+    v4 makes this trivially safe: the base is ink (#2e2f34, 13.4:1 vs white) and
+    the blush gradient sits on top at low opacity, so every white text pixel
+    stays on a background at least as dark as ink. The v3 scrim machinery is
+    gone — it existed only to rescue a mid-tone gradient.
   */
   .brand-panel {
     position: relative;
     isolation: isolate;
     background-color: var(--brand-panel-ink);
-    background-image: linear-gradient(
-      135deg,
-      var(--grad-warm-1) 0%,
-      var(--grad-warm-2) 62%,
-      var(--grad-warm-3) 118%
-    );
   }
   .brand-panel::before {
     content: '';
@@ -169,24 +240,13 @@ body {
     inset: 0;
     z-index: 0;
     pointer-events: none;
-    background-image:
-      linear-gradient(
-        180deg,
-        rgba(var(--brand-panel-ink-rgb), 0.32) 0%,
-        rgba(var(--brand-panel-ink-rgb), 0.56) 46%,
-        rgba(var(--brand-panel-ink-rgb), 0.6) 66%,
-        rgba(var(--brand-panel-ink-rgb), 0.32) 100%
-      ),
-      linear-gradient(
-        to var(--brand-scrim-dir, left),
-        rgba(var(--brand-panel-ink-rgb), 0.44) 0%,
-        rgba(var(--brand-panel-ink-rgb), 0.14) 56%,
-        rgba(var(--brand-panel-ink-rgb), 0) 100%
-      );
-  }
-  /* In RTL the text column sits on the inline-start = visual right. */
-  [dir='rtl'] .brand-panel::before {
-    --brand-scrim-dir: right;
+    opacity: 0.24;
+    background-image: linear-gradient(
+      135deg,
+      var(--grad-warm-1) 0%,
+      var(--grad-warm-2) 55%,
+      var(--grad-warm-3) 100%
+    );
   }
 
   /*
@@ -194,10 +254,9 @@ body {
     `<input type="date">` is the primary entry control of the booking flow. Left
     raw it reads as an admin-template remnant: the WebKit calendar indicator pins
     LTR-right (wrong edge under RTL) and is a tiny low-contrast glyph. This makes
-    the whole field the affordance (clickable across its width) and recolors +
-    enlarges the indicator to an on-brand sage-teal glyph that meets the touch
-    target, while keeping the native picker (no custom JS calendar). The number
-    fields stay LTR/tabular so the date reads naturally.
+    the whole field the affordance and recolors + enlarges the indicator to an
+    on-brand deep-pink glyph that meets the touch target, while keeping the
+    native picker (no custom JS calendar).
   */
   .date-field {
     font-variant-numeric: tabular-nums;
@@ -208,40 +267,23 @@ body {
     margin-inline-end: 0;
     padding: 6px;
     cursor: pointer;
-    border-radius: 8px;
-    /* sage-teal calendar glyph (replaces the faint default), ≥24px hit area */
+    border-radius: 10px;
     width: 1.4rem;
     height: 1.4rem;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f7a6e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23b84a7b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
     transition: background-color 200ms ease-out;
   }
   .date-field::-webkit-calendar-picker-indicator:hover {
-    background-color: var(--color-primary-50);
+    background-color: var(--color-primary-100);
   }
   .date-field::-webkit-datetime-edit {
     padding-block: 0;
   }
 
-  .bg-gradient-soft {
-    background-image: linear-gradient(
-      160deg,
-      var(--grad-soft-1) 0%,
-      var(--grad-soft-2) 100%
-    );
-  }
-  /* Subtle sage→cream sheen for card headers / hero panels. */
-  .bg-gradient-tint {
-    background-image: linear-gradient(
-      160deg,
-      var(--color-surface-2) 0%,
-      var(--color-surface) 70%
-    );
-  }
-
-  /* ── Decorative texture: faint warm dot relief for hero panels ── */
+  /* ── Decorative texture: faint dot relief for hero panels ── */
   .texture-dots {
     background-image: radial-gradient(
       rgba(255, 255, 255, 0.18) 1.2px,
@@ -250,16 +292,27 @@ body {
     background-size: 22px 22px;
   }
 
-  /* ── Soft blurred color blob (decorative, aria-hidden containers) ──
-     z-index -1 keeps blobs BEHIND the .brand-panel scrim (::before, z-0) so they
-     enrich the corners without lightening the text band; content sits at z-10. */
+  /* ── Soft blurred color blob (decorative, aria-hidden containers) ── */
   .blob {
     position: absolute;
     z-index: -1;
     border-radius: 9999px;
-    filter: blur(48px);
-    opacity: 0.5;
+    filter: blur(52px);
+    opacity: 0.45;
     pointer-events: none;
+  }
+
+  /* Screen-reader-only (used by the wheel overlay's linear nav fallback). */
+  .sr-only-list {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
   }
 }
 
@@ -267,19 +320,19 @@ body {
   /* Interactive card hover-lift — transform/shadow only (no layout shift). */
   .hover-lift {
     transition:
-      transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
-      box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+      transform 240ms cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 240ms cubic-bezier(0.16, 1, 0.3, 1);
     will-change: transform;
   }
   .hover-lift:hover {
     transform: translateY(-3px);
-    box-shadow: 0 24px 56px -16px rgba(var(--shadow-tint), 0.26);
+    box-shadow: 0 28px 64px -18px rgba(var(--shadow-tint), 0.34);
   }
 }
 
 @layer utilities {
   /*
-    ── Tasteful entrance choreography (CSS-only, no JS / no deps) ──
+    ── Entrance choreography (CSS-only, no JS / no deps) ──
     `.rise` fades + lifts an element in. Pair with `.stagger` on a parent and
     `--i` on children to cascade a soft waterfall (animation-delay = i * 70ms).
     Honors prefers-reduced-motion via the global guard below.
@@ -323,11 +376,91 @@ body {
   @keyframes pulse-ring {
     0%,
     100% {
-      box-shadow: 0 0 0 0 rgba(47, 122, 110, 0.35);
+      box-shadow: 0 0 0 0 rgba(244, 147, 190, 0.45);
     }
     50% {
-      box-shadow: 0 0 0 6px rgba(47, 122, 110, 0);
+      box-shadow: 0 0 0 6px rgba(244, 147, 190, 0);
     }
+  }
+}
+
+@layer components {
+  /*
+    ── SoftAurora canvas host ──
+    The GL canvas is appended here imperatively; OGL sets its inline width/height.
+  */
+  .soft-aurora-container {
+    width: 100%;
+    height: 100%;
+  }
+
+  /*
+    ── OptionWheel ──
+    Each option is absolutely centered, then offset along the curve by the
+    component's rAF loop through transform/opacity/filter, so everything stays
+    in step. Kept in @layer components so Tailwind utilities can still override.
+  */
+  .option-wheel {
+    --ow-text-color: var(--color-muted);
+    --ow-active-color: var(--color-ink);
+    --ow-font-size: 3rem;
+    --ow-inset: 80px;
+
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    outline: none;
+  }
+
+  .option-wheel--dragging {
+    cursor: grabbing;
+  }
+
+  .option-wheel__item {
+    position: absolute;
+    top: 50%;
+    left: var(--ow-inset);
+    white-space: nowrap;
+    font-size: var(--ow-font-size);
+    line-height: 1;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    transform-origin: left center;
+    cursor: pointer;
+    will-change: transform, opacity, filter;
+    /* --ow-p goes 0 -> 1 as an option approaches the middle of the wheel */
+    color: color-mix(
+      in srgb,
+      var(--ow-active-color) calc(var(--ow-p, 0) * 100%),
+      var(--ow-text-color)
+    );
+  }
+
+  /* RTL: the wheel anchors to the visual right edge. */
+  .option-wheel--right .option-wheel__item {
+    left: auto;
+    right: var(--ow-inset);
+    transform-origin: right center;
+  }
+
+  .option-wheel__item--selected {
+    font-weight: 800;
+  }
+
+  /* The centered option gets a blush underline so "which one is live" is not
+     carried by weight and blur alone. */
+  .option-wheel__item--selected::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: -0.18em;
+    height: 3px;
+    border-radius: 999px;
+    background-color: var(--color-primary);
   }
 }
 

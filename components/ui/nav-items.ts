@@ -13,6 +13,8 @@ export interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** One-line Hebrew blurb shown in the wheel overlay's preview panel. */
+  description?: string;
 }
 
 export interface NavGroup {
@@ -23,13 +25,48 @@ export interface NavGroup {
 
 // Primary navigation for Ilanit's private (owner) area. Order matters.
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/dashboard', label: 'דשבורד', icon: LayoutDashboard },
-  { href: '/students', label: 'תלמידים', icon: Users },
-  { href: '/lessons', label: 'שיעורים', icon: CalendarDays },
-  { href: '/availability', label: 'זמינות', icon: CalendarClock },
-  { href: '/groups', label: 'קבוצות', icon: UsersRound },
-  { href: '/messages', label: 'הודעות', icon: MessageCircle },
-  { href: '/settings', label: 'הגדרות', icon: Settings },
+  {
+    href: '/dashboard',
+    label: 'דשבורד',
+    icon: LayoutDashboard,
+    description: 'מבט־על על השבוע, ההכנסות והתובנות',
+  },
+  {
+    href: '/students',
+    label: 'תלמידים',
+    icon: Users,
+    description: 'תיקי תלמידים, פרטי קשר ומחירים',
+  },
+  {
+    href: '/lessons',
+    label: 'שיעורים',
+    icon: CalendarDays,
+    description: 'יומן השיעורים — קביעה, שינוי וביטול',
+  },
+  {
+    href: '/availability',
+    label: 'זמינות',
+    icon: CalendarClock,
+    description: 'לוח חודשי — פתיחה וסגירה של שעות',
+  },
+  {
+    href: '/groups',
+    label: 'קבוצות',
+    icon: UsersRound,
+    description: 'קבוצות לימוד, רישום חברים וגבייה חודשית',
+  },
+  {
+    href: '/messages',
+    label: 'הודעות',
+    icon: MessageCircle,
+    description: 'תיבת הוואטסאפ — שיחות עם התלמידים',
+  },
+  {
+    href: '/settings',
+    label: 'הגדרות',
+    icon: Settings,
+    description: 'שעות פעילות, מחירים והגדרות העסק',
+  },
 ];
 
 // Grouped navigation — used by the v2 sidebar for clearer section rhythm.
