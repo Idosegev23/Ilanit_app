@@ -34,9 +34,11 @@ export interface BookingLinkStudent {
   phone: string;
 }
 
-// Deterministic warm avatar tone + initials (matches the students directory).
+// Deterministic blush avatar tone + initials (matches the students directory).
+// Every tone is a soft background with a DEEP text color — primary-700 rather
+// than primary-600, which lands at 2.8:1 on the blush chip.
 const AVATAR_TONES = [
-  'bg-primary-soft text-primary-600',
+  'bg-primary-soft text-primary-700',
   'bg-accent-soft text-accent-text',
   'bg-success-soft text-success',
   'bg-warning-soft text-warning',
@@ -237,15 +239,20 @@ export function SendBookingLinkDialog({
 
           <div
             ref={panelRef}
-            className="relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl border border-line bg-surface shadow-pop sm:rounded-3xl"
+            className="glass-strong relative z-10 flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl shadow-pop sm:rounded-3xl"
           >
-            {/* Gradient header band */}
-            <div className="relative shrink-0 overflow-hidden bg-gradient-warm px-6 py-5">
+            {/*
+              Header band. Uses `.brand-panel` (ink base + blush gradient at 24%)
+              rather than `.bg-gradient-warm`: the warm gradient is now pink →
+              light pink → peach, where white text measures ~2:1. On ink it is
+              13.4:1.
+            */}
+            <div className="brand-panel relative shrink-0 overflow-hidden px-6 py-5">
               <div
                 aria-hidden="true"
                 className="pointer-events-none absolute -end-8 -top-10 size-32 rounded-full bg-white/15 blur-2xl"
               />
-              <div className="relative flex items-center justify-between gap-3">
+              <div className="relative z-10 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="flex size-11 items-center justify-center rounded-2xl bg-white/20 text-white ring-1 ring-white/30">
                     <Send className="size-5" aria-hidden="true" />
@@ -330,9 +337,9 @@ export function SendBookingLinkDialog({
                       setError(null);
                     }}
                     className={cn(
-                      'inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                      'inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink',
                       tab === 'existing'
-                        ? 'bg-gradient-warm text-white shadow-card'
+                        ? 'bg-ink text-white shadow-card'
                         : 'text-muted hover:bg-primary-50 hover:text-ink',
                     )}
                   >
@@ -348,9 +355,9 @@ export function SendBookingLinkDialog({
                       setError(null);
                     }}
                     className={cn(
-                      'inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary',
+                      'inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink',
                       tab === 'new'
-                        ? 'bg-gradient-warm text-white shadow-card'
+                        ? 'bg-ink text-white shadow-card'
                         : 'text-muted hover:bg-primary-50 hover:text-ink',
                     )}
                   >
@@ -386,7 +393,7 @@ export function SendBookingLinkDialog({
                     >
                       {filtered.length === 0 ? (
                         <div className="flex flex-col items-center gap-2 px-4 py-8 text-center">
-                          <span className="flex size-11 items-center justify-center rounded-full bg-primary-soft/60 text-primary-600 ring-1 ring-primary-100">
+                          <span className="flex size-11 items-center justify-center rounded-full bg-primary-soft/60 text-primary-700 ring-1 ring-primary-100">
                             <SearchX className="size-5" aria-hidden="true" />
                           </span>
                           <p className="text-sm font-medium text-ink">לא נמצאו תלמידים</p>
@@ -404,7 +411,7 @@ export function SendBookingLinkDialog({
                                   aria-selected={isSel}
                                   onClick={() => setSelectedId(s.id)}
                                   className={cn(
-                                    'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+                                    'flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink',
                                     isSel
                                       ? 'bg-primary-50 ring-1 ring-primary-200'
                                       : 'hover:bg-surface',
@@ -447,7 +454,7 @@ export function SendBookingLinkDialog({
                 {tab === 'new' && (
                   <div className="space-y-3">
                     <div className="flex items-start gap-3 rounded-2xl border border-line bg-cream/40 p-4">
-                      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-600">
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700">
                         <Link2 className="size-5" aria-hidden="true" />
                       </span>
                       <div className="space-y-1">
@@ -459,7 +466,7 @@ export function SendBookingLinkDialog({
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 rounded-xl bg-primary-50 px-3.5 py-2.5 text-xs text-primary-600">
+                    <div className="flex items-center gap-2 rounded-xl bg-primary-50 px-3.5 py-2.5 text-xs text-primary-700">
                       <Sparkles className="size-4 shrink-0" aria-hidden="true" />
                       <span>אימייל הוא רשות — רק אם רוצים גם תזכורות במייל.</span>
                     </div>
