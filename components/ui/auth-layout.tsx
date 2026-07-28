@@ -33,15 +33,16 @@ const DEFAULT_VALUE_PROP =
 
 /**
  * Full-screen RTL split shell for every STANDALONE route (/login, /book,
- * /book/[token], /a, /m, /p). One side is the warm `.brand-panel` (gradient +
- * AA-safe scrim) with the wordmark + value prop + soft decorative blobs; the
- * other is an elevated action card on `bg-gradient-soft`. On mobile it collapses
- * to a gradient header band (brand) above the card — never a lonely card in a
- * void.
+ * /book/[token], /a, /m, /p). One side is the `.brand-panel` — an ink base with
+ * a low-opacity blush gradient — carrying the wordmark, value prop and soft
+ * decorative blobs; the other is an elevated action card. On mobile it collapses
+ * to a brand header band above the card, never a lonely card in a void.
  *
- * Contrast: the white copy renders over `.brand-panel`, whose directional scrim
- * keeps every text pixel on a background ≥ terracotta (white ≥ 4.5:1). The fix
- * lives in globals.css `.brand-panel` so it is shared by /book/[token] too.
+ * Contrast: v4 made this structurally safe rather than carefully tuned. The
+ * panel's base is ink (#2e2f34), where white measures 13.4:1, and the blush
+ * gradient sits on top at 24%. Even under a 45% pink blob the white copy stays
+ * at ~5.5:1, so no scrim machinery is needed — v3 carried a directional scrim
+ * purely to rescue a mid-tone gradient, and it is gone.
  *
  * In RTL the brand panel sits on the inline-start (visual right is content);
  * the grid order places brand first so it lands on the right under `dir=rtl`.
@@ -72,15 +73,15 @@ export function AuthLayout({
     >
       {/* ── Brand panel (desktop: full column; mobile: header band) ── */}
       <section className="brand-panel relative flex flex-col justify-center overflow-hidden px-6 py-10 text-white texture-dots lg:px-14 lg:py-16">
-        {/* Decorative blobs — pinned to the corner away from the text band, and
-            sitting BEHIND the scrim (z-index:-1) so they never lift contrast. */}
+        {/* Decorative blobs — pinned to the corners away from the text band.
+            Safe over the ink base: even at full blob opacity white stays ≥5.5:1. */}
         <span
           aria-hidden="true"
-          className="blob -top-24 -end-20 size-72 bg-[var(--grad-warm-3)]"
+          className="blob -top-24 -end-20 size-72 bg-accent"
         />
         <span
           aria-hidden="true"
-          className="blob -bottom-32 -start-16 size-[22rem] bg-[var(--grad-warm-2)]"
+          className="blob -bottom-32 -start-16 size-[22rem] bg-primary"
         />
 
         <div className="relative z-10 mx-auto w-full max-w-md lg:mx-0">
@@ -139,8 +140,8 @@ export function AuthLayout({
         </div>
       </section>
 
-      {/* ── Action surface ── */}
-      <section className="flex items-start justify-center bg-gradient-soft px-4 py-8 sm:items-center sm:px-6 sm:py-12">
+      {/* ── Action surface — transparent so the live aurora shows through ── */}
+      <section className="flex items-start justify-center px-4 py-8 sm:items-center sm:px-6 sm:py-12">
         {bare ? (
           <div
             className={cn(
@@ -154,7 +155,7 @@ export function AuthLayout({
         ) : (
           <div
             className={cn(
-              'w-full rounded-3xl border border-line bg-surface p-6 shadow-pop sm:p-8',
+              'glass w-full rounded-3xl p-6 shadow-pop sm:p-8',
               'animate-fade-in',
               wide ? 'max-w-xl' : 'max-w-md',
               cardClassName,

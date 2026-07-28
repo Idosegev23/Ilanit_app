@@ -10,9 +10,12 @@ export interface PageHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   actions?: React.ReactNode;
 }
 
-// Standard page heading: optional eyebrow + bold title (with a short terracotta
-// accent bar at the inline-start) + subtitle, and an actions slot that wraps
-// below on narrow screens. Strong hierarchy to anchor each page.
+/*
+  Standard page heading (v4): optional eyebrow + extrabold title with a short
+  blush accent bar at the inline-start, subtitle, and an actions slot that wraps
+  below on narrow screens. Strong hierarchy to anchor each page against the
+  moving backdrop — a quiet heading loses to an animated aurora.
+*/
 export function PageHeader({
   title,
   subtitle,
@@ -31,21 +34,21 @@ export function PageHeader({
     >
       <div className="min-w-0">
         {eyebrow && (
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-accent-text">
+          <p className="mb-1.5 text-xs font-bold uppercase tracking-[0.18em] text-primary-700">
             {eyebrow}
           </p>
         )}
         <div className="flex items-center gap-3">
           <span
             aria-hidden="true"
-            className="h-7 w-1.5 shrink-0 rounded-full bg-gradient-warm"
+            className="h-8 w-2 shrink-0 rounded-full bg-gradient-warm shadow-glow"
           />
-          <h1 className="text-2xl font-bold leading-tight text-ink sm:text-3xl">
+          <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-ink sm:text-4xl">
             {title}
           </h1>
         </div>
         {subtitle && (
-          <p className="mt-2 ps-[18px] text-sm text-muted">{subtitle}</p>
+          <p className="mt-2 ps-[20px] text-sm text-muted">{subtitle}</p>
         )}
       </div>
       {actions && (

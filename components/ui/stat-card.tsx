@@ -5,8 +5,10 @@ import { cn } from '@/lib/utils';
 
 export type StatTone = 'primary' | 'accent' | 'success' | 'warning' | 'danger';
 
+// Icon glyphs need ≥3:1 against their chip. primary-600 (#e06b9f) lands at
+// 2.8:1 on the blush chip, so the primary tone uses the deeper primary-700.
 const TONE_CHIP: Record<StatTone, string> = {
-  primary: 'bg-primary-soft text-primary-600',
+  primary: 'bg-primary-soft text-primary-700',
   accent: 'bg-accent-soft text-accent-text',
   success: 'bg-success-soft text-success',
   warning: 'bg-warning-soft text-warning',
@@ -27,8 +29,11 @@ export interface StatCardProps extends React.HTMLAttributes<HTMLDivElement> {
   deltaDirection?: 'up' | 'down';
 }
 
-// KPI tile: subtle tint at the top, colored icon chip, big tabular value +
-// label, optional trend pill.
+/*
+  KPI tile (v4): blush glass, a soft tint band at the top, a colored icon chip,
+  and an oversized tabular value. The number is the point of the tile, so it
+  carries the most weight on the page after the h1.
+*/
 export function StatCard({
   label,
   value,
@@ -50,7 +55,7 @@ export function StatCard({
           {Icon && (
             <span
               className={cn(
-                'flex size-10 shrink-0 items-center justify-center rounded-xl shadow-soft ring-1 ring-inset ring-white/60',
+                'flex size-11 shrink-0 items-center justify-center rounded-2xl shadow-soft ring-1 ring-inset ring-white/70',
                 TONE_CHIP[tone],
               )}
             >
@@ -60,7 +65,9 @@ export function StatCard({
         </div>
       </div>
       <div className="px-5 pb-5 pt-1">
-        <p className="text-3xl font-bold tabular-nums text-ink">{value}</p>
+        <p className="text-4xl font-extrabold tracking-tight tabular-nums text-ink">
+          {value}
+        </p>
         {hint && <p className="mt-1 text-xs text-muted">{hint}</p>}
         {delta && (
           <p

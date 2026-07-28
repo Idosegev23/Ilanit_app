@@ -1,20 +1,30 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-// Warm soft-UI card: white surface, rounded-2xl, warm card shadow, hairline
-// border. `interactive` adds a hover-lift (transform + deeper shadow) for
-// clickable cards. Sub-parts are optional; `CardContent` is a back-compat alias
-// for `CardBody`.
+/*
+  Blush glass card (v4). The default surface is translucent white over a blur,
+  so the live aurora bleeds through the edges — that show-through is what makes
+  an animated backdrop worth having rather than a wallpaper nobody sees.
+
+  Use `solid` for dense data (tables, calendar grids, long forms) where a moving
+  wash behind small text costs legibility. Legibility wins there; the glass is
+  for surfaces with room to breathe.
+
+  Sub-parts are optional; `CardContent` is a back-compat alias for `CardBody`.
+*/
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
   /** Adds hover-lift + pointer affordance for clickable cards. */
   interactive?: boolean;
+  /** Opaque surface — for dense data where blur hurts legibility. */
+  solid?: boolean;
 }
 
-export function Card({ className, interactive, ...props }: CardProps) {
+export function Card({ className, interactive, solid, ...props }: CardProps) {
   return (
     <div
       className={cn(
-        'rounded-2xl border border-line bg-surface shadow-card',
+        'rounded-2xl',
+        solid ? 'border border-line bg-surface shadow-card' : 'glass',
         interactive && 'hover-lift cursor-pointer',
         className,
       )}
@@ -27,8 +37,8 @@ export interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
   /**
    * Header surface treatment:
    *  - 'plain'   (default) transparent header
-   *  - 'tint'    soft peach tint
-   *  - 'gradient' warm peach→cream sheen + bottom hairline
+   *  - 'tint'    soft blush tint
+   *  - 'gradient' blush→white sheen + bottom hairline
    */
   variant?: 'plain' | 'tint' | 'gradient';
 }
@@ -56,7 +66,7 @@ export function CardHeader({
 export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3
-      className={cn('text-lg font-semibold text-ink', className)}
+      className={cn('text-lg font-bold tracking-tight text-ink', className)}
       {...props}
     />
   );

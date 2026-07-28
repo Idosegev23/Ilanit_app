@@ -1,11 +1,15 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-// Clean warm table. Wrap in <Table> (provides rounded-2xl clip + horizontal
-// scroll on mobile). Header row = primary-50; body rows zebra-stripe.
+/*
+  Blush table (v4). The wrapper uses `glass-strong` rather than the lighter
+  `glass` of a Card: rows of small tabular text over a moving aurora is exactly
+  the case where show-through costs more legibility than it buys atmosphere.
+  Provides the rounded clip + horizontal scroll on mobile.
+*/
 export function Table({ className, ...props }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="w-full overflow-x-auto rounded-2xl border border-line bg-surface shadow-card">
+    <div className="glass-strong w-full overflow-x-auto rounded-2xl shadow-card">
       <table
         className={cn('w-full border-collapse text-start text-sm', className)}
         {...props}
@@ -32,7 +36,7 @@ export function TableBody({
 }: React.HTMLAttributes<HTMLTableSectionElement>) {
   return (
     <tbody
-      className={cn('[&>tr:nth-child(even)]:bg-cream/50', className)}
+      className={cn('[&>tr:nth-child(even)]:bg-primary-50/50', className)}
       {...props}
     />
   );

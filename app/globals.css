@@ -292,10 +292,15 @@ body {
     background-size: 22px 22px;
   }
 
-  /* ── Soft blurred color blob (decorative, aria-hidden containers) ── */
+  /*
+    ── Soft blurred color blob (decorative, aria-hidden containers) ──
+    z-index is 0, NOT negative: a negative z-index inside a parent that paints
+    its own background puts the blob behind that background and hides it. The
+    contract is therefore that the panel's real content carries `relative z-10`.
+  */
   .blob {
     position: absolute;
-    z-index: -1;
+    z-index: 0;
     border-radius: 9999px;
     filter: blur(52px);
     opacity: 0.45;

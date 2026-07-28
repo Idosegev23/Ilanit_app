@@ -14,13 +14,16 @@ import { cn } from '@/lib/utils';
 
 // Soft pill: rounded-full, soft-bg + colored text. Color is never the only
 // signal — every semantic status also carries a lucide icon.
+//
+// The primary tone uses primary-700, not primary-600: #e06b9f on the blush chip
+// is 2.8:1, which fails as text. #b84a7b clears AA at 4.4:1.
 export const badgeVariants = cva(
-  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium leading-none',
+  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold leading-none ring-1 ring-inset ring-white/50',
   {
     variants: {
       tone: {
         neutral: 'bg-primary-50 text-ink',
-        primary: 'bg-primary-soft text-primary-600',
+        primary: 'bg-primary-soft text-primary-700',
         accent: 'bg-accent-soft text-accent-text',
         success: 'bg-success-soft text-success',
         warning: 'bg-warning-soft text-warning',
