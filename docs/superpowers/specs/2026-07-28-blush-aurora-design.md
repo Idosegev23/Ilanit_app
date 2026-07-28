@@ -47,13 +47,24 @@ Verified contrast of `#2E2F34` on each background:
 
 ### 1.3 Full token set — write these into `app/globals.css`
 
+> **Storage format — corrected during implementation.** Tokens are stored as
+> space-separated **RGB triples** (`--color-ink-rgb: 46 47 52`) with the
+> ready-to-use form derived from them (`--color-ink: rgb(var(--color-ink-rgb))`),
+> and `tailwind.config.ts` consumes
+> `rgb(var(--color-x-rgb) / <alpha-value>)`.
+>
+> The hex form below is the palette of record, not the storage format. Tailwind 3
+> can only apply an opacity modifier to a color it can parse or interpolate;
+> given a bare `var(--color-x)` it drops the modifier **and the whole utility**,
+> so `bg-ink/40` compiles to nothing, silently. Verified by compiling a probe
+> against the real config. Do not revert to bare `var()` colors.
+
 ```css
 :root {
   /* ── Surfaces & text ── */
   --color-cream:      #fff9fb;  /* page base — rose-milk, aurora paints on this */
   --color-surface:    #ffffff;  /* solid cards */
   --color-surface-2:  #fdeff5;  /* tinted second surface */
-  --color-glass:      255,255,255;      /* rgb, for glass alpha recipes */
   --color-ink:        #2e2f34;  /* 13.4:1 on white — ONLY text color */
   --color-muted:      #6b6c74;  /* secondary text — 5.2:1 on white */
   --color-line:       #f2dce6;  /* rosy hairline — decorative only */
@@ -150,12 +161,18 @@ All props are stable primitives — the component's `useEffect` depends on every
 
 ### 2.3 Required adaptations to the vendor component
 
-The upstream source is used as-is except for four additions. Each is engineering necessity, not styling:
+The upstream source is used as-is except for these changes. Each is necessity, not taste:
 
 1. **`'use client'`** directive (Next.js App Router).
 2. **Pause on hidden tab** — `document.addEventListener('visibilitychange', …)`: cancel the rAF when `document.hidden`, restart on return. Rendering to a hidden tab is pure battery waste.
-3. **DPR cap** — `renderer.dpr = Math.min(window.devicePixelRatio, 1.5)` and use it in `setSize`. A full-screen fragment shader at DPR 3 costs ~4× the fragments for zero visible gain on soft gradients.
-4. **Container-relative mouse handling stays** but is inert since `enableMouseInteraction={false}`.
+3. **DPR cap** — `dpr: Math.min(window.devicePixelRatio, 1.5)` on the `Renderer`, plus `powerPreference: 'low-power'`. A full-screen fragment shader at DPR 3 costs ~4× the fragments for zero visible gain on soft gradients.
+4. **Achromatic cosine gradients — added after seeing it render.** Both `cosineGradient` calls are driven with **equal per-channel frequency and phase**, so each returns a neutral gray varying only in brightness; multiplied by `uColor1`/`uColor2` the output can only ever be those two hues. Upstream uses `c = vec3(2,1,0)`, `d = vec3(.5,.2,.25)`, which sweep the channels out of phase and paint a **full rainbow** — it rendered visible green and saturated red bands. A pink tint attenuates a rainbow but does not constrain it.
+5. **`brightness` is 0.9, never above ~1.** Under `multiply`, higher values turn the soft bands into saturated stripes.
+6. **Container-relative mouse handling stays** but is inert since `enableMouseInteraction={false}`.
+
+### 2.3b Glass and `backdrop-filter` — never hand-write the prefix
+
+`.glass` / `.glass-strong` declare **only** the standard `backdrop-filter`. Writing `-webkit-backdrop-filter` alongside it makes autoprefixer collapse the pair down to the prefixed form alone, which current Chrome does not recognise — the declaration is then dropped at parse time and **every glass surface silently loses its blur** while the source still reads correctly. Let autoprefixer emit both.
 
 `AuroraBackground` additionally:
 - Reads `prefers-reduced-motion`. When reduced → render a **static CSS gradient** in the same colors, never mount WebGL (WCAG 2.3.3).
@@ -239,9 +256,12 @@ Heebo stays (Hebrew + Latin, already loaded via `next/font`).
 - Trigger: a floating pill button in the topbar, present at **all** breakpoints.
 - Overlay: `fixed inset-0 z-50`, glass scrim (`bg-cream/70 backdrop-blur-2xl`) so the aurora stays visible behind it.
 - Wheel `side="right"` (correct anchor for RTL), items = the 7 `NAV_ITEMS` labels.
-- `fontSize` 2.1rem mobile → 3rem `lg:`; `inset` 32 mobile → 80 `lg:`.
+- **The wheel's grid column is declared FIRST.** Columns flow right-to-left under `dir=rtl`, so declaring the preview first puts it on the reading side and pushes the wheel — the actual interaction — to the left.
+- **`fontSize` and `inset` resolve in JS**, from a `matchMedia('(min-width: 1024px)')` listener: 2.2rem/36 on mobile, 3rem/72 on desktop. A `lg:[--ow-font-size:…]` utility does **not** work — the component writes that variable as an inline style (which outranks any class) and derives its row height from the same number, so a CSS-only override desyncs the layout math from the rendered type.
+- `curve` is 0.55, not 1: a full-strength curve swings the outer options past the container edge, where `overflow: hidden` clips them mid-word.
 - Colors: `textColor="#6b6c74"`, `activeColor="#2e2f34"`.
-- Desktop only: a left-hand preview panel showing the highlighted item's lucide icon + a one-line Hebrew description.
+- Desktop only: a preview panel opposite the wheel showing the highlighted item's lucide icon + a one-line Hebrew description.
+- The wheel's own `:focus-visible` is overridden to an **inset, rounded** ink ring. The global ring drew a hard full-height rectangle around the column, since the overlay focuses the listbox programmatically on open.
 
 **Selection vs. navigation — locked decision.** `onChange` fires on every scroll tick. If it navigated, scrolling from dashboard to settings would fire 7 navigations. Therefore:
 
