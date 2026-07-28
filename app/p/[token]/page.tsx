@@ -32,21 +32,23 @@ export default async function PaymentPage({
         eyebrow="תשלום וקבלה"
         valueProp="עדכון תשלומים והפקת קבלות — ישירות מהנייד, אחרי כל שיעור."
       >
-        <header className="mb-6 flex items-start gap-3.5">
+        <header className="mb-6 flex items-start gap-3.5 rise">
           <span
-            className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-muted shadow-soft"
+            className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-muted shadow-soft ring-1 ring-white/70"
             aria-hidden="true"
           >
             <Link2Off className="size-6" />
           </span>
           <div className="min-w-0">
-            <h1 className="text-xl font-bold leading-tight text-ink">
+            <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-ink">
               הקישור אינו תקף
             </h1>
-            <p className="mt-0.5 text-sm text-muted">פג תוקף או שכבר נעשה בו שימוש</p>
+            <p className="mt-1 text-sm leading-relaxed text-muted">
+              פג תוקף או שכבר נעשה בו שימוש
+            </p>
           </div>
         </header>
-        <div className="rounded-2xl border border-line bg-surface-2/50 px-5 py-6 text-center">
+        <div className="rounded-2xl border border-white/60 bg-white/60 px-5 py-8 text-center shadow-soft backdrop-blur">
           <p className="text-sm leading-relaxed text-muted">
             אפשר לעדכן את התשלום ולהפיק קבלה ישירות מהמערכת.
           </p>
@@ -65,24 +67,24 @@ export default async function PaymentPage({
         'אפשר לשלוח בקשת תשלום בלחיצה אחת',
       ]}
     >
-      <header className="mb-6 flex items-start gap-3.5">
+      <header className="mb-6 flex items-start gap-3.5 rise">
         <span
-          className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary-600 shadow-soft"
+          className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-cta text-ink shadow-glow"
           aria-hidden="true"
         >
           <ReceiptText className="size-6" />
         </span>
         <div className="min-w-0">
-          <h1 className="text-xl font-bold leading-tight text-ink">
+          <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-ink">
             עדכון תשלום והפקת קבלה
           </h1>
-          <p className="mt-0.5 text-sm text-muted">
+          <p className="mt-1 text-sm leading-relaxed text-muted">
             סמני אם התקבל תשלום עבור השיעור
           </p>
         </div>
       </header>
 
-      <dl className="mb-5 overflow-hidden rounded-2xl border border-line bg-gradient-tint">
+      <dl className="mb-5 overflow-hidden rounded-2xl border border-white/60 bg-white/65 shadow-soft backdrop-blur">
         <DetailRow icon={User} label="תלמיד/ה" value={view.studentName} />
         <DetailRow
           icon={Clock}
@@ -93,7 +95,7 @@ export default async function PaymentPage({
           <DetailRow icon={MapPin} label="כתובת" value={view.location} />
         ) : null}
         {view.alreadyPaid ? (
-          <div className="flex items-center gap-2 px-4 py-3">
+          <div className="flex items-center gap-2 px-4 py-3.5">
             <StatusPill status="completed" label="השיעור סומן כהושלם" />
           </div>
         ) : null}
@@ -118,16 +120,18 @@ function DetailRow({
   value: React.ReactNode;
 }) {
   return (
-    <div className="flex items-start gap-3 border-b border-line/70 px-4 py-3 text-sm last:border-b-0">
+    <div className="flex items-start gap-3 border-b border-white/70 px-4 py-3.5 text-sm last:border-b-0">
       <span
-        className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface text-primary-600 shadow-soft"
+        className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 ring-1 ring-white/70"
         aria-hidden="true"
       >
         <Icon className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
-        <dt className="text-xs font-medium text-muted">{label}</dt>
-        <dd className="mt-0.5 leading-snug text-ink">{value}</dd>
+        <dt className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+          {label}
+        </dt>
+        <dd className="mt-0.5 font-medium leading-snug text-ink">{value}</dd>
       </div>
     </div>
   );

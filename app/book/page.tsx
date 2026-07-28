@@ -33,11 +33,13 @@ export default async function PublicBookPage() {
         studentName=""
         initialWeek={initialWeek}
       />
-      <p className="mt-6 text-center text-sm text-muted">
+      {/* Escape hatch for "nothing here works for me" — a soft glass pill so it
+          reads as an offer, not as fine print. */}
+      <p className="mx-auto mt-6 flex max-w-md flex-wrap items-center justify-center gap-x-1 gap-y-1 rounded-full border border-white/60 bg-white/60 px-4 py-2 text-center text-sm text-muted shadow-soft backdrop-blur">
         לא מצאת שעה מתאימה?{' '}
         <a
           href="/standby"
-          className="font-semibold text-primary-600 underline-offset-2 hover:underline"
+          className="inline-flex min-h-11 items-center rounded-full px-3 font-bold text-primary-700 underline decoration-primary/60 underline-offset-4 transition-colors duration-200 hover:bg-primary-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
         >
           הצטרפו לרשימת ההמתנה
         </a>

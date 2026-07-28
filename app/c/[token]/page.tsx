@@ -30,16 +30,20 @@ export default async function CancelPage({
         'הבקשה החדשה תעבור לאישור אילנית',
       ]}
     >
-      <header className="mb-6 flex items-start gap-3.5">
+      <header className="mb-6 flex items-start gap-3.5 rise">
         <span
-          className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary-soft text-primary-600 shadow-soft"
+          className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-cta text-ink shadow-glow"
           aria-hidden="true"
         >
           <CalendarClock className="size-6" />
         </span>
         <div className="min-w-0">
-          <h1 className="text-xl font-bold leading-tight text-ink">שינוי או ביטול מועד</h1>
-          <p className="mt-0.5 text-sm text-muted">ביטול המועד הקיים וקביעת מועד חדש</p>
+          <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-ink">
+            שינוי או ביטול מועד
+          </h1>
+          <p className="mt-1 text-sm leading-relaxed text-muted">
+            ביטול המועד הקיים וקביעת מועד חדש
+          </p>
         </div>
       </header>
 
@@ -49,17 +53,19 @@ export default async function CancelPage({
         <AlreadyHandled status={view.status} />
       ) : (
         <div className="space-y-5">
-          <dl className="overflow-hidden rounded-2xl border border-line bg-gradient-tint">
-            <div className="flex items-start gap-3 px-4 py-3 text-sm">
+          <dl className="overflow-hidden rounded-2xl bg-primary-soft shadow-soft ring-1 ring-white/60">
+            <div className="flex items-center gap-3.5 px-4 py-4 text-sm">
               <span
-                className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-surface text-primary-600 shadow-soft"
+                className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-fg shadow-glow"
                 aria-hidden="true"
               >
-                <Clock className="size-4" />
+                <Clock className="size-6" />
               </span>
               <div className="min-w-0 flex-1">
-                <dt className="text-xs font-medium text-muted">המועד הנוכחי</dt>
-                <dd className="mt-0.5 leading-snug text-ink">
+                <dt className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary-700">
+                  המועד הנוכחי
+                </dt>
+                <dd className="mt-0.5 text-base font-extrabold leading-snug tracking-tight text-ink tabular-nums">
                   {formatILDateTime(new Date(view.startISO))}
                 </dd>
               </div>
@@ -74,14 +80,14 @@ export default async function CancelPage({
 
 function InvalidLink() {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-surface-2/50 px-6 py-10 text-center">
+    <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/60 bg-white/60 px-6 py-12 text-center shadow-soft backdrop-blur animate-fade-in">
       <span
-        className="flex size-14 items-center justify-center rounded-full bg-primary-50 text-muted"
+        className="flex size-16 items-center justify-center rounded-full bg-primary-50 text-muted ring-1 ring-white/70"
         aria-hidden="true"
       >
-        <Link2Off className="size-6" />
+        <Link2Off className="size-7" />
       </span>
-      <p className="text-sm leading-relaxed text-muted">
+      <p className="max-w-xs text-sm leading-relaxed text-muted">
         הקישור אינו תקין, פג תוקפו, או שהמועד כבר טופל.
       </p>
     </div>
@@ -94,12 +100,12 @@ function AlreadyHandled({
   status: React.ComponentProps<typeof StatusPill>['status'];
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-surface-2/50 px-6 py-10 text-center">
+    <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/60 bg-white/60 px-6 py-12 text-center shadow-soft backdrop-blur animate-fade-in">
       <span
-        className="flex size-14 items-center justify-center rounded-full bg-success-soft text-success"
+        className="flex size-16 items-center justify-center rounded-full bg-success-soft text-success ring-1 ring-success/20"
         aria-hidden="true"
       >
-        <CheckCheck className="size-6" />
+        <CheckCheck className="size-7" />
       </span>
       <StatusPill status={status} />
       <p className="text-sm text-muted">המועד כבר בוטל או שאינו פעיל.</p>

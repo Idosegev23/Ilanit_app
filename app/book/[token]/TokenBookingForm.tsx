@@ -6,6 +6,7 @@ import {
   ArrowRight,
   CalendarDays,
   CalendarX2,
+  Check,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
@@ -15,6 +16,7 @@ import {
   UserRound,
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,6 +36,12 @@ import { loadBookingWeek, type BookingWeekView } from '@/app/book/[token]/action
 // the nearest open week, server-side). Pick a slot → optional email + notes →
 // submit { token, startISO, endISO, email?, notes? } to /api/book → the normal
 // "pending approval" confirmation.
+//
+// v4 layout note: the week reads as a vertical LIST of day rows rather than a
+// grid of day cards. At 390px — where most of this traffic lands, arriving from
+// a WhatsApp link — a day row gets the full column width, so each time pill is a
+// comfortable half-width target instead of a ~100px sliver inside a 2-up card.
+// The same markup fans out to 3–4 pills per row on wider screens.
 
 interface Slot {
   startISO: string;
@@ -265,22 +273,31 @@ export function TokenBookingForm({
   }
 
   // ── Success: "ממתין לאישור" ────────────────────────────────────────────
+  // The one moment worth celebrating in the whole flow, so it gets the full
+  // treatment: glass over the aurora, blush blobs, a haloed success medallion.
   if (phase === 'done') {
     return (
-      <Card className="overflow-hidden shadow-pop">
-        <CardBody className="flex flex-col items-center gap-5 px-6 py-12 text-center">
-          <span className="flex size-20 items-center justify-center rounded-full bg-success-soft text-success ring-1 ring-success/15">
-            <span className="flex size-14 items-center justify-center rounded-full bg-surface text-success shadow-soft">
-              <CheckCircle2 className="size-8" aria-hidden="true" />
+      <Card className="relative overflow-hidden shadow-pop animate-scale-in">
+        <span aria-hidden="true" className="blob -top-24 -end-16 size-64 bg-primary" />
+        <span aria-hidden="true" className="blob -bottom-28 -start-20 size-72 bg-accent" />
+
+        <CardBody className="relative z-10 flex flex-col items-center gap-5 px-6 py-14 text-center">
+          <span className="flex size-24 items-center justify-center rounded-full bg-white/70 shadow-glow ring-1 ring-white/70 backdrop-blur">
+            <span className="flex size-16 items-center justify-center rounded-full bg-success-soft text-success ring-1 ring-success/20">
+              <CheckCircle2 className="size-9" aria-hidden="true" />
             </span>
           </span>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-ink">הבקשה התקבלה!</h2>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-warning-soft px-3 py-1 text-sm font-medium text-warning">
-              <Clock className="size-3.5" aria-hidden="true" />
+
+          <div className="flex flex-col items-center gap-3">
+            <h2 className="text-[28px] font-extrabold leading-tight tracking-tight text-ink sm:text-3xl">
+              הבקשה התקבלה!
+            </h2>
+            <Badge tone="warning" className="px-3.5 py-1.5 text-sm">
+              <Clock className="size-4" aria-hidden="true" />
               ממתין לאישור
-            </span>
+            </Badge>
           </div>
+
           <p className="max-w-sm text-base leading-relaxed text-muted">
             הבקשה לשיעור ביום{' '}
             <span className="font-semibold text-ink">
@@ -295,10 +312,11 @@ export function TokenBookingForm({
           <p className="max-w-sm text-sm text-muted">
             תקבל/י הודעת וואטסאפ ברגע שהשיעור יאושר.
           </p>
+
           <Button
             variant="secondary"
             size="lg"
-            className="mt-2"
+            className="mt-2 w-full sm:w-auto"
             onClick={() => {
               setPhase('pick');
               setSelected(null);
@@ -306,6 +324,7 @@ export function TokenBookingForm({
               setNotes('');
             }}
           >
+            <CalendarDays className="size-5" aria-hidden="true" />
             לקביעת שיעור נוסף
           </Button>
         </CardBody>
@@ -315,21 +334,28 @@ export function TokenBookingForm({
 
   return (
     <Card className="overflow-hidden shadow-pop">
-      {/* Gradient header carrying the known student's identity — sets the tone
-          and removes the "blank form" feeling. */}
-      <CardHeader variant="gradient" className="gap-0 pb-5">
-        <div className="flex items-center gap-3.5">
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-fg shadow-card">
+      {/* Blush header carrying the known student's identity — sets the tone and
+          removes the "blank form" feeling. The blob sits at z-0, so the row of
+          real content is explicitly lifted to z-10. */}
+      <CardHeader
+        variant="gradient"
+        className="relative gap-0 overflow-hidden pb-5 pt-6"
+      >
+        <span aria-hidden="true" className="blob -top-20 -end-10 size-44 bg-primary" />
+        <div className="relative z-10 flex items-center gap-3.5">
+          <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-cta text-ink shadow-glow">
             <UserRound className="size-6" aria-hidden="true" />
           </span>
           <div className="min-w-0">
-            <p className="text-xs font-medium uppercase tracking-wide text-accent-text">
+            <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary-700">
               {requireDetails ? 'קביעת שיעור עם אילנית' : 'קביעת שיעור עבור'}
             </p>
-            <p className="truncate text-lg font-bold text-ink">{headerName}</p>
+            <p className="truncate text-xl font-extrabold tracking-tight text-ink">
+              {headerName}
+            </p>
           </div>
           <Sparkles
-            className="ms-auto size-5 shrink-0 text-primary-300"
+            className="ms-auto size-5 shrink-0 text-primary-700 float-soft"
             aria-hidden="true"
           />
         </div>
@@ -339,16 +365,16 @@ export function TokenBookingForm({
         {/* ── Confirm step — optional email + notes, then submit. ───────────── */}
         {phase === 'confirm' && selected ? (
           <form className="space-y-4" onSubmit={submit}>
-            {/* Selected-slot recap */}
-            <div className="flex items-center gap-3 rounded-2xl bg-gradient-tint px-4 py-3.5 ring-1 ring-line">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-fg shadow-soft">
-                <Clock className="size-5" aria-hidden="true" />
+            {/* Selected-slot recap — the anchor of the whole confirm screen. */}
+            <div className="flex items-center gap-3.5 rounded-2xl bg-primary-soft px-4 py-4 shadow-soft ring-1 ring-white/60 animate-fade-in">
+              <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-fg shadow-glow">
+                <Clock className="size-6" aria-hidden="true" />
               </span>
               <div className="min-w-0">
-                <p className="text-xs font-medium uppercase tracking-wide text-accent-text">
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-primary-700">
                   המועד שנבחר
                 </p>
-                <p className="text-sm font-semibold text-ink">
+                <p className="text-base font-extrabold tracking-tight text-ink">
                   <span dir="ltr" className="tabular-nums">
                     {selected.label}
                   </span>{' '}
@@ -358,8 +384,8 @@ export function TokenBookingForm({
             </div>
 
             {requireDetails && !detailsLocked && (
-              <div className="space-y-4 rounded-2xl border border-line bg-surface-2/40 p-4">
-                <p className="text-sm font-semibold text-ink">הפרטים שלכם</p>
+              <div className="space-y-4 rounded-2xl border border-white/60 bg-white/60 p-4 shadow-soft backdrop-blur">
+                <p className="text-sm font-bold text-ink">הפרטים שלכם</p>
                 <div className="space-y-1.5">
                   <Label htmlFor="book-name" required>
                     שם מלא
@@ -380,7 +406,7 @@ export function TokenBookingForm({
                     id="book-phone"
                     type="tel"
                     dir="ltr"
-                    className="text-end"
+                    className="text-end tabular-nums"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="050-123-4567"
@@ -389,7 +415,7 @@ export function TokenBookingForm({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="book-guardian-name">
-                    שם הורה <span className="font-normal text-accent-text">(לילדים)</span>
+                    שם הורה <span className="font-normal text-muted">(לילדים)</span>
                   </Label>
                   <Input
                     id="book-guardian-name"
@@ -401,13 +427,13 @@ export function TokenBookingForm({
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="book-guardian-phone">
-                    טלפון הורה <span className="font-normal text-accent-text">(לילדים)</span>
+                    טלפון הורה <span className="font-normal text-muted">(לילדים)</span>
                   </Label>
                   <Input
                     id="book-guardian-phone"
                     type="tel"
                     dir="ltr"
-                    className="text-end"
+                    className="text-end tabular-nums"
                     value={guardianPhone}
                     onChange={(e) => setGuardianPhone(e.target.value)}
                     placeholder="050-123-4567"
@@ -421,15 +447,15 @@ export function TokenBookingForm({
             )}
 
             {requireDetails && detailsLocked && (
-              <div className="flex items-center gap-2 rounded-2xl border border-line bg-surface-2/40 px-4 py-3 text-sm">
-                <span className="font-semibold text-ink">{name}</span>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-white/60 bg-white/60 px-4 py-3 text-sm shadow-soft backdrop-blur">
+                <span className="font-bold text-ink">{name}</span>
                 <span dir="ltr" className="tabular-nums text-muted">
                   {phone}
                 </span>
                 <button
                   type="button"
                   onClick={() => setDetailsLocked(false)}
-                  className="ms-auto font-medium text-primary-600 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  className="ms-auto inline-flex min-h-11 items-center rounded-full px-3 font-semibold text-primary-700 underline decoration-primary/60 underline-offset-4 transition-colors duration-200 hover:bg-primary-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
                 >
                   שינוי פרטים
                 </button>
@@ -438,7 +464,7 @@ export function TokenBookingForm({
 
             <div className="space-y-1.5">
               <Label htmlFor="book-email">
-                אימייל <span className="font-normal text-accent-text">(לא חובה)</span>
+                אימייל <span className="font-normal text-muted">(לא חובה)</span>
               </Label>
               <Input
                 id="book-email"
@@ -470,7 +496,7 @@ export function TokenBookingForm({
               {formError && (
                 <div
                   role="alert"
-                  className="flex items-start gap-2 rounded-xl bg-danger-soft px-3.5 py-3 text-sm text-danger"
+                  className="flex items-start gap-2 rounded-xl bg-danger-soft px-3.5 py-3 text-sm text-danger ring-1 ring-danger/20"
                 >
                   <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                   <span>{formError}</span>
@@ -478,10 +504,12 @@ export function TokenBookingForm({
               )}
             </div>
 
-            <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row">
+            <div className="flex flex-col-reverse gap-2.5 pt-1 sm:flex-row sm:items-center">
               <Button
                 type="button"
                 variant="ghost"
+                size="lg"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   setPhase('pick');
                   setSelected(null);
@@ -491,16 +519,23 @@ export function TokenBookingForm({
                 <ArrowRight className="size-4" aria-hidden="true" />
                 חזרה לבחירת מועד
               </Button>
-              <Button type="submit" size="lg" loading={submitting} className="sm:ms-auto">
+              {/* The single highest-emphasis action in the product → ink fill. */}
+              <Button
+                type="submit"
+                variant="ink"
+                size="lg"
+                loading={submitting}
+                className="w-full sm:ms-auto sm:w-auto"
+              >
                 {submitting ? 'שולח…' : 'אישור וקביעת השיעור'}
               </Button>
             </div>
           </form>
         ) : (
-          /* ── Pick step — week navigation + 7-day grid. ──────────────────── */
+          /* ── Pick step — week navigation + 7-day list. ──────────────────── */
           <div className="space-y-5">
-            {/* Week navigation header */}
-            <div className="flex items-center justify-between gap-2">
+            {/* Week navigation — a glass strip with 44px pill controls. */}
+            <div className="flex items-center gap-2 rounded-full border border-white/60 bg-white/65 p-1.5 shadow-soft backdrop-blur">
               <Button
                 type="button"
                 variant="secondary"
@@ -514,17 +549,10 @@ export function TokenBookingForm({
                 <ChevronRight className="size-5" aria-hidden="true" />
               </Button>
 
-              <div className="min-w-0 flex-1 text-center">
-                <p className="inline-flex items-center gap-2 text-sm font-bold text-ink">
-                  <CalendarDays className="size-4 text-primary-600" aria-hidden="true" />
-                  <span className="truncate">{formatWeekRangeHe(sundayISO, saturdayISO)}</span>
-                </p>
-                {week.isOpen && !navigating && totalSlots > 0 && (
-                  <span className="mt-1 inline-block rounded-full bg-primary-soft px-2.5 py-0.5 text-xs font-medium tabular-nums text-primary-600">
-                    {totalSlots} מועדים פנויים
-                  </span>
-                )}
-              </div>
+              <p className="flex min-w-0 flex-1 items-center justify-center gap-2 text-sm font-bold text-ink">
+                <CalendarDays className="size-4 shrink-0 text-primary-700" aria-hidden="true" />
+                <span className="truncate">{formatWeekRangeHe(sundayISO, saturdayISO)}</span>
+              </p>
 
               <Button
                 type="button"
@@ -540,10 +568,18 @@ export function TokenBookingForm({
               </Button>
             </div>
 
+            {week.isOpen && !navigating && totalSlots > 0 && (
+              <p className="-mt-2 flex justify-center">
+                <Badge tone="primary" className="tabular-nums">
+                  {totalSlots} מועדים פנויים
+                </Badge>
+              </p>
+            )}
+
             {navError && (
               <div
                 role="alert"
-                className="flex items-start gap-2 rounded-xl bg-danger-soft px-3.5 py-3 text-sm text-danger"
+                className="flex items-start gap-2 rounded-xl bg-danger-soft px-3.5 py-3 text-sm text-danger ring-1 ring-danger/20"
               >
                 <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                 <span>{navError}</span>
@@ -552,9 +588,9 @@ export function TokenBookingForm({
 
             {/* Loading skeleton while navigating between weeks */}
             {navigating ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4" aria-hidden="true">
-                {Array.from({ length: 7 }).map((_, i) => (
-                  <Skeleton key={i} className="h-36 rounded-2xl" />
+              <div className="space-y-2.5" aria-hidden="true">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-24 rounded-2xl" />
                 ))}
               </div>
             ) : !week.isOpen ? (
@@ -576,73 +612,97 @@ export function TokenBookingForm({
                 />
               </div>
             ) : (
-              /* The 7-day grid (Sun→Sat). */
-              <div
-                role="group"
+              /* The 7-day list (Sun→Sat) — one full-width row per day. */
+              <ul
                 aria-label="ימים ומועדים פנויים השבוע"
-                className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+                className="stagger space-y-2.5"
               >
-                {week.days.map((day) => (
-                  <div
-                    key={day.dateISO}
-                    className={cn(
-                      'flex flex-col gap-2 rounded-2xl border p-3',
-                      day.slots.length > 0
-                        ? 'border-line bg-surface shadow-soft'
-                        : 'border-dashed border-line bg-gradient-tint',
-                    )}
-                  >
-                    <div className="flex items-baseline justify-between gap-1">
-                      <span className="text-sm font-semibold text-ink">
-                        <span className="hidden sm:inline">יום </span>
-                        <span className="sm:hidden">{WEEKDAY_SHORT[day.weekday]}</span>
-                        <span className="hidden sm:inline">{WEEKDAY_LABELS[day.weekday]}</span>
-                      </span>
-                      <span className="text-xs font-medium tabular-nums text-muted">
-                        {dayOfMonth(day.dateISO)}
-                      </span>
-                    </div>
+                {week.days.map((day, dayIndex) => {
+                  const hasSlots = day.slots.length > 0;
+                  return (
+                    <li
+                      key={day.dateISO}
+                      style={{ ['--i' as string]: dayIndex } as React.CSSProperties}
+                      className={cn(
+                        'rounded-2xl border p-3 transition-colors duration-200 sm:p-3.5',
+                        hasSlots
+                          ? 'border-white/60 bg-white/70 shadow-soft backdrop-blur'
+                          : 'border-dashed border-line bg-white/35',
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        {/* Date tile — short weekday over the day-of-month. */}
+                        <span
+                          className={cn(
+                            'flex size-12 shrink-0 flex-col items-center justify-center gap-0.5 rounded-2xl ring-1',
+                            hasSlots
+                              ? 'bg-primary-soft text-ink ring-white/70'
+                              : 'bg-white/60 text-muted ring-line',
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              'text-[10px] font-bold leading-none',
+                              hasSlots ? 'text-primary-700' : 'text-muted',
+                            )}
+                          >
+                            {WEEKDAY_SHORT[day.weekday]}
+                          </span>
+                          <span className="text-base font-extrabold leading-none tabular-nums">
+                            {dayOfMonth(day.dateISO)}
+                          </span>
+                        </span>
 
-                    {day.slots.length === 0 ? (
-                      <p className="py-2 text-center text-xs text-muted">אין מועדים</p>
-                    ) : (
-                      <div className="flex flex-col gap-1.5">
-                        {day.slots.map((s, i) => {
-                          const isSelected = selected?.startISO === s.startISO;
-                          return (
-                            <button
-                              key={s.startISO}
-                              type="button"
-                              onClick={() => pickSlot(s, day.dateISO)}
-                              aria-pressed={isSelected}
-                              dir="ltr"
-                              style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
-                              className={cn(
-                                'group inline-flex h-11 animate-fade-in items-center justify-center gap-1.5 rounded-full border px-3 text-sm font-semibold tabular-nums shadow-soft transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out',
-                                'hover:-translate-y-0.5 hover:border-primary-200 hover:bg-primary-50 hover:shadow-card active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:ring-primary',
-                                isSelected
-                                  ? 'border-primary bg-primary text-primary-fg shadow-card hover:bg-primary-600'
-                                  : 'border-line bg-surface text-ink',
-                              )}
-                            >
-                              <Clock
-                                className={cn(
-                                  'size-3.5 transition-colors',
-                                  isSelected
-                                    ? 'text-primary-fg/90'
-                                    : 'text-primary-300 group-hover:text-primary-600',
-                                )}
-                                aria-hidden="true"
-                              />
-                              {s.label}
-                            </button>
-                          );
-                        })}
+                        <p
+                          className={cn(
+                            'min-w-0 truncate text-sm font-bold',
+                            hasSlots ? 'text-ink' : 'text-muted',
+                          )}
+                        >
+                          <span>יום </span>
+                          {WEEKDAY_LABELS[day.weekday]}
+                        </p>
+
+                        {!hasSlots && (
+                          <span className="ms-auto text-xs text-muted">אין מועדים</span>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+
+                      {hasSlots && (
+                        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {day.slots.map((s, i) => {
+                            const isSelected = selected?.startISO === s.startISO;
+                            return (
+                              <button
+                                key={s.startISO}
+                                type="button"
+                                onClick={() => pickSlot(s, day.dateISO)}
+                                aria-pressed={isSelected}
+                                dir="ltr"
+                                style={{ animationDelay: `${Math.min(i, 8) * 35}ms` }}
+                                className={cn(
+                                  'inline-flex h-12 animate-fade-in items-center justify-center gap-1.5 rounded-full border px-2 text-sm tabular-nums transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out',
+                                  'hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface focus-visible:ring-ink',
+                                  isSelected
+                                    ? // Selection is carried by fill AND weight AND a check glyph,
+                                      // never by color alone.
+                                      'border-primary bg-primary font-extrabold text-primary-fg shadow-glow'
+                                    : 'border-white/70 bg-white/85 font-semibold text-ink shadow-soft hover:border-primary-300 hover:bg-primary-50 hover:shadow-card',
+                                )}
+                              >
+                                {isSelected && (
+                                  <Check className="size-4 shrink-0" aria-hidden="true" />
+                                )}
+                                {s.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
             )}
           </div>
         )}

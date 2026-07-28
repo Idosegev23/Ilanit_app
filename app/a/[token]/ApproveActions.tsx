@@ -42,19 +42,21 @@ export function ApproveActions({ token }: { token: string }) {
     return (
       <div
         role="status"
-        className="relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-success/25 bg-success-soft px-6 py-9 text-center shadow-card animate-fade-in"
+        className="relative flex flex-col items-center gap-4 overflow-hidden rounded-3xl border border-white/70 bg-success-soft px-6 py-11 text-center shadow-pop animate-scale-in"
       >
         <span
           aria-hidden="true"
           className="absolute inset-x-0 -top-px h-1 bg-success/70"
         />
         <span
-          className="flex size-16 items-center justify-center rounded-full bg-success text-white shadow-card ring-4 ring-success/15"
+          className="flex size-20 items-center justify-center rounded-full bg-white/70 shadow-card ring-1 ring-white/70"
           aria-hidden="true"
         >
-          <CheckCircle2 className="size-8" />
+          <span className="flex size-14 items-center justify-center rounded-full bg-success text-white">
+            <CheckCircle2 className="size-8" />
+          </span>
         </span>
-        <p className="text-lg font-bold text-success">השיעור אושר</p>
+        <p className="text-2xl font-extrabold tracking-tight text-success">השיעור אושר</p>
         <p className="max-w-xs text-sm leading-relaxed text-ink">
           השיעור נכנס ליומן ונשלחה הודעת אישור לתלמיד/ה.
         </p>
@@ -66,15 +68,15 @@ export function ApproveActions({ token }: { token: string }) {
     return (
       <div
         role="status"
-        className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-surface-2 px-6 py-9 text-center shadow-card animate-fade-in"
+        className="flex flex-col items-center gap-4 rounded-3xl border border-white/60 bg-white/65 px-6 py-11 text-center shadow-card backdrop-blur animate-scale-in"
       >
         <span
-          className="flex size-16 items-center justify-center rounded-full bg-surface text-muted shadow-soft ring-1 ring-line"
+          className="flex size-20 items-center justify-center rounded-full bg-primary-50 text-muted shadow-soft ring-1 ring-white/70"
           aria-hidden="true"
         >
           <CircleX className="size-8" />
         </span>
-        <p className="text-lg font-bold text-ink">השיעור נדחה</p>
+        <p className="text-2xl font-extrabold tracking-tight text-ink">השיעור נדחה</p>
         <p className="max-w-xs text-sm leading-relaxed text-muted">
           נשלח לתלמיד/ה לינק לקביעת מועד חדש.
         </p>
@@ -87,15 +89,17 @@ export function ApproveActions({ token }: { token: string }) {
       {outcome === 'error' && (
         <div
           role="alert"
-          className="flex items-start gap-2 rounded-xl border border-danger/20 bg-danger-soft p-3"
+          className="flex items-start gap-2 rounded-xl bg-danger-soft p-3.5 ring-1 ring-danger/20"
         >
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
           <p className="text-sm text-danger">{message}</p>
         </div>
       )}
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-col gap-2.5 sm:flex-row">
+        {/* Ink, not pink: this is the decisive action AND it has to sit beside a
+            red reject without two saturated warm fills competing. */}
         <Button
-          variant="primary"
+          variant="ink"
           size="lg"
           className="flex-1"
           loading={busy}

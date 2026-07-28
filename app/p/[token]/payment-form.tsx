@@ -96,19 +96,23 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
     return (
       <div
         role="status"
-        className="relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-success/25 bg-success-soft px-6 py-9 text-center shadow-card animate-fade-in"
+        className="relative flex flex-col items-center gap-4 overflow-hidden rounded-3xl border border-white/70 bg-success-soft px-6 py-11 text-center shadow-pop animate-scale-in"
       >
         <span
           aria-hidden="true"
           className="absolute inset-x-0 -top-px h-1 bg-success/70"
         />
         <span
-          className="flex size-16 items-center justify-center rounded-full bg-success text-white shadow-card ring-4 ring-success/15"
+          className="flex size-20 items-center justify-center rounded-full bg-white/70 shadow-card ring-1 ring-white/70"
           aria-hidden="true"
         >
-          <CheckCircle2 className="size-8" />
+          <span className="flex size-14 items-center justify-center rounded-full bg-success text-white">
+            <CheckCircle2 className="size-8" />
+          </span>
         </span>
-        <p className="text-lg font-bold text-success">הקבלה הופקה ונשלחה</p>
+        <p className="text-2xl font-extrabold tracking-tight text-success">
+          הקבלה הופקה ונשלחה
+        </p>
         <p className="max-w-xs text-sm leading-relaxed text-ink">
           התשלום עודכן, הקבלה נשלחה לתלמיד/ה כצרופה ועותק נשמר בתיק הלקוח.
         </p>
@@ -120,19 +124,25 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
     return (
       <div
         role="status"
-        className="relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-accent/25 bg-accent-soft px-6 py-9 text-center shadow-card animate-fade-in"
+        className="relative flex flex-col items-center gap-4 overflow-hidden rounded-3xl border border-white/70 bg-accent-soft px-6 py-11 text-center shadow-pop animate-scale-in"
       >
         <span
           aria-hidden="true"
           className="absolute inset-x-0 -top-px h-1 bg-accent-600/70"
         />
+        {/* Peach is a SURFACE, never a white-text fill (white on #f3bd97 ≈ 1.8:1).
+            The glyph is ink. */}
         <span
-          className="flex size-16 items-center justify-center rounded-full bg-accent-600 text-white shadow-card ring-4 ring-accent-600/15"
+          className="flex size-20 items-center justify-center rounded-full bg-white/70 shadow-card ring-1 ring-white/70"
           aria-hidden="true"
         >
-          <Send className="size-8" />
+          <span className="flex size-14 items-center justify-center rounded-full bg-accent-600 text-ink">
+            <Send className="size-7" />
+          </span>
         </span>
-        <p className="text-lg font-bold text-accent-text">בקשת תשלום נשלחה</p>
+        <p className="text-2xl font-extrabold tracking-tight text-accent-text">
+          בקשת תשלום נשלחה
+        </p>
         <p className="max-w-xs text-sm leading-relaxed text-ink">
           הבקשה נשלחה לתלמיד/ה בוואטסאפ.
         </p>
@@ -169,7 +179,7 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
         {message ? (
           <div
             role="alert"
-            className="flex items-start gap-2 rounded-xl border border-danger/20 bg-danger-soft p-3"
+            className="flex items-start gap-2 rounded-xl bg-danger-soft p-3.5 ring-1 ring-danger/20"
           >
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
             <p className="text-sm text-danger">{message}</p>
@@ -184,13 +194,15 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
 
   return (
     <div className="space-y-5">
-      <div className="rounded-2xl border border-line bg-gradient-tint p-4">
+      {/* Amount hero — the number is the subject of this screen, so it gets the
+          blush surface, the biggest type in the flow and tabular figures. */}
+      <div className="rounded-2xl bg-primary-soft p-4 shadow-soft ring-1 ring-white/60">
         <Label htmlFor="amount" className="text-muted">
           סכום שהתקבל (₪, שקלים שלמים)
         </Label>
         <div className="mt-2 flex items-baseline gap-2">
           <span
-            className="text-2xl font-bold leading-none text-primary-600"
+            className="text-2xl font-extrabold leading-none text-primary-700"
             aria-hidden="true"
           >
             ₪
@@ -201,7 +213,7 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
             inputMode="numeric"
             min={1}
             step={1}
-            className="h-14 flex-1 border-0 bg-transparent px-0 text-3xl font-bold tabular-nums text-ink shadow-none focus:ring-0"
+            className="h-14 flex-1 border-0 bg-transparent px-0 text-4xl font-extrabold tracking-tight tabular-nums text-ink shadow-none focus:bg-transparent focus:ring-0"
             value={Number.isFinite(amount) ? amount : ''}
             onChange={(e) => setAmount(Math.round(Number(e.target.value)))}
           />
@@ -212,7 +224,7 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="mb-2 block text-sm font-medium text-ink">תיאור לקבלה</legend>
+        <legend className="mb-2 block text-sm font-semibold text-ink">תיאור לקבלה</legend>
         <div className="flex flex-wrap gap-2">
           {RECEIPT_PRESETS.map((preset) => {
             const selected = description.trim() === preset;
@@ -223,12 +235,13 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
                 onClick={() => setDescription(preset)}
                 aria-pressed={selected}
                 className={cn(
-                  'inline-flex min-h-11 items-center rounded-xl border px-3.5 py-2 text-sm font-medium transition-[background-color,border-color,color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+                  'inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
                   selected
-                    ? 'border-primary bg-primary text-primary-fg shadow-card'
-                    : 'border-line bg-surface text-ink hover:border-primary-200 hover:bg-primary-50',
+                    ? 'border-primary bg-primary font-bold text-primary-fg shadow-glow'
+                    : 'border-white/70 bg-white/80 font-medium text-ink shadow-soft backdrop-blur hover:-translate-y-0.5 hover:border-primary-300 hover:bg-primary-50',
                 )}
               >
+                {selected && <Check className="size-4 shrink-0" aria-hidden="true" />}
                 {preset}
               </button>
             );
@@ -250,7 +263,7 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
       </fieldset>
 
       <fieldset className="space-y-2">
-        <legend className="mb-2 block text-sm font-medium text-ink">אמצעי תשלום</legend>
+        <legend className="mb-2 block text-sm font-semibold text-ink">אמצעי תשלום</legend>
         <div className="grid grid-cols-2 gap-2.5">
           {METHODS.map(({ value, label, icon: Icon }) => {
             const selected = method === value;
@@ -261,13 +274,17 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
                 onClick={() => setMethod(value)}
                 aria-pressed={selected}
                 className={cn(
-                  'flex min-h-11 items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition-[background-color,border-color,color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+                  'flex min-h-12 items-center justify-center gap-2 rounded-full border px-3 py-2.5 text-sm transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
                   selected
-                    ? 'border-primary bg-primary text-primary-fg shadow-card'
-                    : 'border-line bg-surface text-ink hover:border-primary-200 hover:bg-primary-50',
+                    ? 'border-primary bg-primary font-bold text-primary-fg shadow-glow'
+                    : 'border-white/70 bg-white/80 font-medium text-ink shadow-soft backdrop-blur hover:-translate-y-0.5 hover:border-primary-300 hover:bg-primary-50',
                 )}
               >
-                <Icon className="size-4" aria-hidden="true" />
+                {selected ? (
+                  <Check className="size-4 shrink-0" aria-hidden="true" />
+                ) : (
+                  <Icon className="size-4 shrink-0 text-primary-700" aria-hidden="true" />
+                )}
                 {label}
               </button>
             );
@@ -278,7 +295,7 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
       {message ? (
         <div
           role="alert"
-          className="flex items-start gap-2 rounded-xl border border-danger/20 bg-danger-soft p-3"
+          className="flex items-start gap-2 rounded-xl bg-danger-soft p-3.5 ring-1 ring-danger/20"
         >
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
           <p className="text-sm text-danger">{message}</p>
@@ -286,8 +303,9 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
       ) : null}
 
       <div className="flex flex-col gap-2.5">
+        {/* Final confirmation of a money action → ink, the highest emphasis. */}
         <Button
-          variant="primary"
+          variant="ink"
           size="lg"
           className="w-full"
           loading={submitting}

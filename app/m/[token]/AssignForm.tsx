@@ -67,19 +67,23 @@ export function AssignForm({
     return (
       <div
         role="status"
-        className="relative flex flex-col items-center gap-3 overflow-hidden rounded-2xl border border-success/25 bg-success-soft px-6 py-9 text-center shadow-card animate-fade-in"
+        className="relative flex flex-col items-center gap-4 overflow-hidden rounded-3xl border border-white/70 bg-success-soft px-6 py-11 text-center shadow-pop animate-scale-in"
       >
         <span
           aria-hidden="true"
           className="absolute inset-x-0 -top-px h-1 bg-success/70"
         />
         <span
-          className="flex size-16 items-center justify-center rounded-full bg-success text-white shadow-card ring-4 ring-success/15"
+          className="flex size-20 items-center justify-center rounded-full bg-white/70 shadow-card ring-1 ring-white/70"
           aria-hidden="true"
         >
-          <CheckCircle2 className="size-8" />
+          <span className="flex size-14 items-center justify-center rounded-full bg-success text-white">
+            <CheckCircle2 className="size-8" />
+          </span>
         </span>
-        <p className="text-lg font-bold text-success">השיעור שויך בהצלחה</p>
+        <p className="text-2xl font-extrabold tracking-tight text-success">
+          השיעור שויך בהצלחה
+        </p>
         <p className="max-w-xs text-sm leading-relaxed text-ink">
           השיעור מחובר כעת לתיק התלמיד/ה.
         </p>
@@ -112,12 +116,12 @@ export function AssignForm({
       </div>
 
       {eventTitle && (
-        <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-line bg-cream/50 p-3 text-sm text-ink transition-colors duration-150 ease-out hover:bg-primary-50">
+        <label className="flex min-h-11 cursor-pointer items-start gap-2.5 rounded-xl border border-white/60 bg-white/60 p-3.5 text-sm leading-relaxed text-ink shadow-soft backdrop-blur transition-colors duration-200 ease-out hover:bg-primary-50 has-[:checked]:border-primary-300 has-[:checked]:bg-primary-50">
           <input
             type="checkbox"
             checked={remember}
             onChange={(e) => setRemember(e.target.checked)}
-            className="mt-0.5 size-4 shrink-0 cursor-pointer rounded border-line accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="mt-1 size-4 shrink-0 cursor-pointer rounded border-line accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
           />
           <span>
             לזכור שיוך זה לאירועים עתידיים עם הכותרת &quot;{eventTitle}&quot;
@@ -128,7 +132,7 @@ export function AssignForm({
       {error && (
         <div
           role="alert"
-          className="flex items-start gap-2 rounded-xl border border-danger/20 bg-danger-soft p-3"
+          className="flex items-start gap-2 rounded-xl bg-danger-soft p-3.5 ring-1 ring-danger/20"
         >
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
           <p className="text-sm text-danger">{error}</p>

@@ -1,3 +1,4 @@
+import type * as React from 'react';
 import { listConversations } from '@/lib/messages';
 import { PageHeader } from '@/components/ui/page-header';
 import { MessagesView } from './MessagesView';
@@ -13,12 +14,14 @@ export default async function MessagesPage() {
   const conversations = await listConversations();
 
   return (
-    <div className="space-y-6">
+    <div className="stagger space-y-6">
       <PageHeader
         title="הודעות"
         subtitle="התכתבות בוואטסאפ עם התלמידים — שליחה, קבלה, וסטטוס נשלח/נמסר/נקרא."
       />
-      <MessagesView initialConversations={conversations} />
+      <div style={{ ['--i' as string]: 1 } as React.CSSProperties}>
+        <MessagesView initialConversations={conversations} />
+      </div>
     </div>
   );
 }

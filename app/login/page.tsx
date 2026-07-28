@@ -1,3 +1,4 @@
+import { ShieldCheck } from 'lucide-react';
 import { signIn } from '@/auth';
 import { AuthLayout } from '@/components/ui/auth-layout';
 import { Button } from '@/components/ui/button';
@@ -6,6 +7,9 @@ import { Button } from '@/components/ui/button';
 // (offline) access. Restricted to ALLOWED_LOGIN_EMAIL in the auth callback.
 
 // Official Google "G" brand mark (multi-color). Inline SVG — not an emoji.
+// The four hexes below are the ONLY raw colors allowed in this cluster: they are
+// Google's trademarked brand palette, which their brand guidelines forbid
+// recoloring. They are not design-system colors and must never be tokenized.
 function GoogleMark() {
   return (
     <svg className="size-5 shrink-0" viewBox="0 0 48 48" aria-hidden="true">
@@ -40,12 +44,28 @@ export default function LoginPage() {
         'תזכורות אוטומטיות בוואטסאפ',
       ]}
     >
-      <div className="flex flex-col gap-7 text-center">
-        <div className="space-y-1.5">
-          <h1 className="text-2xl font-bold text-ink">כניסה למערכת</h1>
-          <p className="text-sm leading-relaxed text-muted">
-            התחברי עם חשבון Google שלך. ההתחברות מאשרת גם גישה ליומן.
-          </p>
+      <div className="stagger flex flex-col items-center gap-8 text-center">
+        <div className="flex flex-col items-center gap-5">
+          {/* Blush medallion — gives the single-button card a focal point and
+              carries the identity on mobile, where the brand panel is a thin
+              band above the fold. Dark glyph on the pink→peach gradient. */}
+          <span
+            aria-hidden="true"
+            className="flex size-20 items-center justify-center rounded-full bg-white/70 shadow-glow ring-1 ring-white/70 backdrop-blur"
+          >
+            <span className="flex size-14 items-center justify-center rounded-full bg-gradient-cta text-ink shadow-soft">
+              <ShieldCheck className="size-7" />
+            </span>
+          </span>
+
+          <div className="space-y-2">
+            <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-ink sm:text-3xl">
+              כניסה למערכת
+            </h1>
+            <p className="mx-auto max-w-xs text-sm leading-relaxed text-muted text-balance">
+              התחברי עם חשבון Google שלך. ההתחברות מאשרת גם גישה ליומן.
+            </p>
+          </div>
         </div>
 
         <form

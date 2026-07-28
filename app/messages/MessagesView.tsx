@@ -15,6 +15,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { Conversation, ChatMessage } from '@/lib/messages';
 import type { MessageStatus } from '@/lib/message-log';
@@ -27,8 +28,10 @@ import {
 
 const POLL_MS = 8000;
 
+// Tinted initials chips. Every text token here clears AA on its own soft
+// surface — primary-700 (not -600, which is 2.8:1 and fails).
 const AVATAR_TONES = [
-  'bg-primary-soft text-primary-600',
+  'bg-primary-soft text-primary-700',
   'bg-accent-soft text-accent-text',
   'bg-success-soft text-success',
   'bg-warning-soft text-warning',
@@ -54,7 +57,7 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
       <img
         src={url}
         alt=""
-        className="size-10 shrink-0 rounded-xl object-cover shadow-soft"
+        className="size-11 shrink-0 rounded-2xl object-cover shadow-soft ring-1 ring-white/70"
         referrerPolicy="no-referrer"
       />
     );
@@ -63,7 +66,7 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
     <span
       aria-hidden="true"
       className={cn(
-        'flex size-10 shrink-0 items-center justify-center rounded-xl text-xs font-bold shadow-soft',
+        'flex size-11 shrink-0 items-center justify-center rounded-2xl text-xs font-extrabold shadow-soft ring-1 ring-white/70',
         toneFor(name),
       )}
     >
@@ -90,18 +93,27 @@ function dayLabel(iso: string): string {
   }
 }
 
-/** Delivery ticks for an OUTBOUND message. */
+/**
+ * Delivery ticks for an OUTBOUND message.
+ *
+ * The outbound bubble is the LIGHT pink (`primary-200`, #f9c5dc) rather than the
+ * saturated `primary`, and that choice is what makes these glyphs legible: on
+ * #f493be nothing but ink clears 3:1, so a distinct "read" color was impossible
+ * (the v3 `text-sky-300` measured ~1.8:1 there and was off-palette besides). On
+ * #f9c5dc, `success` lands at 3.3:1 and `ink/80` at 5.4:1, so status stays
+ * readable and entirely on-token.
+ */
 function StatusTicks({ status }: { status: MessageStatus }) {
   if (status === 'pending')
-    return <Clock className="size-3.5 text-primary-fg/70" aria-label="ממתין" />;
+    return <Clock className="size-3.5 text-ink/80" aria-label="ממתין" />;
   if (status === 'failed')
     return <AlertCircle className="size-3.5 text-danger" aria-label="שליחה נכשלה" />;
   if (status === 'sent')
-    return <Check className="size-3.5 text-primary-fg/70" aria-label="נשלח" />;
+    return <Check className="size-3.5 text-ink/80" aria-label="נשלח" />;
   if (status === 'delivered')
-    return <CheckCheck className="size-3.5 text-primary-fg/70" aria-label="נמסר" />;
+    return <CheckCheck className="size-3.5 text-ink/80" aria-label="נמסר" />;
   // read
-  return <CheckCheck className="size-3.5 text-sky-300" aria-label="נקרא" />;
+  return <CheckCheck className="size-3.5 text-success" aria-label="נקרא" />;
 }
 
 export function MessagesView({
@@ -213,16 +225,16 @@ export function MessagesView({
   }
 
   return (
-    <Card className="overflow-hidden">
-      <div className="grid h-[calc(100vh-16rem)] min-h-[28rem] grid-cols-1 lg:grid-cols-[22rem_1fr]">
+    <Card className="overflow-hidden shadow-pop">
+      <div className="grid h-[calc(100dvh-15rem)] min-h-[26rem] grid-cols-1 lg:grid-cols-[22rem_1fr]">
         {/* ── Conversations list ── */}
         <aside
           className={cn(
-            'flex min-h-0 flex-col border-line lg:border-e',
+            'flex min-h-0 flex-col border-white/60 lg:border-e',
             selectedId ? 'hidden lg:flex' : 'flex',
           )}
         >
-          <div className="shrink-0 border-b border-line p-3">
+          <div className="shrink-0 border-b border-white/60 p-3">
             <div className="relative">
               <Search
                 className="pointer-events-none absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted"
@@ -239,17 +251,17 @@ export function MessagesView({
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 px-4 py-12 text-center">
-                <span className="flex size-12 items-center justify-center rounded-full bg-primary-soft/60 text-primary-600">
+              <div className="flex flex-col items-center gap-3 px-4 py-14 text-center">
+                <span className="flex size-14 items-center justify-center rounded-full bg-primary-soft text-primary-700 ring-1 ring-white/70">
                   <MessageCircle className="size-6" aria-hidden="true" />
                 </span>
-                <p className="text-sm font-medium text-ink">אין שיחות עדיין</p>
-                <p className="text-xs leading-relaxed text-muted">
+                <p className="text-sm font-bold text-ink">אין שיחות עדיין</p>
+                <p className="max-w-[16rem] text-xs leading-relaxed text-muted">
                   הודעות שנשלחות לתלמידים (ותשובות שלהם) יופיעו כאן.
                 </p>
               </div>
             ) : (
-              <ul className="divide-y divide-line/70">
+              <ul className="divide-y divide-white/60">
                 {filtered.map((c) => {
                   const isSel = c.studentId === selectedId;
                   return (
@@ -258,14 +270,14 @@ export function MessagesView({
                         type="button"
                         onClick={() => openConversation(c.studentId)}
                         className={cn(
-                          'flex w-full items-center gap-3 px-3.5 py-3 text-start transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
-                          isSel ? 'bg-primary-50' : 'hover:bg-surface-2/60',
+                          'flex w-full items-center gap-3 px-3.5 py-3 text-start transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ink',
+                          isSel ? 'bg-primary-soft' : 'hover:bg-white/60',
                         )}
                       >
                         <Avatar name={c.name} url={c.avatarUrl} />
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center justify-between gap-2">
-                            <span className="truncate font-semibold text-ink">{c.name}</span>
+                            <span className="truncate font-bold text-ink">{c.name}</span>
                             <span className="shrink-0 text-[11px] tabular-nums text-muted">
                               {timeLabel(c.lastAt)}
                             </span>
@@ -276,7 +288,10 @@ export function MessagesView({
                               {c.lastBody}
                             </span>
                             {c.inbound > 0 && c.lastDirection === 'in' && (
-                              <span className="ms-auto flex size-2 shrink-0 rounded-full bg-primary" aria-label="הודעה נכנסת" />
+                              <span
+                                className="pulse-ring ms-auto flex size-2.5 shrink-0 rounded-full bg-primary"
+                                aria-label="הודעה נכנסת"
+                              />
                             )}
                           </span>
                         </span>
@@ -292,21 +307,25 @@ export function MessagesView({
         {/* ── Thread ── */}
         <section
           className={cn(
-            'flex min-h-0 min-w-0 flex-col bg-surface-2/30',
+            'flex min-h-0 min-w-0 flex-col bg-primary-50/40',
             selectedId ? 'flex' : 'hidden lg:flex',
           )}
         >
           {!selectedId ? (
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-              <span className="flex size-16 items-center justify-center rounded-2xl bg-primary-soft text-primary-600 shadow-soft">
-                <MessageCircle className="size-8" aria-hidden="true" />
+            <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+              <span className="flex size-20 items-center justify-center rounded-full bg-white/70 shadow-glow ring-1 ring-white/70">
+                <span className="flex size-14 items-center justify-center rounded-full bg-primary-soft text-primary-700">
+                  <MessageCircle className="size-7" aria-hidden="true" />
+                </span>
               </span>
-              <p className="text-sm text-muted">בחרי שיחה כדי לראות את ההתכתבות ולשלוח הודעה.</p>
+              <p className="max-w-xs text-sm leading-relaxed text-muted">
+                בחרי שיחה כדי לראות את ההתכתבות ולשלוח הודעה.
+              </p>
             </div>
           ) : (
             <>
               {/* Thread header */}
-              <div className="flex shrink-0 items-center gap-3 border-b border-line bg-surface px-4 py-3">
+              <div className="flex shrink-0 items-center gap-3 border-b border-white/60 bg-white/80 px-4 py-3 backdrop-blur">
                 <button
                   type="button"
                   onClick={() => {
@@ -314,12 +333,14 @@ export function MessagesView({
                     setThread(null);
                   }}
                   aria-label="חזרה לרשימה"
-                  className="flex size-9 items-center justify-center rounded-xl text-muted hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
+                  className="flex size-11 items-center justify-center rounded-full text-muted transition-colors duration-200 hover:bg-primary-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink lg:hidden"
                 >
                   <ChevronRight className="size-5" aria-hidden="true" />
                 </button>
                 <Avatar name={thread?.name ?? ''} url={thread?.avatarUrl ?? null} />
-                <span className="truncate font-bold text-ink">{thread?.name ?? '…'}</span>
+                <span className="truncate font-extrabold tracking-tight text-ink">
+                  {thread?.name ?? '…'}
+                </span>
               </div>
 
               {/* Messages */}
@@ -336,10 +357,14 @@ export function MessagesView({
                       <div key={m.id} className={cn('flex', out ? 'justify-start' : 'justify-end')}>
                         <div
                           className={cn(
-                            'max-w-[78%] rounded-2xl px-3.5 py-2 shadow-soft',
+                            'max-w-[78%] rounded-2xl px-3.5 py-2.5 shadow-soft animate-fade-in',
                             out
-                              ? 'bg-primary text-primary-fg'
-                              : 'border border-line bg-surface text-ink',
+                              ? // Light pink own-bubble: ink on #f9c5dc is 8.9:1 and it
+                                // leaves room for a legible "read" tick (see StatusTicks).
+                                // Outbound sits at the inline-start under RTL, so its
+                                // "tail" corner is start-start.
+                                'rounded-ss-md bg-primary-200 text-ink'
+                              : 'rounded-se-md border border-white/70 bg-white/90 text-ink backdrop-blur',
                           )}
                         >
                           <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
@@ -348,7 +373,7 @@ export function MessagesView({
                           <span
                             className={cn(
                               'mt-1 flex flex-wrap items-center gap-1',
-                              out ? 'justify-start text-primary-fg/70' : 'justify-end text-muted',
+                              out ? 'justify-start text-ink/80' : 'justify-end text-muted',
                             )}
                           >
                             <span className="text-[10px] tabular-nums">
@@ -368,18 +393,21 @@ export function MessagesView({
               </div>
 
               {/* Compose */}
-              <form onSubmit={send} className="shrink-0 border-t border-line bg-surface p-3">
+              <form
+                onSubmit={send}
+                className="shrink-0 border-t border-white/60 bg-white/80 p-3 backdrop-blur"
+              >
                 {error && (
                   <div
                     role="alert"
-                    className="mb-2 flex items-center gap-2 rounded-lg bg-danger-soft px-3 py-2 text-xs text-danger"
+                    className="mb-2 flex items-center gap-2 rounded-full bg-danger-soft px-3.5 py-2 text-xs text-danger ring-1 ring-danger/20"
                   >
                     <AlertCircle className="size-3.5 shrink-0" aria-hidden="true" />
                     {error}
                   </div>
                 )}
                 <div className="flex items-end gap-2">
-                  <textarea
+                  <Textarea
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
                     onKeyDown={(e) => {
@@ -390,7 +418,7 @@ export function MessagesView({
                     }}
                     rows={1}
                     placeholder="כתבי הודעה… (Enter לשליחה)"
-                    className="max-h-32 min-h-11 flex-1 resize-none rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="max-h-32 min-h-11 flex-1 resize-none text-sm"
                   />
                   <Button type="submit" loading={sending} className="shrink-0" aria-label="שליחה">
                     {!sending && <Send className="size-4" aria-hidden="true" />}

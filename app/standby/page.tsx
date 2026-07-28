@@ -1,3 +1,4 @@
+import { BellRing, CalendarClock, Sparkles } from 'lucide-react';
 import { AuthLayout } from '@/components/ui/auth-layout';
 import { StandbyForm } from './StandbyForm';
 
@@ -13,10 +14,10 @@ export default function StandbyPage() {
     <AuthLayout
       eyebrow="רשימת המתנה"
       valueProp="לא נמצאה שעה מתאימה? השאירו פרטים וטווח שעות שנוח לכם — וברגע שמתפנה מקום, ניצור קשר."
-      highlights={[
-        'בוחרים ימים וטווח שעות שמתאים',
-        'מתפנה מקום בטווח — מקבלים הודעה',
-        'בלי צורך לעקוב אחרי הלוח',
+      features={[
+        { icon: CalendarClock, label: 'בוחרים ימים וטווח שעות שמתאים' },
+        { icon: BellRing, label: 'מתפנה מקום בטווח — מקבלים הודעה' },
+        { icon: Sparkles, label: 'בלי צורך לעקוב אחרי הלוח' },
       ]}
     >
       <StandbyForm />

@@ -29,22 +29,26 @@ export default async function TokenBookPage({
         eyebrow="קביעת שיעור"
         valueProp="הלינק לתיאום אינו תקין או שפג תוקפו."
       >
-        <div className="flex flex-col items-center gap-7 text-center">
-          <span className="flex size-16 items-center justify-center rounded-2xl bg-primary-soft text-primary-600 shadow-soft ring-1 ring-primary-100">
-            <Link2Off className="size-8" aria-hidden="true" />
+        <div className="flex flex-col items-center gap-7 text-center rise">
+          <span className="flex size-20 items-center justify-center rounded-full bg-white/70 shadow-glow ring-1 ring-white/70 backdrop-blur">
+            <span className="flex size-14 items-center justify-center rounded-full bg-primary-soft text-primary-700 ring-1 ring-primary-100">
+              <Link2Off className="size-7" aria-hidden="true" />
+            </span>
           </span>
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold text-ink">הקישור אינו תקין</h1>
+            <h1 className="text-[28px] font-extrabold leading-tight tracking-tight text-ink">
+              הקישור אינו תקין
+            </h1>
             <p className="mx-auto max-w-sm text-sm leading-relaxed text-muted">
               ייתכן שהלינק כבר אינו בתוקף. אפשר לפנות לאילנית כדי שתשלח לך לינק חדש
               לתיאום שיעור.
             </p>
           </div>
-          <div className="flex w-full items-center gap-3 rounded-2xl bg-gradient-tint p-4 text-start ring-1 ring-line">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-surface text-primary-600 shadow-soft">
+          <div className="flex w-full items-center gap-3 rounded-2xl bg-primary-soft p-4 text-start shadow-soft ring-1 ring-white/60">
+            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-fg shadow-glow">
               <MessageCircle className="size-5" aria-hidden="true" />
             </span>
-            <p className="text-sm leading-relaxed text-muted">
+            <p className="text-sm leading-relaxed text-ink">
               שולחים הודעה לאילנית בוואטסאפ והיא תשלח לך לינק חדש.
             </p>
           </div>
@@ -82,11 +86,13 @@ export default async function TokenBookPage({
         studentGuardianPhone={student.guardianPhone}
         initialWeek={initialWeek}
       />
-      <p className="mt-6 text-center text-sm text-muted">
+      {/* Escape hatch for "nothing here works for me" — a soft glass pill so it
+          reads as an offer, not as fine print. */}
+      <p className="mx-auto mt-6 flex max-w-md flex-wrap items-center justify-center gap-x-1 gap-y-1 rounded-full border border-white/60 bg-white/60 px-4 py-2 text-center text-sm text-muted shadow-soft backdrop-blur">
         לא מצאת שעה מתאימה?{' '}
         <a
           href="/standby"
-          className="font-semibold text-primary-600 underline-offset-2 hover:underline"
+          className="inline-flex min-h-11 items-center rounded-full px-3 font-bold text-primary-700 underline decoration-primary/60 underline-offset-4 transition-colors duration-200 hover:bg-primary-50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
         >
           הצטרפו לרשימת ההמתנה
         </a>

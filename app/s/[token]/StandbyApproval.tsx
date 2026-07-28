@@ -46,15 +46,20 @@ export function StandbyApproval({
     return (
       <div
         role="status"
-        className="flex flex-col items-center gap-4 rounded-2xl border border-line bg-surface-2 px-6 py-9 text-center shadow-card animate-fade-in"
+        className="relative flex flex-col items-center gap-4 overflow-hidden rounded-3xl border border-white/60 bg-white/70 px-6 py-11 text-center shadow-pop backdrop-blur animate-scale-in"
       >
-        <span className="flex size-16 items-center justify-center rounded-full bg-success text-white shadow-card ring-4 ring-success/15">
-          <CheckCircle2 className="size-8" aria-hidden="true" />
+        <span aria-hidden="true" className="blob -top-20 -end-14 size-52 bg-primary" />
+        <span className="relative z-10 flex size-20 items-center justify-center rounded-full bg-white/70 shadow-card ring-1 ring-white/70">
+          <span className="flex size-14 items-center justify-center rounded-full bg-success text-white">
+            <CheckCircle2 className="size-8" aria-hidden="true" />
+          </span>
         </span>
-        <p className="text-lg font-bold text-ink">השיעור נקבע 🎉</p>
-        <p className="max-w-xs text-sm leading-relaxed text-muted">
+        <p className="relative z-10 text-2xl font-extrabold tracking-tight text-ink">
+          השיעור נקבע 🎉
+        </p>
+        <p className="relative z-10 max-w-xs text-sm leading-relaxed text-muted">
           {who} שובץ/ה ל־
-          <span dir="ltr" className="tabular-nums">
+          <span dir="ltr" className="font-semibold text-ink tabular-nums">
             {slotLabel}
           </span>{' '}
           — נכנס ליומן והתלמיד/ה קיבל/ה אישור.
@@ -65,13 +70,14 @@ export function StandbyApproval({
 
   return (
     <div className="space-y-4">
-      <p className="text-sm font-medium text-ink">מי מקבל/ת את המקום?</p>
+      <p className="text-sm font-bold text-ink">מי מקבל/ת את המקום?</p>
 
-      <div className="space-y-2">
-        {candidates.map((c) => (
+      <div className="stagger space-y-2.5">
+        {candidates.map((c, i) => (
           <label
             key={c.id}
-            className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-surface px-4 py-3 transition-colors duration-150 hover:bg-surface-2 has-[:checked]:border-primary-300 has-[:checked]:bg-primary-50"
+            style={{ ['--i' as string]: i } as React.CSSProperties}
+            className="flex min-h-[3.25rem] cursor-pointer items-start gap-3 rounded-2xl border border-white/60 bg-white/65 px-4 py-3.5 shadow-soft backdrop-blur transition-[background-color,border-color,box-shadow] duration-200 hover:border-primary-300 hover:bg-primary-50 has-[:checked]:border-primary has-[:checked]:bg-primary-soft has-[:checked]:shadow-glow"
           >
             <input
               type="radio"
@@ -82,11 +88,11 @@ export function StandbyApproval({
                 setSelected(c.id);
                 if (outcome === 'error') setOutcome('idle');
               }}
-              className="mt-1 accent-primary-600"
+              className="mt-1 size-4 shrink-0 accent-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
             />
             <span className="min-w-0">
-              <span className="block text-sm font-semibold text-ink">{c.name}</span>
-              <span className="block text-xs text-muted" dir="ltr">
+              <span className="block text-sm font-bold text-ink">{c.name}</span>
+              <span className="block text-xs tabular-nums text-muted" dir="ltr">
                 {c.phone}
               </span>
               <span className="mt-0.5 block text-xs text-muted">מבוקש: {c.pref}</span>
@@ -98,7 +104,7 @@ export function StandbyApproval({
       {outcome === 'error' && (
         <div
           role="alert"
-          className="flex items-start gap-2 rounded-xl border border-danger/20 bg-danger-soft p-3"
+          className="flex items-start gap-2 rounded-xl bg-danger-soft p-3.5 ring-1 ring-danger/20"
         >
           <AlertTriangle className="mt-0.5 size-4 shrink-0 text-danger" aria-hidden="true" />
           <p className="text-sm text-danger">{message}</p>
