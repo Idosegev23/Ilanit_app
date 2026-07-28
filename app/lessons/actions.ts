@@ -23,6 +23,7 @@ import { cancelOne, createSeries } from '@/lib/recurrence';
 import { parseLessonTitle } from '@/lib/ai/parse-lesson';
 import { notify, notifyStudent } from '@/lib/notifications/dispatch';
 import { scheduleStudentLesson } from '@/app/students/actions';
+import { offerFreedSlot } from '@/lib/standby';
 import { addToCalendarUrl } from '@/lib/calendar-link';
 import { createCancelUrl } from '@/lib/availability/cancel';
 
@@ -132,7 +133,14 @@ export async function rejectLesson(lessonId: string): Promise<ActionResult> {
 /** Cancels a single lesson (and removes its standalone Google event). */
 export async function cancelLesson(lessonId: string): Promise<ActionResult> {
   try {
+    const rows = await db
+      .select({ startsAt: lessons.startsAt, endsAt: lessons.endsAt })
+      .from(lessons)
+      .where(eq(lessons.id, lessonId))
+      .limit(1);
     await cancelOne(lessonId);
+    // The slot is now free — alert the waitlist if anyone matches it.
+    if (rows[0]) await offerFreedSlot(rows[0].startsAt, rows[0].endsAt);
     revalidatePath('/lessons');
     return { ok: true };
   } catch (err) {

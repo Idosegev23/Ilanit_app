@@ -84,7 +84,7 @@ export const lessons = pgTable(
       .notNull()
       .default('individual'),
     source: text('source', {
-      enum: ['booking', 'recurrence', 'calendar_import', 'manual'],
+      enum: ['booking', 'recurrence', 'calendar_import', 'manual', 'standby'],
     }).notNull(),
     studentId: uuid('student_id').references(() => students.id, { onDelete: 'set null' }),
     groupId: uuid('group_id').references(() => groups.id, { onDelete: 'set null' }),
@@ -339,6 +339,26 @@ export const standbyRequests = pgTable(
   }),
 );
 
+// A concrete freed slot offered to the waitlist. Created when a lesson in some
+// standby's window is cancelled; the token backs the owner-only approval link.
+export const standbyOffers = pgTable(
+  'standby_offers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tokenHash: text('token_hash').notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    status: text('status', { enum: ['open', 'filled', 'expired'] })
+      .notNull()
+      .default('open'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    filledAt: timestamp('filled_at', { withTimezone: true }),
+  },
+  (t) => ({
+    tokenHashUnique: uniqueIndex('standby_offers_hash_unique').on(t.tokenHash),
+  }),
+);
+
 export const insightsCache = pgTable('insights_cache', {
   id: uuid('id').primaryKey().defaultRandom(),
   period: text('period').notNull(),
@@ -401,5 +421,7 @@ export type BookingLink = typeof bookingLinks.$inferSelect;
 export type NewBookingLink = typeof bookingLinks.$inferInsert;
 export type StandbyRequest = typeof standbyRequests.$inferSelect;
 export type NewStandbyRequest = typeof standbyRequests.$inferInsert;
+export type StandbyOffer = typeof standbyOffers.$inferSelect;
+export type NewStandbyOffer = typeof standbyOffers.$inferInsert;
 export type OpenWeek = typeof openWeeks.$inferSelect;
 export type NewOpenWeek = typeof openWeeks.$inferInsert;

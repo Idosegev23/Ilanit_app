@@ -2,6 +2,7 @@ import { db } from '@/lib/db';
 import { lessons } from '@/db/schema';
 import { and, eq, gte, inArray, isNotNull, isNull, lte } from 'drizzle-orm';
 import { getEvent } from '@/lib/google-calendar';
+import { offerFreedSlot } from '@/lib/standby';
 import { nowIL } from '@/lib/time';
 
 // Reconcile lessons Ilanit cancelled DIRECTLY in Google Calendar. The DB is the
@@ -30,7 +31,12 @@ export async function reconcileCancellations(): Promise<ReconcileResult> {
   const horizon = new Date(now.getTime() + HORIZON_DAYS * MS_PER_DAY);
 
   const rows = await db
-    .select({ id: lessons.id, googleEventId: lessons.googleEventId })
+    .select({
+      id: lessons.id,
+      googleEventId: lessons.googleEventId,
+      startsAt: lessons.startsAt,
+      endsAt: lessons.endsAt,
+    })
     .from(lessons)
     .where(
       and(
@@ -59,6 +65,8 @@ export async function reconcileCancellations(): Promise<ReconcileResult> {
       .set({ status: 'cancelled', cancelledAt: nowIL(), cancelReason: 'google_deleted' })
       .where(eq(lessons.id, row.id));
     cancelled += 1;
+    // The slot is now free — alert the waitlist if anyone matches it.
+    await offerFreedSlot(row.startsAt, row.endsAt);
   }
 
   return { checked: rows.length, cancelled };

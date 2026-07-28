@@ -6,6 +6,7 @@ import { env } from '@/lib/env';
 import { createActionToken, consumeActionToken } from '@/lib/tokens';
 import { cancelOne } from '@/lib/recurrence';
 import { notify } from '@/lib/notifications/dispatch';
+import { offerFreedSlot } from '@/lib/standby';
 import { formatILDateTime } from '@/lib/time';
 
 // Self-service cancel / reschedule, reached from the "לשינוי או ביטול" link in
@@ -100,6 +101,9 @@ export async function cancelByToken(rawToken: string): Promise<CancelResult> {
   } catch (err) {
     console.error('[cancel] failed to notify Ilanit of self-cancel:', err);
   }
+
+  // The slot is now free — alert the waitlist if anyone matches it (best-effort).
+  await offerFreedSlot(lesson.startsAt, lesson.endsAt);
 
   return { ok: true, datetime: formatILDateTime(lesson.startsAt) };
 }
