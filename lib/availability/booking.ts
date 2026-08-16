@@ -2,7 +2,12 @@ import { db } from '@/lib/db';
 import { lessons, type Lesson, type Student } from '@/db/schema';
 import { env } from '@/lib/env';
 import { getSettings } from '@/lib/settings';
-import { getStudent, updateStudent, findStudentByPhone, createStudent } from '@/lib/students';
+import {
+  getStudent,
+  updateStudent,
+  findStudentsByContactPhone,
+  createStudent,
+} from '@/lib/students';
 import { normalizePhoneIL } from '@/lib/utils';
 import { resolveBookingLink } from '@/lib/booking-links';
 import { isSlotBookable, isSlotForceOpen, overlappingLessons } from '@/lib/availability';
@@ -40,6 +45,18 @@ export interface BookRequest {
   phone?: string;
   guardianName?: string;
   guardianPhone?: string;
+  /**
+   * Disambiguates a phone shared by siblings. Only honoured when it is one of
+   * the students actually reachable at `phone` — a caller cannot book under an
+   * arbitrary student by guessing an id.
+   */
+  studentId?: string;
+}
+
+/** A student the booking could belong to. Name + id only — no other details. */
+export interface StudentChoice {
+  id: string;
+  name: string;
 }
 
 export type BookResult =
@@ -48,6 +65,17 @@ export type BookResult =
       ok: false;
       error: 'invalid_input' | 'invalid_token' | 'slot_taken' | 'internal';
       message: string;
+    }
+  | {
+      /**
+       * The phone belongs to more than one student (siblings under one parent
+       * number). The caller must re-submit with `studentId` set. Nothing has
+       * been written at this point.
+       */
+      ok: false;
+      error: 'choose_student';
+      message: string;
+      candidates: StudentChoice[];
     };
 
 /**
@@ -130,7 +158,32 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
     const guardianName = req.guardianName?.trim() || null;
 
     try {
-      const existing = await findStudentByPhone(phone);
+      // Everyone reachable at this number — the student themselves OR any child
+      // whose guardian uses it. Siblings share a parent's phone, so this can
+      // legitimately return several people.
+      const matches = await findStudentsByContactPhone(phone);
+
+      let existing: Student | null = null;
+      if (matches.length > 1) {
+        // Ambiguous. Picking one here is what filed a parent's booking under
+        // whichever sibling happened to hold the number, so refuse to guess:
+        // either the caller already told us who, or they have to.
+        const chosen = req.studentId
+          ? matches.find((m) => m.id === req.studentId)
+          : undefined;
+        if (!chosen) {
+          return {
+            ok: false,
+            error: 'choose_student',
+            message: 'למי מיועד השיעור?',
+            candidates: matches.map((m) => ({ id: m.id, name: m.name })),
+          };
+        }
+        existing = chosen;
+      } else {
+        existing = matches[0] ?? null;
+      }
+
       if (existing) {
         // The phone already belongs to a real student — book under them, filling
         // any blank fields rather than creating a duplicate.

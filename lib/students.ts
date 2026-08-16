@@ -14,7 +14,7 @@ import {
   type Receipt,
   type GroupBilling,
 } from '@/db/schema';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, or } from 'drizzle-orm';
 
 // Shared student CRUD + the full "client file" aggregation used by /students/[id].
 
@@ -38,6 +38,32 @@ export function contactPhoneFor(
 export async function findStudentByPhone(e164: string): Promise<Student | null> {
   const rows = await db.select().from(students).where(eq(students.phone, e164)).limit(1);
   return rows[0] ?? null;
+}
+
+/**
+ * Every ACTIVE student reachable at this number — matching either their own
+ * phone or their guardian's.
+ *
+ * Siblings share one parent's phone, and `students.phone` is UNIQUE, so a family
+ * is modelled as several students carrying the same `guardianPhone`. Matching on
+ * `phone` alone therefore finds at most one of them: when a parent booked for
+ * any of their children, the lesson was silently filed under whichever child
+ * happened to hold the number. Callers that get more than one row back must ask
+ * WHICH student the booking is for rather than picking one.
+ *
+ * Ordered by name so the choice is presented consistently.
+ */
+export async function findStudentsByContactPhone(e164: string): Promise<Student[]> {
+  return db
+    .select()
+    .from(students)
+    .where(
+      and(
+        eq(students.archived, false),
+        or(eq(students.phone, e164), eq(students.guardianPhone, e164)),
+      ),
+    )
+    .orderBy(asc(students.name));
 }
 
 /** Creates a student. */

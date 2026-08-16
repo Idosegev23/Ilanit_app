@@ -14,6 +14,7 @@ import {
   Lock,
   Sparkles,
   UserRound,
+  Users,
 } from 'lucide-react';
 import { Card, CardBody, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -132,6 +133,12 @@ function formatWeekRangeHe(sundayISO: string, saturdayISO: string): string {
 
 type Phase = 'pick' | 'confirm' | 'done';
 
+/** One of several students reachable at the entered phone (siblings). */
+interface StudentChoice {
+  id: string;
+  name: string;
+}
+
 export function TokenBookingForm({
   token,
   studentName,
@@ -166,6 +173,12 @@ export function TokenBookingForm({
   const [detailsLocked, setDetailsLocked] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+  /**
+   * Set when the entered phone reaches more than one student — siblings under a
+   * parent's number. Non-null means "the booking is paused on a question", not
+   * "the booking failed".
+   */
+  const [candidates, setCandidates] = React.useState<StudentChoice[] | null>(null);
 
   // Identity shown in the header: public/fresh bookings have no real name yet.
   const headerName = requireDetails ? (name.trim() || 'תיאום שיעור') : studentName;
@@ -214,19 +227,12 @@ export function TokenBookingForm({
     }
   }
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
+  /**
+   * Books the selected slot. `studentIdOverride` carries the answer to "which
+   * sibling?" on the re-submit after the visitor tapped a capsule.
+   */
+  async function doBook(studentIdOverride?: string) {
     if (!selected) return;
-    if (requireDetails) {
-      if (!name.trim()) {
-        setFormError('יש להזין שם מלא');
-        return;
-      }
-      if (!phone.trim()) {
-        setFormError('יש להזין מספר טלפון');
-        return;
-      }
-    }
     setSubmitting(true);
     setFormError(null);
     try {
@@ -240,6 +246,7 @@ export function TokenBookingForm({
           notes: notes.trim() || undefined,
           startISO: selected.startISO,
           endISO: selected.endISO,
+          ...(studentIdOverride ? { studentId: studentIdOverride } : {}),
           ...(requireDetails
             ? {
                 name: name.trim(),
@@ -251,6 +258,17 @@ export function TokenBookingForm({
         }),
       });
       const json = await res.json();
+
+      // Siblings share this number — ask who, then re-submit. This MUST be
+      // checked before the generic 409 branch below, which is the slot-taken
+      // path: falling through would throw the visitor back to slot selection
+      // for what is really a question, not a conflict.
+      if (!res.ok && json?.needsStudentChoice) {
+        setCandidates(json.candidates ?? []);
+        setFormError(null);
+        return;
+      }
+
       if (!res.ok || !json.ok) {
         setFormError(json.error ?? 'שגיאה בקביעת השיעור');
         if (res.status === 409) {
@@ -258,18 +276,36 @@ export function TokenBookingForm({
           setPhase('pick');
           setSelected(null);
           setSelectedDateISO(null);
+          setCandidates(null);
           void refreshAfterConflict();
         }
         return;
       }
       // Details are saved now — don't re-ask when booking further lessons.
       if (requireDetails) setDetailsLocked(true);
+      setCandidates(null);
       setPhase('done');
     } catch {
       setFormError('שגיאה בקביעת השיעור');
     } finally {
       setSubmitting(false);
     }
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected) return;
+    if (requireDetails) {
+      if (!name.trim()) {
+        setFormError('יש להזין שם מלא');
+        return;
+      }
+      if (!phone.trim()) {
+        setFormError('יש להזין מספר טלפון');
+        return;
+      }
+    }
+    await doBook();
   }
 
   // ── Success: the lesson is BOOKED ──────────────────────────────────────
@@ -496,6 +532,37 @@ export function TokenBookingForm({
                 placeholder="נושא השיעור, בקשות מיוחדות…"
               />
             </div>
+
+            {/*
+              Sibling picker. Several students share one parent's phone, so the
+              server refuses to guess and hands back the candidates. Tapping a
+              capsule immediately re-submits with that student — the visitor
+              already pressed "book", this is only the missing answer.
+            */}
+            {candidates && candidates.length > 0 && (
+              <div className="rounded-2xl bg-primary-soft/70 p-4 ring-1 ring-primary-200">
+                <p className="flex items-center gap-2 text-sm font-bold text-ink">
+                  <Users className="size-4 shrink-0 text-primary-700" aria-hidden="true" />
+                  למי מיועד השיעור?
+                </p>
+                <p className="mt-1 text-xs text-muted">
+                  המספר הזה רשום אצל יותר מתלמיד/ה אחד/ת.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {candidates.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => void doBook(c.id)}
+                      className="inline-flex h-11 items-center gap-2 rounded-full border border-line bg-white px-4 text-sm font-semibold text-ink shadow-soft transition hover:-translate-y-px hover:border-primary-300 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink disabled:pointer-events-none disabled:opacity-50"
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div aria-live="polite">
               {formError && (

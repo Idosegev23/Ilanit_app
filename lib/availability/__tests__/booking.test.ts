@@ -25,6 +25,8 @@ const state = vi.hoisted(() => ({
     defaultDurationMin: number;
   },
   insertedValues: null as Record<string, unknown> | null,
+  /** Students reachable at the phone supplied by an open booking. */
+  phoneMatches: [] as Array<Record<string, unknown>>,
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -43,6 +45,13 @@ const mocks = vi.hoisted(() => ({
   updateStudent: vi.fn(async (_id: string, patch: Record<string, unknown>) => ({
     ...state.student,
     ...patch,
+  })),
+  findStudentsByContactPhone: vi.fn(async () => state.phoneMatches),
+  createStudent: vi.fn(async (data: Record<string, unknown>) => ({
+    id: 'student-new',
+    defaultPrice: null,
+    defaultDurationMin: 60,
+    ...data,
   })),
   createActionToken: vi.fn(async () => 'raw-token-xyz'),
   insertEvent: vi.fn(async () => ({ id: 'gcal-1' })),
@@ -74,6 +83,8 @@ vi.mock('@/lib/availability', () => ({
 vi.mock('@/lib/students', () => ({
   getStudent: mocks.getStudent,
   updateStudent: mocks.updateStudent,
+  findStudentsByContactPhone: mocks.findStudentsByContactPhone,
+  createStudent: mocks.createStudent,
 }));
 vi.mock('@/lib/tokens', () => ({ createActionToken: mocks.createActionToken }));
 vi.mock('@/lib/google-calendar', () => ({
@@ -149,7 +160,92 @@ beforeEach(() => {
     defaultDurationMin: 60,
   };
   state.insertedValues = null;
+  state.phoneMatches = [];
   Object.values(mocks).forEach((m) => m.mockClear());
+});
+
+describe('bookLesson — a phone shared by siblings', () => {
+  // Irena's four children all sit under her number. students.phone is UNIQUE, so
+  // they are modelled as separate students sharing one guardianPhone, and the
+  // old single-row lookup filed every one of her bookings under whichever child
+  // happened to hold the number.
+  const SIBLINGS = [
+    { id: 'kid-linoy', name: 'לינוי רשף', phone: null, guardianPhone: '+972528773140', email: null, defaultPrice: 140, defaultDurationMin: 60 },
+    { id: 'kid-matan', name: 'מתן רשף', phone: null, guardianPhone: '+972528773140', email: null, defaultPrice: 140, defaultDurationMin: 60 },
+    { id: 'kid-neta', name: 'נטע רשף', phone: null, guardianPhone: '+972528773140', email: null, defaultPrice: 140, defaultDurationMin: 60 },
+  ];
+
+  const openReq = (extra: Record<string, unknown> = {}) => ({
+    token: '',
+    open: true,
+    name: 'אירנה רשף',
+    phone: '0528773140',
+    startISO: FUTURE_START,
+    endISO: FUTURE_END,
+    ...extra,
+  });
+
+  beforeEach(() => {
+    state.resolved = null;
+    state.student = null;
+    state.phoneMatches = SIBLINGS;
+  });
+
+  it('refuses to guess and returns every candidate, writing nothing', async () => {
+    const res = await bookLesson(openReq());
+
+    expect(res.ok).toBe(false);
+    if (res.ok) return;
+    expect(res.error).toBe('choose_student');
+    if (res.error !== 'choose_student') return;
+    expect(res.candidates).toEqual([
+      { id: 'kid-linoy', name: 'לינוי רשף' },
+      { id: 'kid-matan', name: 'מתן רשף' },
+      { id: 'kid-neta', name: 'נטע רשף' },
+    ]);
+    // The whole point: no lesson, and no calendar event, until we know who.
+    expect(state.insertedValues).toBeNull();
+    expect(mocks.insertEvent).not.toHaveBeenCalled();
+  });
+
+  it('books under the chosen sibling on re-submit', async () => {
+    const res = await bookLesson(openReq({ studentId: 'kid-neta' }));
+
+    expect(res.ok).toBe(true);
+    expect(state.insertedValues).toMatchObject({
+      studentId: 'kid-neta',
+      status: 'confirmed',
+      bookedByName: 'נטע רשף',
+    });
+  });
+
+  it('ignores a studentId that is not reachable at that phone', async () => {
+    // Otherwise the id would be a way to book a lesson onto any student at all.
+    const res = await bookLesson(openReq({ studentId: 'someone-elses-child' }));
+
+    expect(res.ok).toBe(false);
+    if (res.ok || res.error !== 'choose_student') throw new Error('expected choose_student');
+    expect(state.insertedValues).toBeNull();
+  });
+
+  it('books straight through when the phone reaches exactly one student', async () => {
+    state.phoneMatches = [SIBLINGS[0]];
+
+    const res = await bookLesson(openReq());
+
+    expect(res.ok).toBe(true);
+    expect(state.insertedValues).toMatchObject({ studentId: 'kid-linoy' });
+  });
+
+  it('creates a new student when the phone reaches nobody', async () => {
+    state.phoneMatches = [];
+
+    const res = await bookLesson(openReq());
+
+    expect(res.ok).toBe(true);
+    expect(mocks.createStudent).toHaveBeenCalled();
+    expect(state.insertedValues).toMatchObject({ studentId: 'student-new' });
+  });
 });
 
 describe('bookLesson — token guards', () => {

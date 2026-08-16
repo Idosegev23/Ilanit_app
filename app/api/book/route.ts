@@ -33,12 +33,23 @@ export async function POST(req: Request) {
     phone: str(body.phone) || undefined,
     guardianName: str(body.guardianName) || undefined,
     guardianPhone: str(body.guardianPhone) || undefined,
+    // Set on the RE-submit, after the visitor picked which sibling.
+    studentId: str(body.studentId) || undefined,
   };
 
   const result = await bookLesson(input);
 
   if (result.ok) {
     return NextResponse.json({ ok: true, lessonId: result.lessonId });
+  }
+
+  // The number belongs to several students. Not a failure — the caller has to
+  // choose and re-submit, so the candidates travel back with the response.
+  if (result.error === 'choose_student') {
+    return NextResponse.json(
+      { ok: false, needsStudentChoice: true, error: result.message, candidates: result.candidates },
+      { status: 409 },
+    );
   }
 
   const status =
