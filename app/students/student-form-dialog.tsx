@@ -392,7 +392,11 @@ export function StudentFormDialog({
                       name="defaultDurationMin"
                       type="number"
                       inputMode="numeric"
-                      min={1}
+                      // min IS the step base: a number input accepts only
+                      // min + n*step. With min=1/step=5 the valid values were
+                      // 1, 6, 11 … 56, 61 — so 60 was rejected, and the field's
+                      // own default of 60 failed validation on first touch.
+                      min={5}
                       step={5}
                       dir="ltr"
                       className="text-end tabular-nums"
