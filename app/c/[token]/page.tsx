@@ -27,7 +27,7 @@ export default async function CancelPage({
       highlights={[
         'ביטול המועד משחרר את הזמן ביומן',
         'קביעת מועד חדש בקישור הקבוע',
-        'הבקשה החדשה תעבור לאישור אילנית',
+        'המועד החדש נקבע מיד, בלי להמתין לאישור',
       ]}
     >
       <header className="mb-6 flex items-start gap-3.5 rise">

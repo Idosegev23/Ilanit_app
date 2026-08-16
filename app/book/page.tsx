@@ -21,10 +21,10 @@ export default async function PublicBookPage() {
       bare
       eyebrow="קביעת שיעור"
       headline="קביעת שיעור עם אילנית"
-      valueProp="ממלאים פרטים, בוחרים יום ומועד שמתאים לכם — והבקשה עוברת לאישור. אפשר לקבוע גם כמה שיעורים."
+      valueProp="ממלאים פרטים, בוחרים יום ומועד שמתאים לכם — והשיעור נקבע מיד. אפשר לקבוע גם כמה שיעורים."
       features={[
         { icon: CalendarCheck, label: 'תצוגת שבוע מלא — בוחרים יום ומועד פנוי' },
-        { icon: Clock, label: 'אישור מהיר ותזכורת בוואטסאפ' },
+        { icon: Clock, label: 'אישור מיידי ותזכורת בוואטסאפ' },
       ]}
     >
       <TokenBookingForm

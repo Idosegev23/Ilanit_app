@@ -71,10 +71,10 @@ export default async function TokenBookPage({
       bare
       eyebrow="קביעת שיעור"
       headline="קביעת שיעור עם אילנית"
-      valueProp="בחרו יום ומועד שמתאים לכם מתוך השבוע — והבקשה תועבר לאישור. נחזור אליכם בהקדם."
+      valueProp="בחרו יום ומועד שמתאים לכם מתוך השבוע — והשיעור נקבע מיד. אישור בוואטסאפ ברגע הקביעה."
       features={[
         { icon: CalendarCheck, label: 'תצוגת שבוע מלא — בוחרים יום ומועד פנוי' },
-        { icon: Clock, label: 'אישור מהיר ותזכורת בוואטסאפ' },
+        { icon: Clock, label: 'אישור מיידי ותזכורת בוואטסאפ' },
       ]}
     >
       <TokenBookingForm

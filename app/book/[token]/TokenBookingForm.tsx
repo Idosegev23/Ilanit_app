@@ -272,7 +272,12 @@ export function TokenBookingForm({
     }
   }
 
-  // ── Success: "ממתין לאישור" ────────────────────────────────────────────
+  // ── Success: the lesson is BOOKED ──────────────────────────────────────
+  // Not "pending": bookLesson writes status 'confirmed' with confirmedAt set,
+  // and dispatches booking_approved_student ("השיעור שלך אושר"). There is no
+  // approval step and no code path that creates a pending lesson, so promising
+  // one here left the student waiting for a second message that never comes.
+  //
   // The one moment worth celebrating in the whole flow, so it gets the full
   // treatment: glass over the aurora, blush blobs, a haloed success medallion.
   if (phase === 'done') {
@@ -290,16 +295,16 @@ export function TokenBookingForm({
 
           <div className="flex flex-col items-center gap-3">
             <h2 className="text-[28px] font-extrabold leading-tight tracking-tight text-ink sm:text-3xl">
-              הבקשה התקבלה!
+              השיעור נקבע!
             </h2>
-            <Badge tone="warning" className="px-3.5 py-1.5 text-sm">
-              <Clock className="size-4" aria-hidden="true" />
-              ממתין לאישור
+            <Badge tone="success" className="px-3.5 py-1.5 text-sm">
+              <CheckCircle2 className="size-4" aria-hidden="true" />
+              מאושר
             </Badge>
           </div>
 
           <p className="max-w-sm text-base leading-relaxed text-muted">
-            הבקשה לשיעור ביום{' '}
+            השיעור שלך ביום{' '}
             <span className="font-semibold text-ink">
               {selectedDateISO ? formatDateHe(selectedDateISO) : ''}
             </span>{' '}
@@ -307,10 +312,10 @@ export function TokenBookingForm({
             <span className="font-semibold text-ink tabular-nums" dir="ltr">
               {selected?.label}
             </span>{' '}
-            התקבלה וממתינה לאישור של אילנית.
+            נקבע ואושר.
           </p>
           <p className="max-w-sm text-sm text-muted">
-            תקבל/י הודעת וואטסאפ ברגע שהשיעור יאושר.
+            שלחנו לך הודעת וואטסאפ עם כל הפרטים, קישור להוספה ליומן וקישור לביטול.
           </p>
 
           <Button
