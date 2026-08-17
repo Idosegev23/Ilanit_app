@@ -35,3 +35,6 @@ coverage
 
 # Local-only student roster export (contains personal data)
 students.md
+
+# Roster snapshots taken before destructive maintenance (personal data)
+backup-roster-*.json
