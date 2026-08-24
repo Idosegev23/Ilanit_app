@@ -14,8 +14,9 @@ import { isSlotBookable, isSlotForceOpen, overlappingLessons } from '@/lib/avail
 import { insertEvent, cancelEvent } from '@/lib/google-calendar';
 import { addToCalendarUrl } from '@/lib/calendar-link';
 import { createCancelUrl } from '@/lib/availability/cancel';
+import { createActionToken } from '@/lib/tokens';
 import { notify, notifyStudent } from '@/lib/notifications/dispatch';
-import { formatILDateTime, toILDateStr, toILTimeStr } from '@/lib/time';
+import { formatILDateTime, ilHour, ilMinute, toILDateStr, toILTimeStr } from '@/lib/time';
 import { unforceOpenSlot } from '@/lib/availability/blocks';
 
 // Core booking service used by /api/book. The student is identified from a
@@ -60,7 +61,15 @@ export interface StudentChoice {
 }
 
 export type BookResult =
-  | { ok: true; lessonId: string }
+  | {
+      ok: true;
+      lessonId: string;
+      /**
+       * 'pending' when the slot fell after the approval cutoff — the lesson is
+       * NOT booked yet and Ilanit has to approve it.
+       */
+      status: 'confirmed' | 'pending';
+    }
   | {
       ok: false;
       error: 'invalid_input' | 'invalid_token' | 'slot_taken' | 'internal';
@@ -77,6 +86,29 @@ export type BookResult =
       message: string;
       candidates: StudentChoice[];
     };
+
+// Approve links stay usable for two weeks — the same horizon the payment and
+// assign links use. The lesson holds its slot for that whole time, so this is
+// deliberately generous rather than a few hours.
+const APPROVE_TTL_MIN = 60 * 24 * 14;
+
+/**
+ * Whether a slot starting at `start` falls at or after the approval cutoff.
+ *
+ * `cutoff` is a Postgres `time` — 'HH:MM' or 'HH:MM:SS'. NULL means the gate is
+ * off and everything self-confirms. The comparison uses the slot's ISRAEL-LOCAL
+ * hour and minute, not UTC: Israel is +2/+3 depending on DST, so comparing UTC
+ * hours would silently shift the cutoff by an hour twice a year.
+ *
+ * "After 18:00" is read as AT or after — an 18:00 lesson needs approval.
+ */
+export function requiresApproval(start: Date, cutoff: string | null): boolean {
+  if (!cutoff) return false;
+  const [h, m] = cutoff.split(':');
+  const cutoffMin = Number(h) * 60 + Number(m ?? 0);
+  if (!Number.isFinite(cutoffMin)) return false;
+  return ilHour(start) * 60 + ilMinute(start) >= cutoffMin;
+}
 
 /**
  * Race guard: after the slot passed isSlotBookable, re-check for a real
@@ -251,27 +283,40 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
   const location = settings.locationAddress || null;
   const datetime = formatILDateTime(start);
 
-  // 5) Insert the Google Calendar event FIRST — a confirmed lesson must be backed
-  //    by a real calendar entry (Ilanit's source of truth). If this fails the
-  //    booking fails rather than leaving a confirmed lesson off her calendar.
-  let googleEventId: string;
-  try {
-    const event = await insertEvent({
-      summary: `שיעור – ${student.name}`,
-      startISO: req.startISO,
-      endISO: req.endISO,
-      location: location || undefined,
-      attendeeEmail: student.email ?? undefined,
-      description: req.notes?.trim() || undefined,
-      extendedPrivate: { type: 'individual', student_id: student.id },
-    });
-    googleEventId = event.id;
-  } catch (err) {
-    console.error('[booking] calendar insert failed:', err);
-    return { ok: false, error: 'internal', message: 'שגיאה בהוספה ליומן Google' };
+  // 5) Late slots need Ilanit's approval instead of confirming themselves.
+  //    The comparison is on the slot's LOCAL start time — the ISO strings are
+  //    UTC, and Israel shifts by an hour across DST, so a naive UTC hour would
+  //    move the cutoff twice a year.
+  const needsApproval = requiresApproval(start, settings.approvalFromTime);
+
+  // 6) A CONFIRMED lesson must be backed by a real calendar entry (Ilanit's
+  //    source of truth), so the event goes in first and a failure fails the
+  //    booking rather than leaving a confirmed lesson off her calendar.
+  //    A PENDING lesson deliberately gets NO event: decideLesson() creates it on
+  //    approval, and writing one here would put an unapproved request on her
+  //    calendar and make the slot look taken to her.
+  let googleEventId: string | null = null;
+  if (!needsApproval) {
+    try {
+      const event = await insertEvent({
+        summary: `שיעור – ${student.name}`,
+        startISO: req.startISO,
+        endISO: req.endISO,
+        location: location || undefined,
+        attendeeEmail: student.email ?? undefined,
+        description: req.notes?.trim() || undefined,
+        extendedPrivate: { type: 'individual', student_id: student.id },
+      });
+      googleEventId = event.id;
+    } catch (err) {
+      console.error('[booking] calendar insert failed:', err);
+      return { ok: false, error: 'internal', message: 'שגיאה בהוספה ליומן Google' };
+    }
   }
 
-  // 6) Create the CONFIRMED lesson (no approval step) with price + location snapshot.
+  // 7) Create the lesson with a price + location snapshot. Pending lessons still
+  //    occupy the slot (overlappingLessons counts them), so nobody else can take
+  //    it while the request is waiting on Ilanit.
   let lesson: Lesson;
   try {
     const inserted = await db
@@ -282,12 +327,12 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
         studentId: student.id,
         startsAt: start,
         endsAt: end,
-        status: 'confirmed',
+        status: needsApproval ? 'pending' : 'confirmed',
         needsMatch: false,
         price,
         location,
         googleEventId,
-        confirmedAt: new Date(),
+        confirmedAt: needsApproval ? null : new Date(),
         bookedByName: student.name,
         bookedByPhone: student.phone,
         notes: req.notes?.trim() || null,
@@ -296,47 +341,76 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
     lesson = inserted[0];
   } catch (err) {
     console.error('[booking] failed to create lesson:', err);
-    // Don't strand the calendar event we just created.
-    try {
-      await cancelEvent(googleEventId);
-    } catch {
-      /* best-effort cleanup */
+    // Don't strand the calendar event we just created. A pending booking never
+    // made one, so there is nothing to clean up.
+    if (googleEventId) {
+      try {
+        await cancelEvent(googleEventId);
+      } catch {
+        /* best-effort cleanup */
+      }
     }
     return { ok: false, error: 'internal', message: 'שגיאה ביצירת השיעור' };
   }
 
-  // 7) Notify (best-effort; a persisted lesson is never lost on notify failure):
-  //    Ilanit that a lesson was scheduled, and the student a confirmation with an
-  //    add-to-calendar link + a cancel link.
+  // 8) Notify (best-effort; a persisted lesson is never lost on notify failure).
   try {
-    await notify(
-      'booking_scheduled_ilanit',
-      env().ILANIT_PHONE,
-      {
-        studentName: student.name,
-        phone: student.phone ?? '',
-        datetime,
-        price: price ?? 0,
-        notes: req.notes?.trim() ?? '',
-      },
-      `scheduled-ilanit:${lesson.id}`,
-      lesson.id,
-    );
-
     const cancelUrl = await createCancelUrl(lesson.id);
-    await notifyStudent(
-      student,
-      'booking_approved_student',
-      {
-        studentName: student.name,
-        datetime,
-        location: location ?? '',
-        calendarUrl: addToCalendarUrl({ title: 'שיעור עם אילנית', start, end, location }),
-        cancelUrl,
-      },
-      `approved:${lesson.id}`,
-      lesson.id,
-    );
+
+    if (needsApproval) {
+      // Ilanit gets a one-click approve/reject link; the student is told the
+      // request is waiting, NOT that the lesson is booked.
+      const rawToken = await createActionToken('approve', lesson.id, APPROVE_TTL_MIN);
+      const appUrl = env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
+      await notify(
+        'booking_pending_ilanit',
+        env().ILANIT_PHONE,
+        {
+          studentName: student.name,
+          phone: student.phone ?? '',
+          datetime,
+          price: price ?? 0,
+          notes: req.notes?.trim() ?? '',
+          actionUrl: `${appUrl}/a/${rawToken}`,
+        },
+        `pending-ilanit:${lesson.id}`,
+        lesson.id,
+      );
+      await notifyStudent(
+        student,
+        'booking_pending_student',
+        { studentName: student.name, datetime, cancelUrl },
+        `pending:${lesson.id}`,
+        lesson.id,
+      );
+    } else {
+      await notify(
+        'booking_scheduled_ilanit',
+        env().ILANIT_PHONE,
+        {
+          studentName: student.name,
+          phone: student.phone ?? '',
+          datetime,
+          price: price ?? 0,
+          notes: req.notes?.trim() ?? '',
+        },
+        `scheduled-ilanit:${lesson.id}`,
+        lesson.id,
+      );
+      await notifyStudent(
+        student,
+        'booking_approved_student',
+        {
+          studentName: student.name,
+          datetime,
+          location: location ?? '',
+          calendarUrl: addToCalendarUrl({ title: 'שיעור עם אילנית', start, end, location }),
+          cancelUrl,
+        },
+        `approved:${lesson.id}`,
+        lesson.id,
+      );
+    }
   } catch (err) {
     console.error('[booking] notification step failed (lesson kept):', err);
   }
@@ -352,5 +426,5 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
     }
   }
 
-  return { ok: true, lessonId: lesson.id };
+  return { ok: true, lessonId: lesson.id, status: needsApproval ? 'pending' : 'confirmed' };
 }

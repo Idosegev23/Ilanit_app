@@ -12,6 +12,7 @@ const DEFAULT_SETTINGS: Omit<NewSettings, 'id' | 'createdAt' | 'updatedAt'> = {
   leadTimeMin: 120,
   bookingHorizonDays: 14,
   reminderTime: '18:00',
+  approvalFromTime: '18:00',
   paymentFollowupDelayH: 24,
   groupBillingDay: 1,
   groupFollowupDays: 3,

@@ -10,6 +10,8 @@ export interface SettingsValues {
   leadTimeMin: number;
   bookingHorizonDays: number;
   reminderTime: string; // HH:mm
+  /** HH:mm from which a student booking needs approval; '' = gate off. */
+  approvalFromTime: string;
   groupBillingDay: number; // 1–28
   morningDocType: string | null;
   /** Fallback price (integer shekels) for a private lesson when a student has no own price. `null` = not set. */

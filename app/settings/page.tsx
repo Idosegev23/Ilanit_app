@@ -38,6 +38,7 @@ export default async function SettingsPage() {
     leadTimeMin: settingsRow.leadTimeMin,
     bookingHorizonDays: settingsRow.bookingHorizonDays,
     reminderTime: toHHmm(settingsRow.reminderTime),
+    approvalFromTime: settingsRow.approvalFromTime ? toHHmm(settingsRow.approvalFromTime) : '',
     groupBillingDay: settingsRow.groupBillingDay,
     morningDocType: settingsRow.morningDocType,
     defaultPrivatePrice: settingsRow.defaultPrivatePrice ?? null,

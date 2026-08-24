@@ -223,6 +223,10 @@ export const settings = pgTable('settings', {
   leadTimeMin: integer('lead_time_min').notNull().default(120),
   bookingHorizonDays: integer('booking_horizon_days').notNull().default(30),
   reminderTime: time('reminder_time').notNull().default('18:00'),
+  // Bookings that START at or after this local time need Ilanit's approval
+  // instead of confirming themselves. NULL disables the gate entirely, so she
+  // can turn it off without a deploy.
+  approvalFromTime: time('approval_from_time').default('18:00'),
   paymentFollowupDelayH: integer('payment_followup_delay_h').notNull().default(24),
   groupBillingDay: integer('group_billing_day').notNull().default(1),
   groupFollowupDays: integer('group_followup_days').notNull().default(3),

@@ -63,6 +63,8 @@ const putSchema = z.object({
     leadTimeMin: z.number().int().min(0).max(20160), // ≤ 14 days
     bookingHorizonDays: z.number().int().min(1).max(365),
     reminderTime: z.string().regex(HHMM, 'שעת תזכורת לא תקינה'),
+    // '' turns the approval gate off entirely; otherwise HH:mm.
+    approvalFromTime: z.union([z.literal(''), z.string().regex(HHMM, 'שעת אישור לא תקינה')]),
     groupBillingDay: z.number().int().min(1).max(28),
     morningDocType: z.string().trim().nullable(),
     // Fallback private-lesson price in whole shekels; null clears it. Used when
@@ -128,6 +130,7 @@ export async function PUT(request: Request) {
     leadTimeMin: s.leadTimeMin,
     bookingHorizonDays: s.bookingHorizonDays,
     reminderTime: s.reminderTime,
+    approvalFromTime: s.approvalFromTime === '' ? null : s.approvalFromTime,
     groupBillingDay: s.groupBillingDay,
     morningDocType: s.morningDocType,
     defaultPrivatePrice: s.defaultPrivatePrice,

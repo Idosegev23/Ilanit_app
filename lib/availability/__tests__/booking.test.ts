@@ -25,6 +25,8 @@ const state = vi.hoisted(() => ({
     defaultDurationMin: number;
   },
   insertedValues: null as Record<string, unknown> | null,
+  /** Local HH:mm from which a booking needs approval; null = gate off. */
+  approvalFromTime: null as string | null,
   /** Students reachable at the phone supplied by an open booking. */
   phoneMatches: [] as Array<Record<string, unknown>>,
 }));
@@ -65,6 +67,7 @@ const mocks = vi.hoisted(() => ({
     ) => ({ ok: true }),
   ),
   getSettings: vi.fn(async () => ({
+    approvalFromTime: state.approvalFromTime,
     defaultDurationMin: 60,
     bufferMin: 0,
     leadTimeMin: 0,
@@ -161,6 +164,7 @@ beforeEach(() => {
   };
   state.insertedValues = null;
   state.phoneMatches = [];
+  state.approvalFromTime = null;
   Object.values(mocks).forEach((m) => m.mockClear());
 });
 
@@ -331,7 +335,7 @@ describe('bookLesson — happy path (student from token)', () => {
       notes: 'מבחן מחר',
     });
 
-    expect(res).toEqual({ ok: true, lessonId: 'lesson-1' });
+    expect(res).toEqual({ ok: true, lessonId: 'lesson-1', status: 'confirmed' });
 
     // student resolved from the token (no createStudent in this flow)
     expect(mocks.resolveBookingLink).toHaveBeenCalledWith('tok');
@@ -402,6 +406,68 @@ describe('bookLesson — happy path (student from token)', () => {
   it('still succeeds when notifications fail', async () => {
     mocks.notify.mockRejectedValueOnce(new Error('green api down'));
     const res = await bookLesson({ token: 'tok', startISO: FUTURE_START, endISO: FUTURE_END });
-    expect(res).toEqual({ ok: true, lessonId: 'lesson-1' });
+    expect(res).toEqual({ ok: true, lessonId: 'lesson-1', status: 'confirmed' });
+  });
+});
+
+
+describe('bookLesson — the after-hours approval gate', () => {
+  // 15:00Z is 18:00 in Israel (summer). FUTURE_START is 07:00Z = 10:00 IL, i.e.
+  // safely before any cutoff, which is why the other suites are unaffected.
+  const LATE_START = '2026-06-08T15:00:00.000Z';
+  const LATE_END = '2026-06-08T16:00:00.000Z';
+
+  const late = () => ({ token: 't', startISO: LATE_START, endISO: LATE_END });
+
+  it('creates a PENDING lesson with no calendar event', async () => {
+    state.approvalFromTime = '18:00';
+
+    const res = await bookLesson(late());
+
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.status).toBe('pending');
+    expect(state.insertedValues).toMatchObject({ status: 'pending', confirmedAt: null });
+    // An unapproved request must not land on Ilanit's calendar, and must not
+    // make the slot look taken to her.
+    expect(state.insertedValues?.googleEventId).toBeNull();
+    expect(mocks.insertEvent).not.toHaveBeenCalled();
+  });
+
+  it('asks Ilanit to approve and tells the student it is waiting', async () => {
+    state.approvalFromTime = '18:00';
+
+    await bookLesson(late());
+
+    const templates = mocks.notify.mock.calls.map((c) => c[0]);
+    expect(templates).toContain('booking_pending_ilanit');
+    expect(templates).not.toContain('booking_scheduled_ilanit');
+
+    const ilanit = mocks.notify.mock.calls.find((c) => c[0] === 'booking_pending_ilanit');
+    // Without a link she cannot act on it from her phone.
+    expect(String(ilanit?.[2]?.actionUrl ?? '')).toContain('/a/');
+  });
+
+  it('still self-confirms a slot before the cutoff', async () => {
+    state.approvalFromTime = '18:00';
+
+    const res = await bookLesson({ token: 't', startISO: FUTURE_START, endISO: FUTURE_END });
+
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.status).toBe('confirmed');
+    expect(state.insertedValues).toMatchObject({ status: 'confirmed' });
+    expect(mocks.insertEvent).toHaveBeenCalled();
+  });
+
+  it('self-confirms a late slot when the gate is switched off', async () => {
+    state.approvalFromTime = null;
+
+    const res = await bookLesson(late());
+
+    expect(res.ok).toBe(true);
+    if (!res.ok) return;
+    expect(res.status).toBe('confirmed');
+    expect(mocks.insertEvent).toHaveBeenCalled();
   });
 });

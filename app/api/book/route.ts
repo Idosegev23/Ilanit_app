@@ -40,7 +40,9 @@ export async function POST(req: Request) {
   const result = await bookLesson(input);
 
   if (result.ok) {
-    return NextResponse.json({ ok: true, lessonId: result.lessonId });
+    // `status` tells the form whether to celebrate a booking or explain that the
+    // request is waiting on Ilanit.
+    return NextResponse.json({ ok: true, lessonId: result.lessonId, status: result.status });
   }
 
   // The number belongs to several students. Not a failure — the caller has to

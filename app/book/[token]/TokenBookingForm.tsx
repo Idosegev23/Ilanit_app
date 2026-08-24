@@ -179,6 +179,12 @@ export function TokenBookingForm({
    * "the booking failed".
    */
   const [candidates, setCandidates] = React.useState<StudentChoice[] | null>(null);
+  /**
+   * How the booking actually landed. Slots after the approval cutoff come back
+   * 'pending' — the lesson is NOT booked, so the success screen must not say it
+   * is. Anything else self-confirmed.
+   */
+  const [bookedStatus, setBookedStatus] = React.useState<'confirmed' | 'pending'>('confirmed');
 
   // Identity shown in the header: public/fresh bookings have no real name yet.
   const headerName = requireDetails ? (name.trim() || 'תיאום שיעור') : studentName;
@@ -284,6 +290,7 @@ export function TokenBookingForm({
       // Details are saved now — don't re-ask when booking further lessons.
       if (requireDetails) setDetailsLocked(true);
       setCandidates(null);
+      setBookedStatus(json.status === 'pending' ? 'pending' : 'confirmed');
       setPhase('done');
     } catch {
       setFormError('שגיאה בקביעת השיעור');
@@ -308,14 +315,16 @@ export function TokenBookingForm({
     await doBook();
   }
 
-  // ── Success: the lesson is BOOKED ──────────────────────────────────────
-  // Not "pending": bookLesson writes status 'confirmed' with confirmedAt set,
-  // and dispatches booking_approved_student ("השיעור שלך אושר"). There is no
-  // approval step and no code path that creates a pending lesson, so promising
-  // one here left the student waiting for a second message that never comes.
+  // ── Success ────────────────────────────────────────────────────────────
+  // Two outcomes, and the screen must not blur them. Most slots self-confirm.
+  // Slots at or after the approval cutoff come back 'pending': the lesson holds
+  // its place but is NOT booked until Ilanit approves, and the student will get
+  // a second WhatsApp when she does. Claiming "booked" here would be the same
+  // mistake in reverse as the old copy, which promised an approval step that no
+  // longer existed.
   //
   // The one moment worth celebrating in the whole flow, so it gets the full
-  // treatment: glass over the aurora, blush blobs, a haloed success medallion.
+  // treatment: glass over the aurora, blush blobs, a haloed medallion.
   if (phase === 'done') {
     return (
       <Card className="relative overflow-hidden shadow-pop animate-scale-in">
@@ -324,19 +333,37 @@ export function TokenBookingForm({
 
         <CardBody className="relative z-10 flex flex-col items-center gap-5 px-6 py-14 text-center">
           <span className="flex size-24 items-center justify-center rounded-full bg-white/70 shadow-glow ring-1 ring-white/70 backdrop-blur">
-            <span className="flex size-16 items-center justify-center rounded-full bg-success-soft text-success ring-1 ring-success/20">
-              <CheckCircle2 className="size-9" aria-hidden="true" />
+            <span
+              className={cn(
+                'flex size-16 items-center justify-center rounded-full ring-1',
+                bookedStatus === 'pending'
+                  ? 'bg-warning-soft text-warning ring-warning/20'
+                  : 'bg-success-soft text-success ring-success/20',
+              )}
+            >
+              {bookedStatus === 'pending' ? (
+                <Clock className="size-9" aria-hidden="true" />
+              ) : (
+                <CheckCircle2 className="size-9" aria-hidden="true" />
+              )}
             </span>
           </span>
 
           <div className="flex flex-col items-center gap-3">
             <h2 className="text-[28px] font-extrabold leading-tight tracking-tight text-ink sm:text-3xl">
-              השיעור נקבע!
+              {bookedStatus === 'pending' ? 'הבקשה נשלחה!' : 'השיעור נקבע!'}
             </h2>
-            <Badge tone="success" className="px-3.5 py-1.5 text-sm">
-              <CheckCircle2 className="size-4" aria-hidden="true" />
-              מאושר
-            </Badge>
+            {bookedStatus === 'pending' ? (
+              <Badge tone="warning" className="px-3.5 py-1.5 text-sm">
+                <Clock className="size-4" aria-hidden="true" />
+                ממתין לאישור
+              </Badge>
+            ) : (
+              <Badge tone="success" className="px-3.5 py-1.5 text-sm">
+                <CheckCircle2 className="size-4" aria-hidden="true" />
+                מאושר
+              </Badge>
+            )}
           </div>
 
           <p className="max-w-sm text-base leading-relaxed text-muted">
@@ -348,10 +375,12 @@ export function TokenBookingForm({
             <span className="font-semibold text-ink tabular-nums" dir="ltr">
               {selected?.label}
             </span>{' '}
-            נקבע ואושר.
+            {bookedStatus === 'pending' ? 'נשמר לך, וממתין לאישור של אילנית.' : 'נקבע ואושר.'}
           </p>
           <p className="max-w-sm text-sm text-muted">
-            שלחנו לך הודעת וואטסאפ עם כל הפרטים, קישור להוספה ליומן וקישור לביטול.
+            {bookedStatus === 'pending'
+              ? 'המועד שמור עבורך בינתיים. נשלח לך הודעת וואטסאפ ברגע שאילנית תאשר.'
+              : 'שלחנו לך הודעת וואטסאפ עם כל הפרטים, קישור להוספה ליומן וקישור לביטול.'}
           </p>
 
           <Button

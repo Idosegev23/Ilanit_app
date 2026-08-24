@@ -294,6 +294,21 @@ export function BusinessSettingsForm({ values, onChange }: BusinessSettingsFormP
               />
               <p className="text-xs text-muted">השעה שבה נשלחות תזכורות לשיעורי מחר.</p>
             </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="approvalFromTime">שיעורים מהשעה הזו דורשים אישור</Label>
+              <Input
+                id="approvalFromTime"
+                type="time"
+                value={values.approvalFromTime}
+                onChange={(e) => set('approvalFromTime', e.target.value)}
+                className="tabular-nums"
+                dir="ltr"
+              />
+              <p className="text-xs text-muted">
+                שיעור שתלמיד קובע בשעה הזו או אחריה לא ייקבע אוטומטית — הוא ימתין
+                לאישור שלך, והמועד יישמר עבורו בינתיים. השאירי ריק כדי לבטל.
+              </p>
+            </div>
           </div>
         </Section>
 

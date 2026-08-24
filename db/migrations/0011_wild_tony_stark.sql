@@ -1,0 +1,1 @@
+ALTER TABLE "settings" ADD COLUMN "approval_from_time" time DEFAULT '18:00';
