@@ -16,7 +16,7 @@ import { addToCalendarUrl } from '@/lib/calendar-link';
 import { createCancelUrl } from '@/lib/availability/cancel';
 import { createActionToken } from '@/lib/tokens';
 import { notify, notifyStudent } from '@/lib/notifications/dispatch';
-import { formatILDateTime, ilHour, ilMinute, toILDateStr, toILTimeStr } from '@/lib/time';
+import { formatILDateTime, ilHour, ilMinute, nowIL, toILDateStr, toILTimeStr } from '@/lib/time';
 import { unforceOpenSlot } from '@/lib/availability/blocks';
 
 // Core booking service used by /api/book. The student is identified from a
@@ -93,21 +93,27 @@ export type BookResult =
 const APPROVE_TTL_MIN = 60 * 24 * 14;
 
 /**
- * Whether a slot starting at `start` falls at or after the approval cutoff.
+ * Whether a booking MADE at `bookedAt` needs Ilanit's approval.
+ *
+ * The gate is on when the request is submitted, NOT on when the lesson is: a
+ * booking placed at 19:00 for a lesson three weeks away still needs approval,
+ * because the point is that Ilanit is off in the evening and does not want
+ * lessons confirming themselves while she is not looking. The slot's own time is
+ * irrelevant here.
  *
  * `cutoff` is a Postgres `time` — 'HH:MM' or 'HH:MM:SS'. NULL means the gate is
- * off and everything self-confirms. The comparison uses the slot's ISRAEL-LOCAL
- * hour and minute, not UTC: Israel is +2/+3 depending on DST, so comparing UTC
- * hours would silently shift the cutoff by an hour twice a year.
+ * off and everything self-confirms. The comparison uses the ISRAEL-LOCAL hour
+ * and minute, not UTC: Israel is +2/+3 depending on DST, so comparing UTC hours
+ * would silently shift the cutoff by an hour twice a year.
  *
- * "After 18:00" is read as AT or after — an 18:00 lesson needs approval.
+ * "After 18:00" is read as AT or after — a booking made at 18:00 needs approval.
  */
-export function requiresApproval(start: Date, cutoff: string | null): boolean {
+export function requiresApproval(bookedAt: Date, cutoff: string | null): boolean {
   if (!cutoff) return false;
   const [h, m] = cutoff.split(':');
   const cutoffMin = Number(h) * 60 + Number(m ?? 0);
   if (!Number.isFinite(cutoffMin)) return false;
-  return ilHour(start) * 60 + ilMinute(start) >= cutoffMin;
+  return ilHour(bookedAt) * 60 + ilMinute(bookedAt) >= cutoffMin;
 }
 
 /**
@@ -283,11 +289,11 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
   const location = settings.locationAddress || null;
   const datetime = formatILDateTime(start);
 
-  // 5) Late slots need Ilanit's approval instead of confirming themselves.
-  //    The comparison is on the slot's LOCAL start time — the ISO strings are
-  //    UTC, and Israel shifts by an hour across DST, so a naive UTC hour would
-  //    move the cutoff twice a year.
-  const needsApproval = requiresApproval(start, settings.approvalFromTime);
+  // 5) Bookings placed in the evening need Ilanit's approval instead of
+  //    confirming themselves. This is keyed on NOW — the moment the request is
+  //    made — not on when the lesson is: a 19:00 booking for a lesson next month
+  //    still waits, because she is off and is not watching the diary.
+  const needsApproval = requiresApproval(nowIL(), settings.approvalFromTime);
 
   // 6) A CONFIRMED lesson must be backed by a real calendar entry (Ilanit's
   //    source of truth), so the event goes in first and a failure fails the

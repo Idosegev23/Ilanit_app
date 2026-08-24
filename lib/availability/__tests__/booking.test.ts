@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Unit tests for the token-based booking service. The student is identified from
 // a personal booking-link token (no name/phone form). All cross-module deps are
@@ -412,17 +412,29 @@ describe('bookLesson — happy path (student from token)', () => {
 
 
 describe('bookLesson — the after-hours approval gate', () => {
-  // 15:00Z is 18:00 in Israel (summer). FUTURE_START is 07:00Z = 10:00 IL, i.e.
-  // safely before any cutoff, which is why the other suites are unaffected.
-  const LATE_START = '2026-06-08T15:00:00.000Z';
-  const LATE_END = '2026-06-08T16:00:00.000Z';
+  // The gate reads the CLOCK, not the slot, so these drive a fake system time.
+  // FUTURE_START stays a normal mid-morning slot throughout — proving the
+  // lesson's own hour is irrelevant to the decision.
+  const req = () => ({ token: 't', startISO: FUTURE_START, endISO: FUTURE_END });
 
-  const late = () => ({ token: 't', startISO: LATE_START, endISO: LATE_END });
+  /** 2026-06-08, `hhmm` Israel local (summer, +3). */
+  const atIL = (hh: number, mm = 0) =>
+    new Date(Date.UTC(2026, 5, 8, hh - 3, mm));
 
-  it('creates a PENDING lesson with no calendar event', async () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function bookingMadeAt(hh: number, mm = 0) {
+    vi.useFakeTimers();
+    vi.setSystemTime(atIL(hh, mm));
+  }
+
+  it('creates a PENDING lesson with no calendar event when booked in the evening', async () => {
     state.approvalFromTime = '18:00';
+    bookingMadeAt(19, 30);
 
-    const res = await bookLesson(late());
+    const res = await bookLesson(req());
 
     expect(res.ok).toBe(true);
     if (!res.ok) return;
@@ -436,22 +448,26 @@ describe('bookLesson — the after-hours approval gate', () => {
 
   it('asks Ilanit to approve and tells the student it is waiting', async () => {
     state.approvalFromTime = '18:00';
+    bookingMadeAt(20);
 
-    await bookLesson(late());
+    await bookLesson(req());
 
     const templates = mocks.notify.mock.calls.map((c) => c[0]);
     expect(templates).toContain('booking_pending_ilanit');
+    expect(templates).toContain('booking_pending_student');
     expect(templates).not.toContain('booking_scheduled_ilanit');
+    expect(templates).not.toContain('booking_approved_student');
 
     const ilanit = mocks.notify.mock.calls.find((c) => c[0] === 'booking_pending_ilanit');
     // Without a link she cannot act on it from her phone.
     expect(String(ilanit?.[2]?.actionUrl ?? '')).toContain('/a/');
   });
 
-  it('still self-confirms a slot before the cutoff', async () => {
+  it('self-confirms the very same slot when booked during the day', async () => {
     state.approvalFromTime = '18:00';
+    bookingMadeAt(11);
 
-    const res = await bookLesson({ token: 't', startISO: FUTURE_START, endISO: FUTURE_END });
+    const res = await bookLesson(req());
 
     expect(res.ok).toBe(true);
     if (!res.ok) return;
@@ -460,14 +476,31 @@ describe('bookLesson — the after-hours approval gate', () => {
     expect(mocks.insertEvent).toHaveBeenCalled();
   });
 
-  it('self-confirms a late slot when the gate is switched off', async () => {
+  it('gates on the cutoff minute itself', async () => {
+    state.approvalFromTime = '18:00';
+    bookingMadeAt(18, 0);
+
+    const res = await bookLesson(req());
+
+    expect(res.ok && res.status).toBe('pending');
+  });
+
+  it('lets the minute before through', async () => {
+    state.approvalFromTime = '18:00';
+    bookingMadeAt(17, 59);
+
+    const res = await bookLesson(req());
+
+    expect(res.ok && res.status).toBe('confirmed');
+  });
+
+  it('self-confirms an evening booking when the gate is switched off', async () => {
     state.approvalFromTime = null;
+    bookingMadeAt(21);
 
-    const res = await bookLesson(late());
+    const res = await bookLesson(req());
 
-    expect(res.ok).toBe(true);
-    if (!res.ok) return;
-    expect(res.status).toBe('confirmed');
+    expect(res.ok && res.status).toBe('confirmed');
     expect(mocks.insertEvent).toHaveBeenCalled();
   });
 });
