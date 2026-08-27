@@ -334,7 +334,11 @@ export function LessonsView({
         </div>
 
         {tab === 'manual' ? (
-          <ManualLessonForm key={`manual-${formKey}`} onSuccess={() => setDialogOpen(false)} />
+          <ManualLessonForm
+            key={`manual-${formKey}`}
+            studentOptions={studentOptions}
+            onSuccess={() => setDialogOpen(false)}
+          />
         ) : (
           <RecurringForm
             key={`recurring-${formKey}`}

@@ -2,12 +2,14 @@
 
 import * as React from 'react';
 import { useActionState } from 'react';
-import { CheckCircle2, AlertCircle, User, CalendarClock } from 'lucide-react';
+import { CheckCircle2, AlertCircle, User, CalendarClock, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { createManualLesson, type ActionResult } from './actions';
+import { StudentPicker } from '@/components/ui/student-picker';
+import type { StudentOption } from './data';
 
 const initialState: ActionResult = { ok: false };
 
@@ -69,9 +71,23 @@ function Section({
 // Single-lesson manual create form. Lives inside the lessons dialog. Preserves
 // the exact form `name` fields and the createManualLesson server action; on a
 // successful create it fires onSuccess so the host can close + reset.
-export function ManualLessonForm({ onSuccess }: { onSuccess?: () => void }) {
+export function ManualLessonForm({
+  onSuccess,
+  studentOptions,
+}: {
+  onSuccess?: () => void;
+  studentOptions: StudentOption[];
+}) {
   const [state, formAction, pending] = useActionState(action, initialState);
   const succeeded = state.ok && !state.error;
+
+  // Picking from the roster is the default. Creating someone is a separate mode
+  // you have to opt into — the old form only offered free-text name + phone, so
+  // scheduling for an existing student and inventing a duplicate looked
+  // identical while you typed.
+  const [studentId, setStudentId] = React.useState<string | null>(null);
+  const [creating, setCreating] = React.useState(false);
+  const [newName, setNewName] = React.useState('');
 
   React.useEffect(() => {
     if (succeeded) {
@@ -83,20 +99,64 @@ export function ManualLessonForm({ onSuccess }: { onSuccess?: () => void }) {
   return (
     <form action={formAction} className="space-y-4">
       <Section icon={User} title="פרטי התלמיד">
-        <Field label="שם תלמיד" htmlFor="manual-name" required>
-          <Input id="manual-name" name="name" required />
-        </Field>
-        <Field label="טלפון" htmlFor="manual-phone" required>
-          <Input
-            id="manual-phone"
-            name="phone"
-            inputMode="tel"
-            dir="ltr"
-            className="text-start"
-            required
-            placeholder="0501234567"
-          />
-        </Field>
+        {creating ? (
+          <>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-ink">תלמיד/ה חדש/ה</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreating(false);
+                  setNewName('');
+                }}
+                className="inline-flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-medium text-primary-700 transition hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+              >
+                <ArrowRight className="size-4" aria-hidden="true" />
+                בחירה מהרשימה
+              </button>
+            </div>
+            <input type="hidden" name="createNew" value="1" />
+            <Field label="שם תלמיד" htmlFor="manual-name" required>
+              <Input
+                id="manual-name"
+                name="name"
+                required
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </Field>
+            <Field
+              label="טלפון"
+              htmlFor="manual-phone"
+              required
+              hint="אם המספר או השם כבר קיימים — נעצור ונציע לבחור מהרשימה."
+            >
+              <Input
+                id="manual-phone"
+                name="phone"
+                inputMode="tel"
+                dir="ltr"
+                className="text-start"
+                required
+                placeholder="0501234567"
+              />
+            </Field>
+          </>
+        ) : (
+          <>
+            <input type="hidden" name="studentId" value={studentId ?? ''} />
+            <StudentPicker
+              id="manual-student"
+              students={studentOptions}
+              value={studentId}
+              onChange={setStudentId}
+              onCreateNew={(typed) => {
+                setNewName(typed);
+                setCreating(true);
+              }}
+            />
+          </>
+        )}
       </Section>
 
       <Section icon={CalendarClock} title="מועד ותמחור">

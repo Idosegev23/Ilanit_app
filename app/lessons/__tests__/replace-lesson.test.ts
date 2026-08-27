@@ -34,11 +34,15 @@ vi.mock('@/lib/db', () => ({
 }));
 
 const getStudent = vi.fn(async (_id: string): Promise<unknown> => null);
-const findStudentByPhone = vi.fn(async (_p: string): Promise<unknown> => null);
+// Replacement resolution now goes through the duplicate guards: everyone
+// reachable at the phone, and anyone with the same normalised name.
+const findStudentsByContactPhone = vi.fn(async (_p: string): Promise<unknown[]> => []);
+const findStudentsByNormalizedName = vi.fn(async (_n: string): Promise<unknown[]> => []);
 const createStudent = vi.fn(async (v: { name: string; phone: string }) => ({ id: 'new-1', ...v }));
 vi.mock('@/lib/students', () => ({
   getStudent: (id: string) => getStudent(id),
-  findStudentByPhone: (p: string) => findStudentByPhone(p),
+  findStudentsByContactPhone: (p: string) => findStudentsByContactPhone(p),
+  findStudentsByNormalizedName: (n: string) => findStudentsByNormalizedName(n),
   createStudent: (v: { name: string; phone: string }) => createStudent(v),
   findOrCreateStudentByName: vi.fn(),
 }));
@@ -89,7 +93,8 @@ beforeEach(() => {
   getStudent.mockReset().mockImplementation(async (id: string) =>
     id === 'stud-orig' ? { id: 'stud-orig', name: 'לינוי', phone: '+972500000000' } : { id, name: 'דנה', phone: '+972511111111' },
   );
-  findStudentByPhone.mockReset().mockResolvedValue(null);
+  findStudentsByContactPhone.mockReset().mockResolvedValue([]);
+  findStudentsByNormalizedName.mockReset().mockResolvedValue([]);
   createStudent.mockClear();
   cancelOne.mockReset().mockResolvedValue(undefined);
   notify.mockReset().mockResolvedValue({ ok: true });

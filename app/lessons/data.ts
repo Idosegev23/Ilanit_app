@@ -25,6 +25,14 @@ export interface LessonRow {
 export interface StudentOption {
   id: string;
   name: string;
+  /**
+   * Contact details are part of the option, not decoration: siblings share a
+   * parent's number and several students have near-identical names, so a picker
+   * showing names alone cannot be disambiguated by eye.
+   */
+  phone: string | null;
+  guardianName: string | null;
+  guardianPhone: string | null;
 }
 
 export interface GroupOption {
@@ -77,10 +85,16 @@ export async function loadLessons(): Promise<LessonRow[]> {
   }));
 }
 
-/** Loads active students as form options (id + name). */
+/** Loads active students as form options, with the contacts a picker needs. */
 export async function loadStudentOptions(): Promise<StudentOption[]> {
   const all = await listStudents();
-  return all.map((s) => ({ id: s.id, name: s.name }));
+  return all.map((s) => ({
+    id: s.id,
+    name: s.name,
+    phone: s.phone,
+    guardianName: s.guardianName,
+    guardianPhone: s.guardianPhone,
+  }));
 }
 
 /** Loads active groups as form options (id + name). */

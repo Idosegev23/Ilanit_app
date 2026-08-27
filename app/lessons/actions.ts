@@ -10,7 +10,8 @@ import { lessons, type Student, type Lesson } from '@/db/schema';
 import { and, eq, isNull, isNotNull } from 'drizzle-orm';
 import {
   getStudent,
-  findStudentByPhone,
+  findStudentsByContactPhone,
+  findStudentsByNormalizedName,
   createStudent,
   findOrCreateStudentByName,
 } from '@/lib/students';
@@ -192,7 +193,28 @@ export async function replaceLesson(input: ReplaceLessonInput): Promise<ActionRe
     if (!name) return { ok: false, error: 'יש להזין שם תלמיד/ה' };
     if (!phoneRaw) return { ok: false, error: 'יש להזין טלפון' };
     const phone = normalizePhoneIL(phoneRaw);
-    student = (await findStudentByPhone(phone)) ?? (await createStudent({ name, phone }));
+    // Same guard as createManualLesson: never mint a student as a side effect
+    // of scheduling. A replacement is almost always someone already on the
+    // roster, and the old fallback turned a mistyped digit into a duplicate.
+    const byPhone = await findStudentsByContactPhone(phone);
+    if (byPhone.length > 1) {
+      return {
+        ok: false,
+        error: `המספר הזה רשום אצל ${byPhone.map((s) => s.name).join(', ')} — בחרי תלמיד/ה מהרשימה`,
+      };
+    }
+    if (byPhone.length === 1) {
+      student = byPhone[0];
+    } else {
+      const byName = await findStudentsByNormalizedName(name);
+      if (byName.length > 0) {
+        return {
+          ok: false,
+          error: `כבר קיים/ת תלמיד/ה בשם "${byName[0].name}" — בחרי מהרשימה במקום ליצור חדש/ה`,
+        };
+      }
+      student = await createStudent({ name, phone });
+    }
   }
 
   if (student.id === original.studentId) {
@@ -297,11 +319,25 @@ export async function markLessonNotALesson(lessonId: string): Promise<ActionResu
 }
 
 /**
- * Creates a single lesson manually. Matches/creates the student by phone,
- * snapshots price + location, inserts the Google event, and marks it confirmed.
+ * Creates a single lesson manually.
+ *
+ * Student resolution is deliberately strict. This action used to take a typed
+ * name + phone and do `findStudentByPhone(phone) ?? createStudent(...)`, which
+ * meant one mistyped digit silently minted a second record for someone who
+ * already existed — the origin of the duplicate students cleaned up on 17/08.
+ *
+ * Now there are two explicit paths:
+ *   • `studentId` — picked from the roster. The normal case, and it cannot
+ *     create anything.
+ *   • `createNew=1` + name/phone — a deliberate act, refused if the phone OR
+ *     the name already belongs to an active student.
+ *
+ * There is no path left that creates a student as a side effect.
  */
 export async function createManualLesson(formData: FormData): Promise<ActionResult> {
   try {
+    const studentId = String(formData.get('studentId') ?? '').trim();
+    const createNew = String(formData.get('createNew') ?? '') === '1';
     const name = String(formData.get('name') ?? '').trim();
     const phoneRaw = String(formData.get('phone') ?? '').trim();
     const dateStr = String(formData.get('date') ?? '').trim();
@@ -310,12 +346,15 @@ export async function createManualLesson(formData: FormData): Promise<ActionResu
     const priceRaw = String(formData.get('price') ?? '').trim();
     const notes = String(formData.get('notes') ?? '').trim();
 
-    if (!name) return { ok: false, error: 'יש להזין שם תלמיד' };
-    if (!phoneRaw) return { ok: false, error: 'יש להזין טלפון' };
+    if (!studentId && !createNew) return { ok: false, error: 'יש לבחור תלמיד/ה מהרשימה' };
+    if (createNew) {
+      if (!name) return { ok: false, error: 'יש להזין שם תלמיד' };
+      if (!phoneRaw) return { ok: false, error: 'יש להזין טלפון' };
+    }
     if (!dateStr) return { ok: false, error: 'יש לבחור תאריך' };
     if (!timeStr) return { ok: false, error: 'יש לבחור שעה' };
 
-    const phone = normalizePhoneIL(phoneRaw);
+    const phone = createNew ? normalizePhoneIL(phoneRaw) : '';
     const settings = await getSettings();
     const durationMin = durationRaw ? Number(durationRaw) : settings.defaultDurationMin;
     if (!Number.isFinite(durationMin) || durationMin <= 0) {
@@ -325,8 +364,29 @@ export async function createManualLesson(formData: FormData): Promise<ActionResu
     const startsAt = parseILDateTime(dateStr, timeStr);
     const endsAt = new Date(startsAt.getTime() + durationMin * 60 * 1000);
 
-    let student = await findStudentByPhone(phone);
-    if (!student) {
+    let student: Student | null;
+    if (studentId) {
+      student = await getStudent(studentId);
+      if (!student) return { ok: false, error: 'התלמיד/ה שנבחר/ה לא נמצא/ה' };
+    } else {
+      // Explicit creation — but only after proving nobody matches. Both checks
+      // matter: the phone catches the same person re-entered exactly, the name
+      // catches them re-entered with a typo in the number, which is the case a
+      // phone check alone would wave through.
+      const byPhone = await findStudentsByContactPhone(phone);
+      if (byPhone.length > 0) {
+        return {
+          ok: false,
+          error: `המספר הזה כבר רשום אצל ${byPhone.map((s) => s.name).join(', ')} — בחרי מהרשימה במקום ליצור חדש/ה`,
+        };
+      }
+      const byName = await findStudentsByNormalizedName(name);
+      if (byName.length > 0) {
+        return {
+          ok: false,
+          error: `כבר קיים/ת תלמיד/ה בשם "${byName[0].name}" — בחרי מהרשימה, או שני את השם אם זה באמת מישהו אחר`,
+        };
+      }
       student = await createStudent({ name, phone });
     }
 

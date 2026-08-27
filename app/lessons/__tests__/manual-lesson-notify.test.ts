@@ -28,7 +28,8 @@ vi.mock('@/lib/db', () => ({
 
 const student = { id: 'stud-1', name: 'מיתר', phone: '+972501234567', email: null, defaultPrice: 120, guardianPhone: null };
 vi.mock('@/lib/students', () => ({
-  findStudentByPhone: vi.fn(async () => student),
+  findStudentsByContactPhone: vi.fn(async () => []),
+  findStudentsByNormalizedName: vi.fn(async () => []),
   createStudent: vi.fn(async () => student),
   getStudent: vi.fn(async () => student),
   findOrCreateStudentByName: vi.fn(),
@@ -60,10 +61,11 @@ vi.mock('@/lib/availability/cancel', () => ({ createCancelUrl: vi.fn(async () =>
 
 import { createManualLesson } from '@/app/lessons/actions';
 
+// The normal path: a student PICKED from the roster. Free-text name + phone no
+// longer schedules anything on its own — that was the duplicate factory.
 function form(date: string): FormData {
   const f = new FormData();
-  f.set('name', 'מיתר');
-  f.set('phone', '0501234567');
+  f.set('studentId', 'student-1');
   f.set('date', date);
   f.set('time', '10:00');
   return f;

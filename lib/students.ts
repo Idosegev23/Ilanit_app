@@ -78,6 +78,19 @@ function normalizeName(name: string): string {
 }
 
 /**
+ * Active students whose name matches `name` ignoring case and extra spaces.
+ *
+ * Used as a duplicate guard before creating someone: a phone check alone misses
+ * the common case, which is the same child entered twice with a mistyped digit.
+ */
+export async function findStudentsByNormalizedName(name: string): Promise<Student[]> {
+  const target = normalizeName(name);
+  if (!target) return [];
+  const active = await db.select().from(students).where(eq(students.archived, false));
+  return active.filter((s) => normalizeName(s.name) === target);
+}
+
+/**
  * Finds an existing student by normalized (case/space-insensitive) name, or
  * creates one. Used by the AI calendar-import resolver, which only has a name
  * (and optionally a subject for the receipt label) — no phone yet. Active
