@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import * as React from "react";
+import * as React from 'react';
 import {
   CircleDollarSign,
   CalendarDays,
@@ -8,16 +8,16 @@ import {
   AlertTriangle,
   RotateCcw,
   Search,
-} from "lucide-react";
-import { PageHeader } from "@/components/ui/page-header";
-import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
-import { StatCard } from "@/components/ui/stat-card";
-import { Select } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { StatusPill, type StatusKind } from "@/components/ui/badge";
-import { EmptyState } from "@/components/ui/empty-state";
+} from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card, CardHeader, CardTitle, CardBody } from '@/components/ui/card';
+import { StatCard } from '@/components/ui/stat-card';
+import { Select } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { StatusPill, type StatusKind } from '@/components/ui/badge';
+import { EmptyState } from '@/components/ui/empty-state';
 import {
   Table,
   TableHeader,
@@ -26,14 +26,11 @@ import {
   TableHead,
   TableCell,
   TableNumCell,
-} from "@/components/ui/table";
-import {
-  StudentPicker,
-  type PickableStudent,
-} from "@/components/ui/student-picker";
-import { runReportAction } from "./actions";
-import type { ReportFilters, ReportResult } from "@/lib/reports/query";
-import type { AnswerKey, Preset } from "@/lib/reports/presets";
+} from '@/components/ui/table';
+import { StudentPicker, type PickableStudent } from '@/components/ui/student-picker';
+import { runReportAction } from './actions';
+import type { ReportFilters, ReportResult } from '@/lib/reports/query';
+import type { AnswerKey, Preset } from '@/lib/reports/presets';
 
 interface ReportsViewProps {
   students: PickableStudent[];
@@ -44,48 +41,48 @@ interface ReportsViewProps {
 }
 
 const LESSON_STATUS_LABELS: Record<string, string> = {
-  all: "כל השיעורים",
-  completed: "בוצעו",
-  confirmed: "מאושרים",
-  pending: "ממתינים",
-  cancelled: "בוטלו",
-  rejected: "נדחו",
+  all: 'כל השיעורים',
+  completed: 'בוצעו',
+  confirmed: 'מאושרים',
+  pending: 'ממתינים',
+  cancelled: 'בוטלו',
+  rejected: 'נדחו',
 };
 
 const PAYMENT_STATUS_LABELS: Record<string, string> = {
-  all: "כל מצבי התשלום",
-  due: "פתוח לתשלום",
-  paid: "שולם",
-  waived: "פטור",
-  unbilled: "לא חויב כלל",
+  all: 'כל מצבי התשלום',
+  due: 'פתוח לתשלום',
+  paid: 'שולם',
+  waived: 'פטור',
+  unbilled: 'לא חויב כלל',
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  all: "פרטני וקבוצתי",
-  individual: "פרטני",
-  group_session: "קבוצתי",
+  all: 'פרטני וקבוצתי',
+  individual: 'פרטני',
+  group_session: 'קבוצתי',
 };
 
 const METHOD_LABELS: Record<string, string> = {
-  bit: "ביט",
-  cash: "מזומן",
-  transfer: "העברה",
-  other: "אחר",
+  bit: 'ביט',
+  cash: 'מזומן',
+  transfer: 'העברה',
+  other: 'אחר',
 };
 
 function shekels(n: number): string {
-  return `${n.toLocaleString("he-IL")} ₪`;
+  return `${n.toLocaleString('he-IL')} ₪`;
 }
 
 function formatWhen(value: Date | string): string {
   const d = value instanceof Date ? value : new Date(value);
-  return new Intl.DateTimeFormat("he-IL", {
-    timeZone: "Asia/Jerusalem",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  return new Intl.DateTimeFormat('he-IL', {
+    timeZone: 'Asia/Jerusalem',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(d);
 }
 
@@ -110,9 +107,7 @@ export function ReportsView({
   );
 
   const [filters, setFilters] = React.useState<ReportFilters>(initialFilters);
-  const [activePreset, setActivePreset] = React.useState<string | null>(
-    initialPresetId,
-  );
+  const [activePreset, setActivePreset] = React.useState<string | null>(initialPresetId);
   const [result, setResult] = React.useState<ReportResult>(initialResult);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -141,7 +136,7 @@ export function ReportsView({
       })
       .catch((e: unknown) => {
         if (id !== runId.current) return;
-        setError(e instanceof Error ? e.message : "שגיאה בהרצת הדוח");
+        setError(e instanceof Error ? e.message : 'שגיאה בהרצת הדוח');
       })
       .finally(() => {
         if (id === runId.current) setPending(false);
@@ -170,39 +165,39 @@ export function ReportsView({
     value: string;
     hint?: string;
     icon: typeof Wallet;
-    tone: "primary" | "success" | "warning" | "danger";
+    tone: 'primary' | 'success' | 'warning' | 'danger';
   }> = [
     {
-      key: "lessons",
-      label: "שיעורים",
-      value: totals.lessons.toLocaleString("he-IL"),
+      key: 'lessons',
+      label: 'שיעורים',
+      value: totals.lessons.toLocaleString('he-IL'),
       hint: `${totals.billed} חויבו · ${totals.unbilled} ללא חיוב`,
       icon: CalendarDays,
-      tone: "primary",
+      tone: 'primary',
     },
     {
-      key: "paid",
-      label: "שולם",
+      key: 'paid',
+      label: 'שולם',
       value: shekels(totals.paid),
-      hint: "שיעורים פרטניים",
+      hint: 'שיעורים פרטניים',
       icon: Wallet,
-      tone: "success",
+      tone: 'success',
     },
     {
-      key: "due",
-      label: "פתוח לתשלום",
+      key: 'due',
+      label: 'פתוח לתשלום',
       value: shekels(totals.due),
-      hint: "שיעורים פרטניים",
+      hint: 'שיעורים פרטניים',
       icon: CircleDollarSign,
-      tone: "warning",
+      tone: 'warning',
     },
     {
-      key: "unbilled",
-      label: "שיעורים ללא חיוב",
-      value: totals.unbilled.toLocaleString("he-IL"),
-      hint: "לא נוצרה עבורם דרישת תשלום",
+      key: 'unbilled',
+      label: 'שיעורים ללא חיוב',
+      value: totals.unbilled.toLocaleString('he-IL'),
+      hint: 'לא נוצרה עבורם דרישת תשלום',
       icon: AlertTriangle,
-      tone: "danger",
+      tone: 'danger',
     },
   ];
 
@@ -215,11 +210,7 @@ export function ReportsView({
       />
 
       {/* Quick questions */}
-      <div
-        className="flex flex-wrap gap-2"
-        role="group"
-        aria-label="שאלות מהירות"
-      >
+      <div className="flex flex-wrap gap-2" role="group" aria-label="שאלות מהירות">
         {presets.map((p) => {
           const on = activePreset === p.id;
           return (
@@ -229,12 +220,12 @@ export function ReportsView({
               onClick={() => applyPreset(p)}
               aria-pressed={on}
               className={[
-                "rounded-full border px-4 py-2 text-sm font-semibold transition",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2",
+                'rounded-full border px-4 py-2 text-sm font-semibold transition',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2',
                 on
-                  ? "border-transparent bg-primary-soft text-ink shadow-soft"
-                  : "border-line bg-white/70 text-ink hover:bg-primary-soft/60",
-              ].join(" ")}
+                  ? 'border-transparent bg-primary-soft text-ink shadow-soft'
+                  : 'border-line bg-white/70 text-ink hover:bg-primary-soft/60',
+              ].join(' ')}
             >
               {p.question}
             </button>
@@ -253,9 +244,7 @@ export function ReportsView({
             icon={s.icon}
             tone={s.tone}
             className={
-              answerKey === s.key
-                ? "ring-2 ring-primary-600 ring-offset-2 ring-offset-canvas"
-                : ""
+              answerKey === s.key ? 'ring-2 ring-primary-600 ring-offset-2 ring-offset-canvas' : ''
             }
           />
         ))}
@@ -263,33 +252,26 @@ export function ReportsView({
 
       {/* Group billing lives on its own line: it is monthly and per student,
           with no lesson behind it, so it must not be added into the tiles. */}
-      {groupBilling.applies &&
-        (groupBilling.paid > 0 || groupBilling.due > 0) && (
-          <Card>
-            <CardBody className="flex flex-wrap items-center justify-between gap-3 py-4">
-              <div>
-                <p className="text-sm font-semibold text-ink">גבייה קבוצתית</p>
-                <p className="text-xs text-muted">
-                  חיוב חודשי לכל חבר/ת קבוצה — לא תלוי בשיעור בודד
-                </p>
-              </div>
-              <div className="flex gap-6">
-                <p className="text-sm">
-                  <span className="text-muted">שולם </span>
-                  <span className="font-bold tabular-nums">
-                    {shekels(groupBilling.paid)}
-                  </span>
-                </p>
-                <p className="text-sm">
-                  <span className="text-muted">פתוח </span>
-                  <span className="font-bold tabular-nums">
-                    {shekels(groupBilling.due)}
-                  </span>
-                </p>
-              </div>
-            </CardBody>
-          </Card>
-        )}
+      {groupBilling.applies && (groupBilling.paid > 0 || groupBilling.due > 0) && (
+        <Card>
+          <CardBody className="flex flex-wrap items-center justify-between gap-3 py-4">
+            <div>
+              <p className="text-sm font-semibold text-ink">גבייה קבוצתית</p>
+              <p className="text-xs text-muted">חיוב חודשי לכל חבר/ת קבוצה — לא תלוי בשיעור בודד</p>
+            </div>
+            <div className="flex gap-6">
+              <p className="text-sm">
+                <span className="text-muted">שולם </span>
+                <span className="font-bold tabular-nums">{shekels(groupBilling.paid)}</span>
+              </p>
+              <p className="text-sm">
+                <span className="text-muted">פתוח </span>
+                <span className="font-bold tabular-nums">{shekels(groupBilling.due)}</span>
+              </p>
+            </div>
+          </CardBody>
+        </Card>
+      )}
 
       {/* Filters */}
       <Card>
@@ -311,7 +293,7 @@ export function ReportsView({
                 <Label htmlFor="report-group">קבוצה</Label>
                 <Select
                   id="report-group"
-                  value={filters.groupId ?? ""}
+                  value={filters.groupId ?? ''}
                   onChange={(e) => patch({ groupId: e.target.value || null })}
                 >
                   <option value="">כל הקבוצות</option>
@@ -329,7 +311,7 @@ export function ReportsView({
                   <Input
                     id="report-from"
                     type="date"
-                    value={filters.from ?? ""}
+                    value={filters.from ?? ''}
                     onChange={(e) => patch({ from: e.target.value || null })}
                   />
                 </div>
@@ -338,7 +320,7 @@ export function ReportsView({
                   <Input
                     id="report-to"
                     type="date"
-                    value={filters.to ?? ""}
+                    value={filters.to ?? ''}
                     onChange={(e) => patch({ to: e.target.value || null })}
                   />
                 </div>
@@ -351,11 +333,10 @@ export function ReportsView({
               <Label htmlFor="report-lesson-status">מצב השיעור</Label>
               <Select
                 id="report-lesson-status"
-                value={filters.lessonStatus ?? "all"}
+                value={filters.lessonStatus ?? 'all'}
                 onChange={(e) =>
                   patch({
-                    lessonStatus: e.target
-                      .value as ReportFilters["lessonStatus"],
+                    lessonStatus: e.target.value as ReportFilters['lessonStatus'],
                   })
                 }
               >
@@ -370,11 +351,10 @@ export function ReportsView({
               <Label htmlFor="report-payment-status">מצב התשלום</Label>
               <Select
                 id="report-payment-status"
-                value={filters.paymentStatus ?? "all"}
+                value={filters.paymentStatus ?? 'all'}
                 onChange={(e) =>
                   patch({
-                    paymentStatus: e.target
-                      .value as ReportFilters["paymentStatus"],
+                    paymentStatus: e.target.value as ReportFilters['paymentStatus'],
                   })
                 }
               >
@@ -389,10 +369,8 @@ export function ReportsView({
               <Label htmlFor="report-type">סוג</Label>
               <Select
                 id="report-type"
-                value={filters.type ?? "all"}
-                onChange={(e) =>
-                  patch({ type: e.target.value as ReportFilters["type"] })
-                }
+                value={filters.type ?? 'all'}
+                onChange={(e) => patch({ type: e.target.value as ReportFilters['type'] })}
               >
                 {Object.entries(TYPE_LABELS).map(([v, l]) => (
                   <option key={v} value={v}>
@@ -405,9 +383,7 @@ export function ReportsView({
 
           <div className="flex items-center justify-between gap-3">
             <p className="text-sm text-muted" aria-live="polite">
-              {pending
-                ? "מחשב…"
-                : `${result.rows.length.toLocaleString("he-IL")} שורות`}
+              {pending ? 'מחשב…' : `${result.rows.length.toLocaleString('he-IL')} שורות`}
             </p>
             <Button
               type="button"
@@ -459,11 +435,9 @@ export function ReportsView({
                       </a>
                     </TableCell>
                     <TableNumCell>{s.lessons}</TableNumCell>
-                    <TableNumCell>
-                      {s.paid ? shekels(s.paid) : "—"}
-                    </TableNumCell>
-                    <TableNumCell>{s.due ? shekels(s.due) : "—"}</TableNumCell>
-                    <TableNumCell>{s.unbilled || "—"}</TableNumCell>
+                    <TableNumCell>{s.paid ? shekels(s.paid) : '—'}</TableNumCell>
+                    <TableNumCell>{s.due ? shekels(s.due) : '—'}</TableNumCell>
+                    <TableNumCell>{s.unbilled || '—'}</TableNumCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -501,22 +475,20 @@ export function ReportsView({
               <TableBody>
                 {result.rows.map((r) => (
                   <TableRow key={r.lessonId}>
-                    <TableCell className="whitespace-nowrap">
-                      {formatWhen(r.startsAt)}
-                    </TableCell>
+                    <TableCell className="whitespace-nowrap">{formatWhen(r.startsAt)}</TableCell>
                     <TableCell>
                       {r.studentId ? (
                         <a
                           className="underline decoration-primary-600 underline-offset-4"
                           href={`/students/${r.studentId}`}
                         >
-                          {r.studentName ?? "—"}
+                          {r.studentName ?? '—'}
                         </a>
                       ) : (
-                        (r.studentName ?? "—")
+                        (r.studentName ?? '—')
                       )}
                     </TableCell>
-                    <TableCell>{r.groupName ?? "—"}</TableCell>
+                    <TableCell>{r.groupName ?? '—'}</TableCell>
                     <TableCell>
                       <StatusPill status={r.lessonStatus as StatusKind} />
                     </TableCell>
@@ -531,14 +503,10 @@ export function ReportsView({
                           )}
                         </span>
                       ) : (
-                        <span className="text-xs font-medium text-danger">
-                          לא חויב
-                        </span>
+                        <span className="text-xs font-medium text-danger">לא חויב</span>
                       )}
                     </TableCell>
-                    <TableNumCell>
-                      {r.amount == null ? "—" : shekels(r.amount)}
-                    </TableNumCell>
+                    <TableNumCell>{r.amount == null ? '—' : shekels(r.amount)}</TableNumCell>
                   </TableRow>
                 ))}
               </TableBody>

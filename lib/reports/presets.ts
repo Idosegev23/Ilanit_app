@@ -24,7 +24,10 @@ export function monthRange(ref: Date): { from: string; to: string } {
   const m = ref.getMonth();
   const pad = (n: number) => String(n).padStart(2, '0');
   const last = new Date(y, m + 1, 0).getDate();
-  return { from: `${y}-${pad(m + 1)}-01`, to: `${y}-${pad(m + 1)}-${pad(last)}` };
+  return {
+    from: `${y}-${pad(m + 1)}-01`,
+    to: `${y}-${pad(m + 1)}-${pad(last)}`,
+  };
 }
 
 export function presetsFor(now: Date): Preset[] {
@@ -41,25 +44,44 @@ export function presetsFor(now: Date): Preset[] {
       id: 'income-month',
       question: 'כמה שולם על שיעורי החודש?',
       answer: 'paid',
-      filters: { paymentStatus: 'paid', lessonStatus: 'all', type: 'all', ...month },
+      filters: {
+        paymentStatus: 'paid',
+        lessonStatus: 'all',
+        type: 'all',
+        ...month,
+      },
     },
     {
       id: 'lessons-month',
       question: 'כמה שיעורים היו החודש?',
       answer: 'lessons',
-      filters: { lessonStatus: 'completed', paymentStatus: 'all', type: 'all', ...month },
+      filters: {
+        lessonStatus: 'completed',
+        paymentStatus: 'all',
+        type: 'all',
+        ...month,
+      },
     },
     {
       id: 'cancelled-month',
       question: 'מה בוטל החודש?',
       answer: 'lessons',
-      filters: { lessonStatus: 'cancelled', paymentStatus: 'all', type: 'all', ...month },
+      filters: {
+        lessonStatus: 'cancelled',
+        paymentStatus: 'all',
+        type: 'all',
+        ...month,
+      },
     },
     {
       id: 'unbilled',
       question: 'אילו שיעורים לא חויבו בכלל?',
       answer: 'unbilled',
-      filters: { lessonStatus: 'completed', paymentStatus: 'unbilled', type: 'all' },
+      filters: {
+        lessonStatus: 'completed',
+        paymentStatus: 'unbilled',
+        type: 'individual',
+      },
     },
   ];
 }
