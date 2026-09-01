@@ -1,0 +1,35 @@
+{
+  "eitan": {
+    "id": "56513e63-7fbb-4e1f-a0a5-d9691ee1d9c5",
+    "name": "איתן בישלה",
+    "phone": "+972524864005",
+    "email": null,
+    "guardianName": "בת-אל",
+    "guardianPhone": "+972524864005",
+    "receiptLabel": null,
+    "defaultPrice": 140,
+    "defaultDurationMin": 60,
+    "notes": null,
+    "avatarUrl": null,
+    "avatarFetchedAt": "2026-07-13T07:42:21.551Z",
+    "archived": false,
+    "createdAt": "2026-07-12T11:38:35.419Z"
+  },
+  "group": {
+    "id": "41d37be3-eb89-493f-8933-fb43f9413db6",
+    "name": "אנגלית כיתה ו",
+    "monthlyPrice": 320,
+    "location": "עתניאל 10/2",
+    "description": null,
+    "maxMembers": 6,
+    "active": true,
+    "createdAt": "2026-09-01T10:50:15.623Z"
+  },
+  "membership": {
+    "id": "da74b25f-9e96-475c-8c55-5048e4f63e40",
+    "groupId": "41d37be3-eb89-493f-8933-fb43f9413db6",
+    "studentId": "56513e63-7fbb-4e1f-a0a5-d9691ee1d9c5",
+    "active": true,
+    "joinedAt": "2026-09-01T10:51:03.267Z"
+  }
+}

@@ -81,7 +81,12 @@ vi.mock('@/lib/db', () => ({
   db: {
     select: () => ({
       from: (table: { __t?: string }) => {
-        const rows = table?.__t === 'payments' ? state.payments : state.lessons;
+        const rows =
+          table?.__t === 'payments'
+            ? state.payments
+            : table?.__t === 'students'
+              ? state.students
+              : state.lessons;
         const chain: any = {
           leftJoin: () => chain,
           innerJoin: () => chain,
@@ -118,6 +123,53 @@ beforeEach(() => {
   state.bounds = [];
   state.consumed = { type: 'pay', lessonId: 'lesson-1' };
   Object.values(mocks).forEach((m) => m.mockClear());
+});
+
+describe('who the charge is for', () => {
+  /*
+    Ilanit's Bit alert used to open with an empty name, because it read
+    `lesson.bookedByName` — which is only set when someone TYPED a name. A
+    lesson booked against a roster student leaves it null, so she was told a
+    payment had happened without being told whose.
+  */
+  it('names the linked student, not the typed booking name', async () => {
+    state.payments = [{ id: 'pay-1', status: 'due', amount: 140, lessonId: 'lesson-1' }];
+    state.lessons = [
+      { id: 'lesson-1', studentId: 'stu-1', bookedByName: null, type: 'individual', startsAt: new Date('2026-09-01T13:00:00Z') },
+    ];
+    state.students = [{ id: 'stu-1', name: 'תהל בישלה' }];
+
+    await declareIntent('tok', 'bit');
+
+    const msg = state.notified.find((n) => n.template === 'pay_intent_ilanit');
+    expect(msg.vars.studentName).toBe('תהל בישלה');
+  });
+
+  it('falls back to the typed name when no student is linked', async () => {
+    state.payments = [{ id: 'pay-1', status: 'due', amount: 140, lessonId: 'lesson-1' }];
+    state.lessons = [
+      { id: 'lesson-1', studentId: null, bookedByName: 'הורה חדש', type: 'individual', startsAt: new Date('2026-09-01T13:00:00Z') },
+    ];
+    state.students = [];
+
+    await declareIntent('tok', 'bit');
+
+    const msg = state.notified.find((n) => n.template === 'pay_intent_ilanit');
+    expect(msg.vars.studentName).toBe('הורה חדש');
+  });
+
+  it('never sends an alert with an empty name', async () => {
+    state.payments = [{ id: 'pay-1', status: 'due', amount: 140, lessonId: 'lesson-1' }];
+    state.lessons = [
+      { id: 'lesson-1', studentId: null, bookedByName: null, type: 'individual', startsAt: new Date('2026-09-01T13:00:00Z') },
+    ];
+    state.students = [];
+
+    await declareIntent('tok', 'bit');
+
+    const msg = state.notified.find((n) => n.template === 'pay_intent_ilanit');
+    expect(String(msg.vars.studentName).trim()).not.toBe('');
+  });
 });
 
 describe('declareIntent — a declaration is never a payment', () => {

@@ -19,6 +19,35 @@ import {
 import { notify, notifyStudent } from '@/lib/notifications/dispatch';
 import { formatILDateTime, nowIL } from '@/lib/time';
 
+/**
+ * Who a charge is FOR, in the words Ilanit needs to read it.
+ *
+ * `lessons.bookedByName` holds only what someone TYPED — a public booking made
+ * by hand, or a calendar event's title. It is null for every lesson booked
+ * against a student who was picked from the roster, which is most of them, so
+ * reading the name from there alone produced payment alerts that opened with an
+ * empty name: Ilanit got "בחר/ה תשלום בביט 💳" with no idea who had paid.
+ *
+ * The linked student is therefore the first source, and the typed name only a
+ * fallback for lessons that never got one.
+ */
+async function payerNameFor(lesson: {
+  studentId: string | null;
+  bookedByName: string | null;
+}): Promise<string> {
+  if (lesson.studentId) {
+    const row = (
+      await db
+        .select({ name: students.name })
+        .from(students)
+        .where(eq(students.id, lesson.studentId))
+        .limit(1)
+    )[0];
+    if (row?.name) return row.name;
+  }
+  return lesson.bookedByName?.trim() || 'תלמיד/ה';
+}
+
 /*
   Collection.
 
@@ -110,7 +139,7 @@ export async function peekPayToken(rawToken: string): Promise<PayView | null> {
   if (!pay) return null;
 
   return {
-    studentName: lesson.bookedByName ?? 'תלמיד/ה',
+    studentName: await payerNameFor(lesson),
     amount: pay.amount,
     context:
       lesson.type === 'group_session'
@@ -184,7 +213,7 @@ export async function declareIntent(
         'pay_declared_ilanit',
         env().ILANIT_PHONE,
         {
-          studentName: lesson?.bookedByName ?? '',
+          studentName: lesson ? await payerNameFor(lesson) : '',
           amount: pay.amount,
           context,
           actionUrl: `${env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/p/${raw}`,
@@ -204,7 +233,7 @@ export async function declareIntent(
         'pay_intent_ilanit',
         env().ILANIT_PHONE,
         {
-          studentName: lesson?.bookedByName ?? '',
+          studentName: lesson ? await payerNameFor(lesson) : '',
           methodLabel: 'תשלום בביט',
           amount: pay.amount,
           context,
@@ -376,7 +405,7 @@ export async function runPaymentConfirms(): Promise<PaymentConfirmsResult> {
         'pay_confirm_ilanit',
         env().ILANIT_PHONE,
         {
-          studentName: lesson.bookedByName ?? '',
+          studentName: await payerNameFor(lesson),
           methodLabel: 'תשלום בביט',
           amount: pay.amount,
           context:
