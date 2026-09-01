@@ -7,9 +7,15 @@ import { and, eq, gt, isNull } from 'drizzle-orm';
 // flow (approve / payment / assign_student). Only the hash is stored; the raw
 // token lives only in the link.
 
-export type ActionTokenType = 'approve' | 'payment' | 'assign_student' | 'cancel';
+export type ActionTokenType =
+  | 'approve'
+  | 'payment'
+  | 'assign_student'
+  | 'cancel'
+  // Parent-facing settle screen, distinct from 'payment' which is Ilanit's.
+  | 'pay';
 
-function hashToken(raw: string): string {
+export function hashToken(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');
 }
 

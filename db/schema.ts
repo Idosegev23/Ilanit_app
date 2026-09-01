@@ -128,6 +128,16 @@ export const payments = pgTable(
       .default('due'),
     amount: integer('amount').notNull(), // ₪
     method: text('method', { enum: ['bit', 'cash', 'transfer', 'other'] }),
+    /*
+      What the PARENT declared, which is not the same as money received. A Bit
+      "me" link carries no amount and no reference, so nothing comes back from
+      the payment itself — the intent is only a signal that Ilanit should be
+      asked to confirm. `paidAt` stays the record of an actual settlement.
+    */
+    intent: text('intent', { enum: ['cash', 'bit'] }),
+    intentAt: timestamp('intent_at', { withTimezone: true }),
+    /** Set once Ilanit has been asked to confirm, so she is asked only once. */
+    confirmAskedAt: timestamp('confirm_asked_at', { withTimezone: true }),
     paidAt: timestamp('paid_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -234,6 +244,12 @@ export const settings = pgTable('settings', {
   // Default price (₪, integer) for a private lesson, used when a student has no
   // own defaultPrice. Nullable = no default configured.
   defaultPrivatePrice: integer('default_private_price'),
+  /*
+    Ilanit's permanent Bit "me" link. It identifies her only — no amount, no
+    reference — so the amount travels in the message text and settlement is
+    still confirmed by hand.
+  */
+  bitLink: text('bit_link'),
   morningDocType: text('morning_doc_type'),
   morningBusinessMeta: jsonb('morning_business_meta'),
   timezone: text('timezone').notNull().default('Asia/Jerusalem'),
@@ -257,7 +273,10 @@ export const actionTokens = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     tokenHash: text('token_hash').notNull(),
-    type: text('type', { enum: ['approve', 'payment', 'assign_student', 'cancel'] }).notNull(),
+    // 'payment' is Ilanit's own settle screen; 'pay' is the PARENT-facing one.
+    type: text('type', {
+      enum: ['approve', 'payment', 'assign_student', 'cancel', 'pay'],
+    }).notNull(),
     lessonId: uuid('lesson_id')
       .notNull()
       .references(() => lessons.id, { onDelete: 'cascade' }),

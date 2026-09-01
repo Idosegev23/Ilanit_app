@@ -8,7 +8,7 @@ import { NavOverlay } from './nav-overlay';
 // Route prefixes that are STANDALONE (no app shell): public booking, login, and
 // the single-action token pages Ilanit opens from her phone. These still get the
 // aurora — it lives in the root layout, above this component.
-const STANDALONE_PREFIXES = ['/book', '/login', '/a/', '/m/', '/p/', '/c/'];
+const STANDALONE_PREFIXES = ['/book', '/login', '/a/', '/m/', '/p/', '/c/', '/pay/'];
 
 function isStandalone(pathname: string): boolean {
   if (pathname === '/') return true; // root just redirects

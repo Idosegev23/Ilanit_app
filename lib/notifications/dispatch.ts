@@ -20,6 +20,13 @@ const COLLECTION_TEMPLATES: ReadonlySet<TemplateKey> = new Set<TemplateKey>([
   'payment_request_group',
   'group_billing_member',
   'group_roster_ilanit',
+  // The new collection flow sits under the same master switch, so turning
+  // collection off silences it too rather than leaving half of it live.
+  'pay_request_individual',
+  'pay_request_group',
+  'pay_intent_ilanit',
+  'pay_confirm_ilanit',
+  'pay_nudge_student',
 ]);
 
 export interface NotifyResult {

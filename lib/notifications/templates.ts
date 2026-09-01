@@ -24,7 +24,13 @@ export type TemplateKey =
   | 'payment_followup_ilanit'
   | 'assign_student_ilanit'
   | 'group_billing_member'
-  | 'group_roster_ilanit';
+  | 'group_roster_ilanit'
+  | 'pay_request_individual'
+  | 'pay_request_group'
+  | 'pay_intent_ilanit'
+  | 'pay_confirm_ilanit'
+  | 'pay_nudge_student'
+  | 'receipts_due_ilanit';
 
 type Vars = Record<string, string | number>;
 
@@ -146,6 +152,42 @@ const builders: Record<TemplateKey, (v: Vars) => string> = {
     `שלום ${s(v, 'studentName')}! 🗓️\n` +
     `התשלום החודשי עבור קבוצת "${s(v, 'groupName')}" לחודש ${s(v, 'month')}: ${money(v, 'amount')}.\n` +
     `אפשר לשלם בביט / מזומן / העברה. תודה!`,
+
+  /*
+    Parent-facing payment request. The amount is in the TEXT because a Bit "me"
+    link cannot carry one — it identifies the payee and nothing else.
+  */
+  pay_request_individual: (v) =>
+    `שלום ${s(v, 'studentName')} 🙏\n` +
+    `עבור השיעור ב-${s(v, 'datetime')}: ${money(v, 'amount')}.\n` +
+    `לתשלום ולעדכון: ${s(v, 'actionUrl')}`,
+
+  pay_request_group: (v) =>
+    `שלום ${s(v, 'studentName')} 🙏\n` +
+    `התשלום החודשי לקבוצת "${s(v, 'groupName')}" עבור ${s(v, 'month')}: ${money(v, 'amount')}.\n` +
+    `לתשלום ולעדכון: ${s(v, 'actionUrl')}`,
+
+  /** Fires the moment a parent picks a method — Ilanit sees it as it happens. */
+  pay_intent_ilanit: (v) =>
+    `${s(v, 'studentName')} בחר/ה ${s(v, 'methodLabel')} 💳\n` +
+    `סכום: ${money(v, 'amount')}\n` +
+    `${s(v, 'context')}`,
+
+  /** The loop-closer: nothing comes back from Bit or cash, so we ask. */
+  pay_confirm_ilanit: (v) =>
+    `בירור תשלום ❓\n` +
+    `${s(v, 'studentName')} סימן/ה ${s(v, 'methodLabel')} עבור ${s(v, 'context')}.\n` +
+    `סכום: ${money(v, 'amount')}\n` +
+    `האם התקבל? ${s(v, 'actionUrl')}`,
+
+  pay_nudge_student: (v) =>
+    `שלום ${s(v, 'studentName')} 🙏\n` +
+    `תזכורת קטנה — נותר תשלום פתוח של ${money(v, 'amount')} עבור ${s(v, 'context')}.\n` +
+    `לתשלום ולעדכון: ${s(v, 'actionUrl')}`,
+
+  /** The system never issues a receipt; it only reminds Ilanit to. */
+  receipts_due_ilanit: (v) =>
+    `קבלות להוצאה 🧾\n${s(v, 'summary')}`,
 
   group_roster_ilanit: (v) =>
     `חיוב חודשי לקבוצת "${s(v, 'groupName')}" (${s(v, 'month')}) נוצר.\n` +

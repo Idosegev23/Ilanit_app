@@ -92,6 +92,13 @@
       "when": 1788244102788,
       "tag": "0012_late_shatterstar",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1788255039330,
+      "tag": "0013_purple_timeslip",
+      "breakpoints": true
     }
   ]
 }

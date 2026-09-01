@@ -5,6 +5,7 @@ import {
   runCalendarScan,
   runPaymentFollowup,
 } from '@/lib/jobs';
+import { runPaymentRequests, runPaymentConfirms } from '@/lib/payments';
 import { reconcileCancellations } from '@/lib/jobs/reconcile-cancellations';
 import { getSettings } from '@/lib/settings';
 import { ilHour, nowIL } from '@/lib/time';
@@ -42,6 +43,26 @@ export async function GET(req: Request): Promise<Response> {
     ran.calendarScan = await runCalendarScan(sinceISO, now.toISOString());
   } catch (err) {
     ran.calendarScanError = err instanceof Error ? err.message : String(err);
+  }
+
+  /*
+    Collection — every run.
+
+    Requests bill private lessons that ended at least half an hour ago; because
+    the cron is hourly that delay is a floor, not an exact moment. Confirms then
+    ask Ilanit about declarations that have had time to actually happen. Both
+    are idempotent — a lesson with a payment row is skipped, and a payment with
+    confirmAskedAt set is never asked about twice — so a re-run costs nothing.
+  */
+  try {
+    ran.paymentRequests = await runPaymentRequests();
+  } catch (err) {
+    ran.paymentRequestsError = err instanceof Error ? err.message : String(err);
+  }
+  try {
+    ran.paymentConfirms = await runPaymentConfirms();
+  } catch (err) {
+    ran.paymentConfirmsError = err instanceof Error ? err.message : String(err);
   }
 
   // (ד) Cancellation reconcile — every run. Frees slots for future standalone
