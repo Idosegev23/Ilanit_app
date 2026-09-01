@@ -19,6 +19,7 @@ import {
   findStudentByPhone,
 } from '@/lib/students';
 import { createReceipt } from '@/lib/morning';
+import { createGroupBillingToken } from '@/lib/tokens';
 import { notify } from '@/lib/notifications/dispatch';
 import { sendFileByUrl } from '@/lib/whatsapp/provider';
 import { env } from '@/lib/env';
@@ -412,6 +413,9 @@ function normalizeMonth(monthISO: string): string {
  * WhatsApp group-billing message, and Ilanit gets a roster link per group.
  * Returns the number of billing rows created.
  */
+/** A month's pay link stays usable for 60 days — well past its own month. */
+const GROUP_PAY_TOKEN_TTL_MIN = 60 * 24 * 60;
+
 export async function generateMonthlyBilling(monthISO: string): Promise<{ created: number }> {
   const month = normalizeMonth(monthISO);
   const monthLabel = toILMonthStr(month);
@@ -462,15 +466,26 @@ export async function generateMonthlyBilling(monthISO: string): Promise<{ create
       created += 1;
       groupCreated += 1;
 
-      // Notify the member — routed to the parent's phone when set (children).
+      /*
+        Notify the member — routed to the parent's phone when set (children).
+        The message now carries a pay link, so a group charge offers the same
+        two choices as a private lesson ("שילמתי כבר" / "לתשלום בביט") instead
+        of being a bare statement of what is owed.
+      */
+      const payToken = await createGroupBillingToken(
+        'pay',
+        billing.id,
+        GROUP_PAY_TOKEN_TTL_MIN,
+      );
       await notify(
-        'group_billing_member',
+        'pay_request_group',
         contactPhoneFor(member),
         {
           studentName: member.name,
           groupName: group.name,
           month: monthLabel,
           amount: group.monthlyPrice,
+          actionUrl: `${appUrl}/pay/${payToken}`,
         },
         `group_billing:${billing.id}`,
       );

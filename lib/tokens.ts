@@ -36,6 +36,22 @@ export async function createActionToken(
 }
 
 /**
+ * The same, for a monthly GROUP charge, which is not a lesson and so cannot
+ * hang off lessonId.
+ */
+export async function createGroupBillingToken(
+  type: ActionTokenType,
+  groupBillingId: string,
+  ttlMin: number,
+): Promise<string> {
+  const raw = randomBytes(32).toString('base64url');
+  const tokenHash = hashToken(raw);
+  const expiresAt = new Date(Date.now() + ttlMin * 60_000);
+  await db.insert(actionTokens).values({ tokenHash, type, groupBillingId, expiresAt });
+  return raw;
+}
+
+/**
  * Atomically consumes a token: returns its {type, lessonId} only if it exists,
  * is unexpired, and has not been used. The single guarded UPDATE flips usedAt
  * only when usedAt IS NULL and the token is still valid, making it truly
@@ -43,7 +59,13 @@ export async function createActionToken(
  */
 export async function consumeActionToken(
   raw: string,
-): Promise<{ type: ActionTokenType; lessonId: string } | null> {
+): Promise<{
+  type: ActionTokenType;
+  /** Set for a lesson-bound token; null for a group charge. */
+  lessonId: string | null;
+  /** Set for a group-charge token; null for a lesson. */
+  groupBillingId: string | null;
+} | null> {
   if (!raw) return null;
   const tokenHash = hashToken(raw);
   const now = new Date();
@@ -62,5 +84,5 @@ export async function consumeActionToken(
 
   if (updated.length === 0) return null;
   const row = updated[0];
-  return { type: row.type, lessonId: row.lessonId };
+  return { type: row.type, lessonId: row.lessonId, groupBillingId: row.groupBillingId };
 }

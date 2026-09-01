@@ -59,7 +59,7 @@ export async function peekAssignToken(rawToken: string): Promise<AssignTokenView
       ),
     )
     .limit(1);
-  if (rows.length === 0) return null;
+  if (rows.length === 0 || !rows[0].lessonId) return null;
 
   const lesson = await loadLesson(rows[0].lessonId);
   if (!lesson) return null;
@@ -101,7 +101,7 @@ async function rememberAlias(
  */
 export async function assignStudent(input: AssignInput): Promise<AssignResult> {
   const consumed = await consumeActionToken(input.token);
-  if (!consumed || consumed.type !== 'assign_student') {
+  if (!consumed || consumed.type !== 'assign_student' || !consumed.lessonId) {
     return { ok: false, error: 'invalid_token', message: 'הקישור אינו תקין או שכבר נוצל' };
   }
 

@@ -44,7 +44,8 @@ export async function peekPaymentToken(raw: string): Promise<PaymentTokenView | 
     )
     .limit(1);
   const tok = tokenRows[0];
-  if (!tok) return null;
+  // Lesson-only view; a group-charge token has no lesson to show.
+  if (!tok || !tok.lessonId) return null;
 
   const lessonRows = await db.select().from(lessons).where(eq(lessons.id, tok.lessonId)).limit(1);
   const lesson = lessonRows[0];

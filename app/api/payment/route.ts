@@ -68,17 +68,20 @@ export async function POST(req: Request): Promise<Response> {
 
   // Single-use token consumption (atomic). Must be a 'payment' token.
   const consumed = await consumeActionToken(token);
-  if (!consumed || consumed.type !== 'payment') {
+  // A token now addresses either a lesson or a group charge; this screen settles
+  // lessons, so a group-charge token is not valid here.
+  if (!consumed || consumed.type !== 'payment' || !consumed.lessonId) {
     return NextResponse.json(
       { ok: false, error: 'הקישור אינו תקף או שכבר נעשה בו שימוש' },
       { status: 410 },
     );
   }
+  const lessonId = consumed.lessonId;
 
   try {
     if (decision === 'paid') {
       const result = await markLessonPaidAndIssueReceipt({
-        lessonId: consumed.lessonId,
+        lessonId,
         amount,
         method,
         description,

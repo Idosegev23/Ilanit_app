@@ -23,7 +23,7 @@ function req(body: unknown): Request {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(consumeActionToken).mockResolvedValue({ type: 'payment', lessonId: 'lesson-1' });
+  vi.mocked(consumeActionToken).mockResolvedValue({ type: 'payment', lessonId: 'lesson-1', groupBillingId: null });
   vi.mocked(markLessonPaidAndIssueReceipt).mockResolvedValue({
     ok: true,
     receiptId: 'r1',
@@ -64,7 +64,7 @@ describe('POST /api/payment', () => {
     );
 
     vi.clearAllMocks();
-    vi.mocked(consumeActionToken).mockResolvedValue({ type: 'payment', lessonId: 'lesson-1' });
+    vi.mocked(consumeActionToken).mockResolvedValue({ type: 'payment', lessonId: 'lesson-1', groupBillingId: null });
     vi.mocked(markLessonPaidAndIssueReceipt).mockResolvedValue({
       ok: true,
       docNumber: '1043',
@@ -117,7 +117,7 @@ describe('POST /api/payment', () => {
   });
 
   it('returns 410 when the token is the wrong type', async () => {
-    vi.mocked(consumeActionToken).mockResolvedValue({ type: 'approve', lessonId: 'l' });
+    vi.mocked(consumeActionToken).mockResolvedValue({ type: 'approve', lessonId: 'l', groupBillingId: null });
     const res = await POST(req({ token: 'tok', decision: 'request' }));
     expect(res.status).toBe(410);
   });

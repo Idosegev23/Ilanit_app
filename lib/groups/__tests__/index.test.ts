@@ -95,6 +95,12 @@ vi.mock('@/lib/morning', () => ({
   createReceipt: vi.fn(),
 }));
 
+vi.mock('@/lib/tokens', () => ({
+  createGroupBillingToken: async () => 'grp-pay-token',
+  createActionToken: async () => 'tok',
+  consumeActionToken: async () => null,
+  hashToken: (r: string) => `h-${r}`,
+}));
 vi.mock('@/lib/notifications/dispatch', () => ({
   notify: vi.fn(async () => ({ ok: true })),
 }));
@@ -447,11 +453,20 @@ describe('generateMonthlyBilling', () => {
       status: 'due',
     });
 
-    // member notifications keyed by billing id (idempotent), + one roster link
+    /*
+      The member now gets a payment REQUEST with a link, not a bare statement of
+      what is owed: a group charge offers the same two choices as a private
+      lesson rather than leaving the parent to work out how to pay.
+    */
     expect(notify).toHaveBeenCalledWith(
-      'group_billing_member',
+      'pay_request_group',
       '+972500000001',
-      expect.objectContaining({ groupName: 'מתמטיקה', month: '06/2026', amount: 300 }),
+      expect.objectContaining({
+        groupName: 'מתמטיקה',
+        month: '06/2026',
+        amount: 300,
+        actionUrl: expect.stringContaining('/pay/'),
+      }),
       'group_billing:b1',
     );
     expect(notify).toHaveBeenCalledWith(

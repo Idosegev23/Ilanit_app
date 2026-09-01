@@ -51,7 +51,7 @@ export async function peekCancelToken(rawToken: string): Promise<CancelTokenView
       ),
     )
     .limit(1);
-  if (rows.length === 0) return null;
+  if (rows.length === 0 || !rows[0].lessonId) return null;
 
   const lrows = await db.select().from(lessons).where(eq(lessons.id, rows[0].lessonId)).limit(1);
   const lesson = lrows[0];
@@ -75,7 +75,8 @@ export type CancelResult =
  */
 export async function cancelByToken(rawToken: string): Promise<CancelResult> {
   const consumed = await consumeActionToken(rawToken);
-  if (!consumed || consumed.type !== 'cancel') {
+  // Cancellation is lesson-only; a group-charge token is not valid here.
+  if (!consumed || consumed.type !== 'cancel' || !consumed.lessonId) {
     return { ok: false, error: 'invalid_token', message: 'הקישור אינו תקין או שכבר נוצל' };
   }
 

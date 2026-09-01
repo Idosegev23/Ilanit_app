@@ -1,9 +1,21 @@
 import { db } from '@/lib/db';
-import { payments, lessons, students, actionTokens } from '@/db/schema';
+import {
+  payments,
+  lessons,
+  students,
+  actionTokens,
+  groupBilling,
+  groups,
+} from '@/db/schema';
 import { and, eq, gt, isNull, lt } from 'drizzle-orm';
 import { env } from '@/lib/env';
 import { getSettings } from '@/lib/settings';
-import { createActionToken, consumeActionToken, hashToken } from '@/lib/tokens';
+import {
+  createActionToken,
+  createGroupBillingToken,
+  consumeActionToken,
+  hashToken,
+} from '@/lib/tokens';
 import { notify, notifyStudent } from '@/lib/notifications/dispatch';
 import { formatILDateTime, nowIL } from '@/lib/time';
 
@@ -44,7 +56,6 @@ const BIT_CONFIRM_DELAY_H = 24;
 const PAY_TOKEN_TTL_MIN = 60 * 24 * 60;
 
 export interface PayView {
-  lessonId: string;
   studentName: string;
   amount: number;
   context: string;
@@ -55,29 +66,56 @@ export interface PayView {
 
 /** Resolves a parent's link for RENDERING, without consuming it. */
 export async function peekPayToken(rawToken: string): Promise<PayView | null> {
-  const rows = await db
-    .select({ token: actionTokens, lesson: lessons })
-    .from(actionTokens)
-    .innerJoin(lessons, eq(lessons.id, actionTokens.lessonId))
-    .where(and(eq(actionTokens.tokenHash, hashToken(rawToken)), eq(actionTokens.type, 'pay')))
-    .limit(1);
-  const row = rows[0];
-  if (!row) return null;
+  const tok = (
+    await db
+      .select()
+      .from(actionTokens)
+      .where(and(eq(actionTokens.tokenHash, hashToken(rawToken)), eq(actionTokens.type, 'pay')))
+      .limit(1)
+  )[0];
+  if (!tok) return null;
 
+  const settings = await getSettings();
+
+  // A monthly group charge: no lesson, and the description is the month.
+  if (tok.groupBillingId) {
+    const gb = (
+      await db
+        .select({ bill: groupBilling, group: groups, student: students })
+        .from(groupBilling)
+        .leftJoin(groups, eq(groups.id, groupBilling.groupId))
+        .leftJoin(students, eq(students.id, groupBilling.studentId))
+        .where(eq(groupBilling.id, tok.groupBillingId))
+        .limit(1)
+    )[0];
+    if (!gb) return null;
+    return {
+      studentName: gb.student?.name ?? 'תלמיד/ה',
+      amount: gb.bill.amount,
+      context: `קבוצת "${gb.group?.name ?? ''}" — ${String(gb.bill.month).slice(0, 7)}`,
+      bitLink: settings.bitLink,
+      settled: gb.bill.status === 'paid' || gb.bill.status === 'waived',
+      intent: gb.bill.intent,
+    };
+  }
+
+  if (!tok.lessonId) return null;
+  const lesson = (
+    await db.select().from(lessons).where(eq(lessons.id, tok.lessonId)).limit(1)
+  )[0];
+  if (!lesson) return null;
   const pay = (
-    await db.select().from(payments).where(eq(payments.lessonId, row.lesson.id)).limit(1)
+    await db.select().from(payments).where(eq(payments.lessonId, lesson.id)).limit(1)
   )[0];
   if (!pay) return null;
 
-  const settings = await getSettings();
   return {
-    lessonId: row.lesson.id,
-    studentName: row.lesson.bookedByName ?? 'תלמיד/ה',
+    studentName: lesson.bookedByName ?? 'תלמיד/ה',
     amount: pay.amount,
     context:
-      row.lesson.type === 'group_session'
+      lesson.type === 'group_session'
         ? 'המפגש הקבוצתי'
-        : `השיעור ב-${formatILDateTime(row.lesson.startsAt)}`,
+        : `השיעור ב-${formatILDateTime(lesson.startsAt)}`,
     bitLink: settings.bitLink,
     settled: pay.status === 'paid' || pay.status === 'waived',
     intent: pay.intent,
@@ -98,8 +136,20 @@ export async function declareIntent(
   if (!consumed || consumed.type !== 'pay') {
     return { ok: false, error: 'הקישור אינו תקין או שכבר נוצל' };
   }
+  /*
+    A monthly group charge takes the same path, on its own table: the parent
+    declares, Ilanit confirms. Kept as one function because the RULE is
+    identical and duplicating it would invite the two copies to drift on the
+    one point that matters — that a declaration never settles the charge.
+  */
+  if (consumed.groupBillingId) {
+    return declareGroupIntent(consumed.groupBillingId, intent);
+  }
+  if (!consumed.lessonId) return { ok: false, error: 'הקישור אינו תקין' };
+  const lessonId = consumed.lessonId;
+
   const pay = (
-    await db.select().from(payments).where(eq(payments.lessonId, consumed.lessonId)).limit(1)
+    await db.select().from(payments).where(eq(payments.lessonId, lessonId)).limit(1)
   )[0];
   if (!pay) return { ok: false, error: 'התשלום לא נמצא' };
   if (pay.status === 'paid') return { ok: true };
@@ -115,7 +165,7 @@ export async function declareIntent(
     .where(eq(payments.id, pay.id));
 
   const lesson = (
-    await db.select().from(lessons).where(eq(lessons.id, consumed.lessonId)).limit(1)
+    await db.select().from(lessons).where(eq(lessons.id, lessonId)).limit(1)
   )[0];
   const context =
     lesson?.type === 'group_session'
@@ -129,7 +179,7 @@ export async function declareIntent(
         link with it — /p/[token] is where she picks bit or cash and confirms,
         so one message both informs and resolves it.
       */
-      const raw = await createActionToken('payment', consumed.lessonId, PAY_TOKEN_TTL_MIN);
+      const raw = await createActionToken('payment', lessonId, PAY_TOKEN_TTL_MIN);
       await notify(
         'pay_declared_ilanit',
         env().ILANIT_PHONE,
@@ -140,7 +190,7 @@ export async function declareIntent(
           actionUrl: `${env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/p/${raw}`,
         },
         `declared:${pay.id}`,
-        consumed.lessonId,
+        lessonId,
       );
       // She has been asked; runPaymentConfirms must not ask again.
       await db
@@ -160,11 +210,60 @@ export async function declareIntent(
           context,
         },
         `intent:${pay.id}`,
-        consumed.lessonId,
+        lessonId,
       );
     }
   } catch (err) {
     console.error('[payments] intent notification failed:', err);
+  }
+  return { ok: true };
+}
+
+/** The group twin of declareIntent — same rule, different table. */
+async function declareGroupIntent(
+  groupBillingId: string,
+  intent: 'paid' | 'bit',
+): Promise<{ ok: boolean; error?: string }> {
+  const row = (
+    await db
+      .select({ bill: groupBilling, group: groups, student: students })
+      .from(groupBilling)
+      .leftJoin(groups, eq(groups.id, groupBilling.groupId))
+      .leftJoin(students, eq(students.id, groupBilling.studentId))
+      .where(eq(groupBilling.id, groupBillingId))
+      .limit(1)
+  )[0];
+  if (!row) return { ok: false, error: 'החיוב לא נמצא' };
+  if (row.bill.status === 'paid') return { ok: true };
+
+  await db
+    .update(groupBilling)
+    .set({ intent, intentAt: new Date() })
+    .where(eq(groupBilling.id, groupBillingId));
+
+  const context = `קבוצת "${row.group?.name ?? ''}" — ${String(row.bill.month).slice(0, 7)}`;
+  try {
+    await notify(
+      intent === 'paid' ? 'pay_declared_ilanit' : 'pay_intent_ilanit',
+      env().ILANIT_PHONE,
+      {
+        studentName: row.student?.name ?? '',
+        amount: row.bill.amount,
+        context,
+        methodLabel: 'תשלום בביט',
+        // Group charges settle from the roster screen, not a per-lesson link.
+        actionUrl: `${env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/groups/${row.bill.groupId}/billing/${String(row.bill.month).slice(0, 7)}`,
+      },
+      `gb-${intent}:${row.bill.id}`,
+    );
+    if (intent === 'paid') {
+      await db
+        .update(groupBilling)
+        .set({ confirmAskedAt: new Date() })
+        .where(eq(groupBilling.id, groupBillingId));
+    }
+  } catch (err) {
+    console.error('[payments] group intent notification failed:', err);
   }
   return { ok: true };
 }

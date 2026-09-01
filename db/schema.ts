@@ -166,6 +166,14 @@ export const groupBilling = pgTable(
     status: text('status', { enum: ['due', 'paid', 'waived'] })
       .notNull()
       .default('due'),
+    /*
+      Mirrors payments: a parent DECLARES, Ilanit confirms. Same reasoning —
+      a Bit link carries no amount or reference, so nothing comes back from the
+      money and a claim must not settle the charge on its own.
+    */
+    intent: text('intent', { enum: ['paid', 'bit'] }),
+    intentAt: timestamp('intent_at', { withTimezone: true }),
+    confirmAskedAt: timestamp('confirm_asked_at', { withTimezone: true }),
     method: text('method', { enum: ['bit', 'cash', 'transfer', 'other'] }),
     paidAt: timestamp('paid_at', { withTimezone: true }),
     receiptId: uuid('receipt_id'),
@@ -282,9 +290,16 @@ export const actionTokens = pgTable(
     type: text('type', {
       enum: ['approve', 'payment', 'assign_student', 'cancel', 'pay'],
     }).notNull(),
-    lessonId: uuid('lesson_id')
-      .notNull()
-      .references(() => lessons.id, { onDelete: 'cascade' }),
+    /*
+      A token points at EITHER a lesson or a monthly group charge — exactly one
+      is set. lessonId lost its NOT NULL for that reason: a group's monthly bill
+      is not a lesson, and forcing one in would have meant inventing a fake
+      lesson row purely to hang a payment link off.
+    */
+    lessonId: uuid('lesson_id').references(() => lessons.id, { onDelete: 'cascade' }),
+    groupBillingId: uuid('group_billing_id').references(() => groupBilling.id, {
+      onDelete: 'cascade',
+    }),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     usedAt: timestamp('used_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

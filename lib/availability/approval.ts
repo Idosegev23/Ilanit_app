@@ -87,7 +87,7 @@ export async function peekApproveToken(rawToken: string): Promise<ApproveTokenVi
       ),
     )
     .limit(1);
-  if (rows.length === 0) return null;
+  if (rows.length === 0 || !rows[0].lessonId) return null;
 
   const data = await loadLessonForAction(rows[0].lessonId);
   if (!data) return null;
@@ -117,7 +117,7 @@ export async function decideLesson(
   decision: 'approve' | 'reject',
 ): Promise<ApproveResult> {
   const consumed = await consumeActionToken(rawToken);
-  if (!consumed || consumed.type !== 'approve') {
+  if (!consumed || consumed.type !== 'approve' || !consumed.lessonId) {
     return { ok: false, error: 'invalid_token', message: 'הקישור אינו תקין או שכבר נוצל' };
   }
 
