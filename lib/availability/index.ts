@@ -9,7 +9,7 @@ import {
 } from '@/db/schema';
 import { and, eq, exists, gt, gte, inArray, isNull, lt, lte, ne, or } from 'drizzle-orm';
 import { getSettings } from '@/lib/settings';
-import { freeBusy } from '@/lib/google-calendar';
+import { freeBusy, listEventsInRange } from '@/lib/google-calendar';
 import {
   startOfDayIL,
   nowIL,
@@ -139,6 +139,48 @@ async function busyIntervals(
     endMs: l.endsAt.getTime(),
   }));
 
+  /*
+    The excluded lesson's OWN Google event.
+
+    Excluding the database row is not enough: the same lesson is also a block on
+    Ilanit's calendar, and freeBusy reports blocks without ids, so it comes back
+    as an anonymous busy window and the lesson collides with itself anyway. That
+    made a confirmed lesson impossible to MOVE — the new time overlapped the old
+    one, and the old one was still on the calendar.
+
+    Resolved to the event's real interval rather than the row's, in case the two
+    have drifted, and subtracted precisely so a genuinely different event in the
+    same window still registers.
+  */
+  let ownEvent: Interval | null = null;
+  if (excludeLessonId) {
+    const [row] = await db
+      .select({
+        googleEventId: lessons.googleEventId,
+        startsAt: lessons.startsAt,
+        endsAt: lessons.endsAt,
+      })
+      .from(lessons)
+      .where(eq(lessons.id, excludeLessonId))
+      .limit(1);
+    if (row?.googleEventId) {
+      try {
+        const events = await listEventsInRange(dayStart.toISOString(), dayEnd.toISOString());
+        const own = events.find((e) => e.id === row.googleEventId);
+        if (own?.startISO && own?.endISO) {
+          ownEvent = {
+            startMs: new Date(own.startISO).getTime(),
+            endMs: new Date(own.endISO).getTime(),
+          };
+        }
+      } catch {
+        // Listing failed; fall back to the row's own times, which is what the
+        // event was created from.
+      }
+      ownEvent ??= { startMs: row.startsAt.getTime(), endMs: row.endsAt.getTime() };
+    }
+  }
+
   try {
     const fb = await freeBusy(dayStart.toISOString(), dayEnd.toISOString());
     for (const b of fb) {
@@ -148,7 +190,9 @@ async function busyIntervals(
     console.error('[availability] freeBusy failed, using lessons only:', err);
   }
 
-  return busy;
+  // Remove the excluded lesson's own calendar block, so it cannot collide with
+  // itself while being moved.
+  return ownEvent ? subtractIntervals(busy, [ownEvent]) : busy;
 }
 
 /** Time-window exception intervals of a given kind for a date, as ms intervals. */
