@@ -58,7 +58,9 @@ function scheduleSlotsOf(form: FormData): WeeklyScheduleInput[] {
     const durationRaw = durations[i] ?? '';
     if (weekdayRaw === '' || !startTime) continue; // incomplete row — skip
     const weekday = Number(weekdayRaw);
-    const durationMin = durationRaw ? Number(durationRaw) : 60;
+    // A group session is 50 minutes; the form defaults to it, and this is the
+    // fallback for a row submitted without one.
+    const durationMin = durationRaw ? Number(durationRaw) : 50;
     if (!Number.isInteger(durationMin) || durationMin <= 0) {
       throw new Error('invalid session duration');
     }

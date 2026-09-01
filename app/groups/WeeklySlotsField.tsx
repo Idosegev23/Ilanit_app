@@ -24,7 +24,14 @@ export interface WeeklySlotValue {
   durationMin: string; // minutes
 }
 
-const EMPTY_SLOT: WeeklySlotValue = { weekday: '', startTime: '', durationMin: '' };
+// Every group session runs 50 minutes, so the row starts there rather than
+// empty — it is the answer in all but the exceptional case.
+const DEFAULT_SESSION_MIN = '50';
+const EMPTY_SLOT: WeeklySlotValue = {
+  weekday: '',
+  startTime: '',
+  durationMin: DEFAULT_SESSION_MIN,
+};
 
 /**
  * Repeatable weekly-schedule slots for a group. Each row posts parallel array
@@ -130,11 +137,14 @@ export function WeeklySlotsField({
                 name="durationMin"
                 type="number"
                 inputMode="numeric"
-                min="1"
+                // min IS the step base: a number input accepts only min + n*step.
+                // With min=1/step=5 the valid values were 1, 6, 11 … 46, 51, so
+                // 50 — the actual length of a session — was rejected.
+                min="5"
                 step="5"
                 dir="ltr"
                 className="text-end tabular-nums"
-                placeholder="60"
+                placeholder="50"
                 value={slot.durationMin}
                 onChange={(e) => update(i, { durationMin: e.target.value })}
               />
