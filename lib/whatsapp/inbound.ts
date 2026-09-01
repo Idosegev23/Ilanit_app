@@ -44,9 +44,20 @@ export interface GreenNotification {
   };
 }
 
+/** Who the stored incoming message came from, when we recognised them. */
+export interface InboundStudent {
+  id: string;
+  name: string;
+  phone: string;
+}
+
 export interface HandleResult {
   handled: boolean;
   note: string;
+  /** Set only when an incoming message was stored against a known student. */
+  student?: InboundStudent;
+  /** The message text, so the caller can quote it without re-parsing. */
+  text?: string;
 }
 
 /** Processes ONE GreenAPI notification. Safe to receive traffic for other apps. */
@@ -83,7 +94,18 @@ export async function handleGreenNotification(n: GreenNotification): Promise<Han
       providerMsgId: n.idMessage,
       status: 'read',
     });
-    return { handled: true, note: 'incoming stored' };
+    /*
+      The caller gets the identified student back. The bot forwards every
+      notification here anyway, so answering "who was that?" in the same
+      response saves it a second lookup — and it is the bot, not this app, that
+      then decides whether to nudge Ilanit on WhatsApp about it.
+    */
+    return {
+      handled: true,
+      note: 'incoming stored',
+      student: { id: student.id, name: student.name, phone },
+      text: body,
+    };
   }
 
   return { handled: false, note: `ignored type: ${type ?? 'unknown'}` };
