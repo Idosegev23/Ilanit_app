@@ -36,6 +36,17 @@ export const students = pgTable(
     avatarUrl: text('avatar_url'),
     avatarFetchedAt: timestamp('avatar_fetched_at', { withTimezone: true }),
     archived: boolean('archived').notNull().default(false),
+    /*
+      Whether the collection engine may talk to this family at all.
+
+      Some parents are settled with by hand — Ilanit arranges it privately and
+      does not want the system chasing them. Turning this off silences every
+      OUTBOUND money message for them (the payment request, and the debt line
+      that rides along on lesson reminders) while still recording what is owed,
+      so the debt keeps showing up in her own reports and in the followup
+      summary. It suppresses the chasing, never the bookkeeping.
+    */
+    autoCollect: boolean('auto_collect').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

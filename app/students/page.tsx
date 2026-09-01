@@ -21,6 +21,7 @@ export default async function StudentsPage() {
     email: s.email,
     notes: s.notes,
     archived: s.archived,
+    autoCollect: s.autoCollect,
   }));
 
   return (

@@ -14,6 +14,7 @@ import {
   Clock,
   StickyNote,
   Archive,
+  HandCoins,
   UserCog,
   PhoneCall,
   ReceiptText,
@@ -45,6 +46,7 @@ export interface StudentFormValues {
   defaultDurationMin: number;
   notes: string | null;
   archived: boolean;
+  autoCollect: boolean;
 }
 
 interface StudentFormDialogProps {
@@ -429,6 +431,32 @@ export function StudentFormDialog({
                     placeholder="העדפות, מקצוע, הורה מלווה…"
                   />
                 </Field>
+
+                {/*
+                  Shown for new students too, unlike the archive toggle: the
+                  families Ilanit settles with privately are usually known to
+                  be that way the moment she adds them.
+                */}
+                <label className="flex min-h-[52px] cursor-pointer items-start justify-between gap-3 rounded-2xl border border-line bg-primary-50/60 px-3.5 py-3 transition-colors duration-150 hover:bg-primary-50">
+                  <span className="flex items-start gap-2.5 text-sm font-medium text-ink">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
+                      <HandCoins className="size-4" aria-hidden="true" />
+                    </span>
+                    <span>
+                      גבייה ידנית בלבד
+                      <span className="mt-0.5 block text-xs font-normal text-muted">
+                        לא יישלחו דרישות תשלום או תזכורות חוב. החוב עדיין נרשם ומופיע
+                        בדוחות שלך.
+                      </span>
+                    </span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    name="manualBilling"
+                    defaultChecked={student ? !student.autoCollect : false}
+                    className="mt-1 size-5 shrink-0 cursor-pointer rounded-md border-line accent-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+                  />
+                </label>
 
                 {isEdit && (
                   <label className="flex min-h-[52px] cursor-pointer items-center justify-between gap-3 rounded-2xl border border-line bg-primary-50/60 px-3.5 py-3 transition-colors duration-150 hover:bg-primary-50">

@@ -97,9 +97,16 @@ export async function runDayBeforeReminders(): Promise<DayBeforeResult> {
   const debts = await openDebts();
   const debtByStudent = new Map(debts.map((d) => [d.studentId, d]));
 
-  function debtLine(studentId: string | null): string {
-    if (!studentId) return '';
-    const d = debtByStudent.get(studentId);
+  /*
+    Takes the student ROW, not an id: `studentById` is built only from the
+    individual lessons, so a lookup by id would silently miss every group
+    member — and a hand-billed student in a group would have been sent the debt
+    line anyway, through the one message that reaches them regardless.
+  */
+  function debtLine(student: { id: string; autoCollect: boolean } | undefined): string {
+    if (!student) return '';
+    if (!student.autoCollect) return '';
+    const d = debtByStudent.get(student.id);
     if (!d) return '';
     return d.count === 1
       ? `💳 נותר תשלום פתוח של ${d.amount}₪.`
@@ -119,7 +126,7 @@ export async function runDayBeforeReminders(): Promise<DayBeforeResult> {
         await notifyStudent(
           student,
           'reminder_day_before_individual',
-          { studentName: student.name, datetime: when, location, debt: debtLine(student.id) },
+          { studentName: student.name, datetime: when, location, debt: debtLine(student) },
           `${lesson.id}:${student.id}`,
           lesson.id,
         );
@@ -144,7 +151,7 @@ export async function runDayBeforeReminders(): Promise<DayBeforeResult> {
               groupName: group.name,
               datetime: when,
               location,
-              debt: debtLine(student.id),
+              debt: debtLine(student),
             },
             `${lesson.id}:${student.id}`,
             lesson.id,

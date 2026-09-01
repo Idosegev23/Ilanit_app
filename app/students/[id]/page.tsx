@@ -43,6 +43,7 @@ export default async function StudentFilePage({
       defaultDurationMin: student.defaultDurationMin,
       notes: student.notes,
       archived: student.archived,
+      autoCollect: student.autoCollect,
     },
     lessons: lessons.map((l: Lesson) => {
       const pay = paymentByLesson.get(l.id);

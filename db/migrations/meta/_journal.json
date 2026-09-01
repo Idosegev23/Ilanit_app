@@ -113,6 +113,13 @@
       "when": 1788259096655,
       "tag": "0015_confused_scream",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1788277345771,
+      "tag": "0016_add_auto_collect",
+      "breakpoints": true
     }
   ]
 }

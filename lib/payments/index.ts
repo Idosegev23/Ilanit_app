@@ -349,6 +349,17 @@ export async function runPaymentRequests(): Promise<PaymentRequestsResult> {
       .insert(payments)
       .values({ lessonId: lesson.id, status: 'due', amount })
       .returning();
+
+    /*
+      A hand-billed family still gets the DEBT recorded — Ilanit needs to see
+      what is owed in her reports and in the followup summary — but the system
+      never asks them for it. She settles those privately.
+    */
+    if (!student.autoCollect) {
+      skipped++;
+      continue;
+    }
+
     try {
       await notifyStudent(
         student,

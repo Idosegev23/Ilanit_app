@@ -1,0 +1,236 @@
+{
+  "targets": [
+    {
+      "id": "ca657de3-68c4-421d-b687-f524d975235b",
+      "name": "גילי ז׳אן",
+      "phone": "+972547825186",
+      "email": "vikajan001@gmail.com",
+      "guardianName": "ויקה",
+      "guardianPhone": "+972547825186",
+      "receiptLabel": null,
+      "defaultPrice": 140,
+      "defaultDurationMin": 60,
+      "notes": null,
+      "avatarUrl": "https://pps.whatsapp.net/v/t61.24694-24/736216755_1341009504258551_3590013130163882971_n.jpg?ccb=11-4&oh=01_Q5Aa5AGk3Y8BZTnhUlSiriSex-mLfaiTz3zQy5EpUJlEiRMJBw&oe=6A6047EA&_nc_sid=5e03e0&_nc_cat=106",
+      "avatarFetchedAt": "2026-07-12T04:41:19.983Z",
+      "archived": false,
+      "autoCollect": true,
+      "createdAt": "2026-07-11T08:04:12.560Z"
+    },
+    {
+      "id": "b3560588-6572-4254-8901-63ca782a1852",
+      "name": "מיתר התלמידה המועדפת",
+      "phone": "+972512217741",
+      "email": "raz89levi@gmail.com",
+      "guardianName": "רזה הרזה",
+      "guardianPhone": "+972544498809",
+      "receiptLabel": null,
+      "defaultPrice": 140,
+      "defaultDurationMin": 60,
+      "notes": null,
+      "avatarUrl": null,
+      "avatarFetchedAt": "2026-07-05T11:23:30.762Z",
+      "archived": false,
+      "autoCollect": true,
+      "createdAt": "2026-07-03T13:15:17.457Z"
+    }
+  ],
+  "open": [
+    {
+      "payId": "2b5f23dd-cb9f-45d6-a092-3c3e3f63679f",
+      "amount": 0,
+      "lessonPrice": null,
+      "studentPrice": 140,
+      "name": "מיתר התלמידה המועדפת",
+      "startsAt": "2026-07-29T10:00:00.000Z"
+    },
+    {
+      "payId": "18f63fdb-0c3a-4a99-81b2-d6eccaec90e4",
+      "amount": 0,
+      "lessonPrice": null,
+      "studentPrice": 140,
+      "name": "מיתר התלמידה המועדפת",
+      "startsAt": "2026-07-23T10:00:00.000Z"
+    },
+    {
+      "payId": "65b9d940-ddce-4761-a5cb-9ca509d231a4",
+      "amount": 0,
+      "lessonPrice": null,
+      "studentPrice": 140,
+      "name": "מיתר התלמידה המועדפת",
+      "startsAt": "2026-07-16T10:00:00.000Z"
+    },
+    {
+      "payId": "09e1b2cc-8899-4e82-83dc-5bdfea59f243",
+      "amount": 120,
+      "lessonPrice": 120,
+      "studentPrice": 140,
+      "name": "מיתר התלמידה המועדפת",
+      "startsAt": "2026-08-30T08:00:00.000Z"
+    },
+    {
+      "payId": "40d1aa95-67e4-4359-bea5-36d0043dc117",
+      "amount": 0,
+      "lessonPrice": null,
+      "studentPrice": 140,
+      "name": "גילי ז׳אן",
+      "startsAt": "2026-08-12T06:00:00.000Z"
+    },
+    {
+      "payId": "0aca8c89-4af8-4085-bb94-8444a9c91574",
+      "amount": 0,
+      "lessonPrice": null,
+      "studentPrice": 140,
+      "name": "גילי ז׳אן",
+      "startsAt": "2026-08-23T07:00:00.000Z"
+    },
+    {
+      "payId": "7ebddc51-bae8-409a-922e-785373206fd9",
+      "amount": 0,
+      "lessonPrice": null,
+      "studentPrice": 140,
+      "name": "מיתר התלמידה המועדפת",
+      "startsAt": "2026-07-07T12:00:00.000Z"
+    },
+    {
+      "payId": "84f9a9e5-cd0d-4b4a-9405-b3dedb6899cb",
+      "amount": 0,
+      "lessonPrice": null,
+      "studentPrice": 140,
+      "name": "מיתר התלמידה המועדפת",
+      "startsAt": "2026-07-21T12:00:00.000Z"
+    },
+    {
+      "payId": "586425fa-36f1-4b9e-bf82-e96d649018a8",
+      "amount": 0,
+      "lessonPrice": null,
+      "studentPrice": 140,
+      "name": "מיתר התלמידה המועדפת",
+      "startsAt": "2026-07-23T12:00:00.000Z"
+    },
+    {
+      "payId": "73e09aed-600a-469b-8304-8e46ba6c6ca8",
+      "amount": 0,
+      "lessonPrice": null,
+      "studentPrice": 140,
+      "name": "מיתר התלמידה המועדפת",
+      "startsAt": "2026-07-13T12:00:00.000Z"
+    },
+    {
+      "payId": "6741ac78-a928-41ea-84e0-e4bdb924297e",
+      "amount": 0,
+      "lessonPrice": null,
+      "studentPrice": 140,
+      "name": "גילי ז׳אן",
+      "startsAt": "2026-08-16T07:00:00.000Z"
+    },
+    {
+      "payId": "9c8442b0-29ec-42fe-9b91-2c59c4a4423a",
+      "amount": 0,
+      "lessonPrice": null,
+      "studentPrice": 140,
+      "name": "מיתר התלמידה המועדפת",
+      "startsAt": "2026-07-28T11:00:00.000Z"
+    },
+    {
+      "payId": "88a9ed52-f285-437c-bb4a-7fe23cd0f7c6",
+      "amount": 120,
+      "lessonPrice": 120,
+      "studentPrice": 140,
+      "name": "מיתר התלמידה המועדפת",
+      "startsAt": "2026-08-23T10:00:00.000Z"
+    }
+  ],
+  "bills": [
+    {
+      "id": "26d9d990-9244-407f-9664-011a877444ca",
+      "groupId": "286bbeab-10e4-42f4-91d8-95c072995bd5",
+      "studentId": "ca657de3-68c4-421d-b687-f524d975235b",
+      "month": "2026-08-01",
+      "amount": 650,
+      "status": "due",
+      "intent": null,
+      "intentAt": null,
+      "confirmAskedAt": null,
+      "method": null,
+      "paidAt": null,
+      "receiptId": null,
+      "createdAt": "2026-08-01T04:01:24.096Z"
+    },
+    {
+      "id": "2d38c386-5ddf-44f6-ba9b-d5ea7ef75373",
+      "groupId": "286bbeab-10e4-42f4-91d8-95c072995bd5",
+      "studentId": "4f75b8ba-ea7f-450f-8b37-f31307eaa3e4",
+      "month": "2026-08-01",
+      "amount": 650,
+      "status": "due",
+      "intent": null,
+      "intentAt": null,
+      "confirmAskedAt": null,
+      "method": null,
+      "paidAt": null,
+      "receiptId": null,
+      "createdAt": "2026-08-01T04:01:24.124Z"
+    },
+    {
+      "id": "3d8fd71c-a9df-4476-954b-420f682cbaf4",
+      "groupId": "286bbeab-10e4-42f4-91d8-95c072995bd5",
+      "studentId": "14c609c3-3508-4e7d-b8b0-b9c5ee77c168",
+      "month": "2026-08-01",
+      "amount": 650,
+      "status": "due",
+      "intent": null,
+      "intentAt": null,
+      "confirmAskedAt": null,
+      "method": null,
+      "paidAt": null,
+      "receiptId": null,
+      "createdAt": "2026-08-01T04:01:24.141Z"
+    },
+    {
+      "id": "6a44487f-aada-4838-bbfa-b0bddcc1c422",
+      "groupId": "286bbeab-10e4-42f4-91d8-95c072995bd5",
+      "studentId": "ca657de3-68c4-421d-b687-f524d975235b",
+      "month": "2026-09-01",
+      "amount": 650,
+      "status": "due",
+      "intent": null,
+      "intentAt": null,
+      "confirmAskedAt": null,
+      "method": null,
+      "paidAt": null,
+      "receiptId": null,
+      "createdAt": "2026-09-01T04:01:40.680Z"
+    },
+    {
+      "id": "d23af7e3-4616-4add-af22-678d6e00722f",
+      "groupId": "286bbeab-10e4-42f4-91d8-95c072995bd5",
+      "studentId": "14c609c3-3508-4e7d-b8b0-b9c5ee77c168",
+      "month": "2026-09-01",
+      "amount": 650,
+      "status": "due",
+      "intent": null,
+      "intentAt": null,
+      "confirmAskedAt": null,
+      "method": null,
+      "paidAt": null,
+      "receiptId": null,
+      "createdAt": "2026-09-01T04:01:40.701Z"
+    },
+    {
+      "id": "ff3cdbbb-c796-47fb-9800-28dce62b86cc",
+      "groupId": "286bbeab-10e4-42f4-91d8-95c072995bd5",
+      "studentId": "4f75b8ba-ea7f-450f-8b37-f31307eaa3e4",
+      "month": "2026-09-01",
+      "amount": 650,
+      "status": "due",
+      "intent": null,
+      "intentAt": null,
+      "confirmAskedAt": null,
+      "method": null,
+      "paidAt": null,
+      "receiptId": null,
+      "createdAt": "2026-09-01T04:01:40.714Z"
+    }
+  ]
+}

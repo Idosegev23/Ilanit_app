@@ -118,6 +118,7 @@ export async function createStudentAction(form: FormData): Promise<StudentAction
       defaultPrice: price,
       defaultDurationMin: durationMin(form, 'defaultDurationMin', 60),
       notes,
+      autoCollect: str(form, 'manualBilling') !== 'on',
     });
     revalidatePath('/students');
     return { ok: true, id: student.id };
@@ -184,6 +185,8 @@ export async function updateStudentAction(form: FormData): Promise<StudentAction
       defaultDurationMin: durationMin(form, 'defaultDurationMin', current.defaultDurationMin),
       notes: str(form, 'notes') || null,
       archived: str(form, 'archived') === 'on',
+      // The checkbox asks the opposite question from the column it sets.
+      autoCollect: str(form, 'manualBilling') !== 'on',
     });
     revalidatePath('/students');
     revalidatePath(`/students/${id}`);

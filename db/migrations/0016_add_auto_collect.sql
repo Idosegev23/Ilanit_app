@@ -1,0 +1,1 @@
+ALTER TABLE "students" ADD COLUMN "auto_collect" boolean DEFAULT true NOT NULL;

@@ -201,7 +201,28 @@ describe('runDayBeforeReminders — open debts ride along', () => {
         location: null,
       },
     ]);
-    queueResult('students', [{ id: 's1', name: 'דנה', phone: '+972500000001' }]);
+    queueResult('students', [
+      { id: 's1', name: 'דנה', phone: '+972500000001', autoCollect: true },
+    ]);
+    queueResult('groups', []);
+  }
+
+  /** The same lesson, for a family Ilanit settles with by hand. */
+  function oneHandBilledLesson() {
+    queueResult('lessons', [
+      {
+        id: 'l1',
+        type: 'individual',
+        status: 'confirmed',
+        studentId: 's1',
+        groupId: null,
+        startsAt: new Date(),
+        location: null,
+      },
+    ]);
+    queueResult('students', [
+      { id: 's1', name: 'דנה', phone: '+972500000001', autoCollect: false },
+    ]);
     queueResult('groups', []);
   }
 
@@ -218,6 +239,25 @@ describe('runDayBeforeReminders — open debts ride along', () => {
     )?.[2] as Record<string, string>;
     expect(vars.debt).toContain('280');
     expect(vars.debt).toContain('2');
+  });
+
+  it('says nothing about money to a family Ilanit bills by hand', async () => {
+    /*
+      The reminder is the one message that reaches these parents anyway, so it
+      is exactly where an unwanted chase would slip out. The debt itself is
+      still recorded — only the telling is suppressed.
+    */
+    debtState.debts = [{ studentId: 's1', studentName: 'דנה', amount: 280, count: 2 }];
+    oneHandBilledLesson();
+
+    await runDayBeforeReminders();
+
+    const vars = notify.mock.calls.find(
+      (c) => c[0] === 'reminder_day_before_individual',
+    )?.[2] as Record<string, string>;
+    expect(vars.debt).toBe('');
+    // The reminder itself must still go out.
+    expect(vars.studentName).toBe('דנה');
   });
 
   it('leaves the reminder untouched when nothing is owed', async () => {

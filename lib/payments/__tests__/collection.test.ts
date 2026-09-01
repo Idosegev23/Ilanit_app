@@ -225,7 +225,7 @@ describe('runPaymentRequests', () => {
           startsAt: new Date('2026-09-01T08:00:00Z'),
           endsAt: new Date('2026-09-01T09:00:00Z'),
         },
-        student: { id: 's1', name: 'דנה', defaultPrice: 140 },
+        student: { id: 's1', name: 'דנה', defaultPrice: 140, autoCollect: true },
       },
     ];
 
@@ -235,6 +235,30 @@ describe('runPaymentRequests', () => {
     expect(state.inserted[0]).toMatchObject({ status: 'due', amount: 140 });
     const msg = state.notified.find((n) => n.template === 'pay_request_individual');
     expect(msg.vars.actionUrl).toContain('/pay/');
+  });
+
+  it('records the debt but sends nothing for a hand-billed family', async () => {
+    /*
+      Ilanit settles some families privately and does not want them chased. The
+      row must still be written — she reads what is owed off her own reports —
+      but no request may leave the building.
+    */
+    state.lessons = [
+      {
+        lesson: {
+          id: 'l1', type: 'individual', status: 'confirmed', price: 140,
+          startsAt: new Date('2026-09-01T08:00:00Z'),
+          endsAt: new Date('2026-09-01T09:00:00Z'),
+        },
+        student: { id: 's1', name: 'מיתר', defaultPrice: 140, autoCollect: false },
+      },
+    ];
+
+    const res = await runPaymentRequests();
+
+    expect(state.inserted[0]).toMatchObject({ status: 'due', amount: 140 });
+    expect(res.requested).toBe(0);
+    expect(state.notified.find((n) => n.template === 'pay_request_individual')).toBeUndefined();
   });
 
   it('bounds the query on BOTH sides so it cannot reach into the past', async () => {

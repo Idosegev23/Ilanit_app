@@ -42,6 +42,7 @@ export interface StudentRow {
   email: string | null;
   notes: string | null;
   archived: boolean;
+  autoCollect: boolean;
 }
 
 interface StudentsTableProps {
