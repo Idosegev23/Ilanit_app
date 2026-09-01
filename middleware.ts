@@ -5,11 +5,22 @@ import type { NextRequest } from 'next/server';
 // routes / cron / auth are intentionally open. Auth.js JWT session cookie
 // presence is the gate; the route handlers themselves re-validate via auth().
 
+/*
+  Every owner-only page must appear BOTH here and in `config.matcher` below —
+  the matcher decides whether the middleware runs at all, so a page listed in
+  one and not the other is served with no gate. `/messages`, `/availability`
+  and `/standby` were missing from both and were readable by anyone with the
+  URL; `/messages` in particular lists parents' phone numbers.
+*/
 const PROTECTED_PREFIXES = [
   '/dashboard',
   '/students',
   '/lessons',
+  '/availability',
   '/groups',
+  '/reports',
+  '/messages',
+  '/standby',
   '/settings',
 ];
 
@@ -44,7 +55,11 @@ export const config = {
     '/dashboard/:path*',
     '/students/:path*',
     '/lessons/:path*',
+    '/availability/:path*',
     '/groups/:path*',
+    '/reports/:path*',
+    '/messages/:path*',
+    '/standby/:path*',
     '/settings/:path*',
   ],
 };

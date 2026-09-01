@@ -5,6 +5,7 @@ import {
   CalendarClock,
   UsersRound,
   MessageCircle,
+  BarChart3,
   Settings,
   type LucideIcon,
 } from 'lucide-react';
@@ -56,6 +57,12 @@ export const NAV_ITEMS: NavItem[] = [
     description: 'קבוצות לימוד, רישום חברים וגבייה חודשית',
   },
   {
+    href: '/reports',
+    label: 'שאלות ודוחות',
+    icon: BarChart3,
+    description: 'מי חייב, כמה נכנס, כמה שיעורים היו — עם סינון חופשי',
+  },
+  {
     href: '/messages',
     label: 'הודעות',
     icon: MessageCircle,
@@ -82,6 +89,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: '/lessons', label: 'שיעורים', icon: CalendarDays },
       { href: '/availability', label: 'זמינות', icon: CalendarClock },
       { href: '/groups', label: 'קבוצות', icon: UsersRound },
+      { href: '/reports', label: 'שאלות ודוחות', icon: BarChart3 },
       { href: '/messages', label: 'הודעות', icon: MessageCircle },
     ],
   },
