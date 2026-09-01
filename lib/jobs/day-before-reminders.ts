@@ -10,6 +10,7 @@ import { and, eq, gte, inArray, lt } from 'drizzle-orm';
 import { env } from '@/lib/env';
 import { getSettings } from '@/lib/settings';
 import { notify, notifyStudent } from '@/lib/notifications/dispatch';
+import { openDebts } from '@/lib/payments';
 import {
   nowIL,
   startOfDayIL,
@@ -88,6 +89,23 @@ export async function runDayBeforeReminders(): Promise<DayBeforeResult> {
     : [];
   const groupById = new Map(groupRows.map((g) => [g.id, g]));
 
+  /*
+    Open debts, fetched once for the whole run. A parent who owes money is
+    already being messaged about tomorrow's lesson, so the chase rides along
+    with it instead of arriving as a second notification.
+  */
+  const debts = await openDebts();
+  const debtByStudent = new Map(debts.map((d) => [d.studentId, d]));
+
+  function debtLine(studentId: string | null): string {
+    if (!studentId) return '';
+    const d = debtByStudent.get(studentId);
+    if (!d) return '';
+    return d.count === 1
+      ? `💳 נותר תשלום פתוח של ${d.amount}₪.`
+      : `💳 נותרו ${d.count} תשלומים פתוחים — סה״כ ${d.amount}₪.`;
+  }
+
   const summaryLines: string[] = [];
 
   for (const lesson of tomorrowLessons) {
@@ -101,7 +119,7 @@ export async function runDayBeforeReminders(): Promise<DayBeforeResult> {
         await notifyStudent(
           student,
           'reminder_day_before_individual',
-          { studentName: student.name, datetime: when, location },
+          { studentName: student.name, datetime: when, location, debt: debtLine(student.id) },
           `${lesson.id}:${student.id}`,
           lesson.id,
         );
@@ -121,7 +139,13 @@ export async function runDayBeforeReminders(): Promise<DayBeforeResult> {
           await notifyStudent(
             student,
             'reminder_day_before_group',
-            { studentName: student.name, groupName: group.name, datetime: when, location },
+            {
+              studentName: student.name,
+              groupName: group.name,
+              datetime: when,
+              location,
+              debt: debtLine(student.id),
+            },
             `${lesson.id}:${student.id}`,
             lesson.id,
           );

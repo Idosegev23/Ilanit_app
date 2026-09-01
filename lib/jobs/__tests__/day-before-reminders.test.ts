@@ -30,6 +30,14 @@ const getSettings = vi.fn(async () => ({
   locationAddress: 'רחוב הדקל 5, חיפה',
   defaultDurationMin: 60,
 }));
+// Debts are looked up through lib/payments; mock the module rather than
+// widening the schema mock with tables this job never touches directly.
+// Hoisted, because a vi.mock factory runs before top-level consts exist.
+const debtState = vi.hoisted(() => ({
+  debts: [] as Array<{ studentId: string; studentName: string; amount: number; count: number }>,
+}));
+vi.mock('@/lib/payments', () => ({ openDebts: async () => debtState.debts }));
+
 vi.mock('@/lib/settings', () => ({ getSettings: () => getSettings() }));
 
 vi.mock('@/lib/env', () => ({ env: () => ({ ILANIT_PHONE: '972545886779' }) }));
@@ -92,6 +100,7 @@ vi.mock('@/lib/db', () => ({
 import { runDayBeforeReminders } from '@/lib/jobs/day-before-reminders';
 
 beforeEach(() => {
+  debtState.debts = [];
   notify.mockClear();
   getSettings.mockClear();
   for (const k of Object.keys(results)) delete results[k];
@@ -176,5 +185,50 @@ describe('runDayBeforeReminders', () => {
       ilanitSummarySent: false,
     });
     expect(notify).not.toHaveBeenCalled();
+  });
+});
+
+describe('runDayBeforeReminders — open debts ride along', () => {
+  function oneLesson() {
+    queueResult('lessons', [
+      {
+        id: 'l1',
+        type: 'individual',
+        status: 'confirmed',
+        studentId: 's1',
+        groupId: null,
+        startsAt: new Date(),
+        location: null,
+      },
+    ]);
+    queueResult('students', [{ id: 's1', name: 'דנה', phone: '+972500000001' }]);
+    queueResult('groups', []);
+  }
+
+  it('adds the outstanding amount to the lesson reminder', async () => {
+    // A parent who owes money is already being messaged about tomorrow, so the
+    // chase travels with it rather than arriving as a second notification.
+    debtState.debts = [{ studentId: 's1', studentName: 'דנה', amount: 280, count: 2 }];
+    oneLesson();
+
+    await runDayBeforeReminders();
+
+    const vars = notify.mock.calls.find(
+      (c) => c[0] === 'reminder_day_before_individual',
+    )?.[2] as Record<string, string>;
+    expect(vars.debt).toContain('280');
+    expect(vars.debt).toContain('2');
+  });
+
+  it('leaves the reminder untouched when nothing is owed', async () => {
+    debtState.debts = [];
+    oneLesson();
+
+    await runDayBeforeReminders();
+
+    const vars = notify.mock.calls.find(
+      (c) => c[0] === 'reminder_day_before_individual',
+    )?.[2] as Record<string, string>;
+    expect(vars.debt).toBe('');
   });
 });

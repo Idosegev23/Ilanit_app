@@ -24,14 +24,32 @@ vi.mock('@/lib/jobs/reconcile-cancellations', () => ({
   reconcileCancellations: () => reconcileCancellations(),
 }));
 
+// Collection runs on EVERY tick, so it is mocked here rather than reaching the
+// real module (and a real database) from a route test.
+const runPaymentRequests = vi.fn(async () => ({ requested: 0, skipped: 0 }));
+const runPaymentConfirms = vi.fn(async () => ({ asked: 0 }));
+vi.mock('@/lib/payments', () => ({
+  runPaymentRequests: () => runPaymentRequests(),
+  runPaymentConfirms: () => runPaymentConfirms(),
+}));
+
+const runReceiptReminders = vi.fn(async () => ({ pending: 0, totalAmount: 0, sent: false }));
+vi.mock('@/lib/jobs/receipt-reminders', () => ({
+  runReceiptReminders: () => runReceiptReminders(),
+}));
+
 const getSettings = vi.fn(async () => ({ reminderTime: '18:00' }));
 vi.mock('@/lib/settings', () => ({ getSettings: () => getSettings() }));
 
 // Controllable IL clock.
 let mockHour = 9;
+// The 3rd of the month, so the monthly receipt reminder stays out of these
+// cases; the tests that care about it set this explicitly.
+let mockDayOfMonth = 3;
 vi.mock('@/lib/time', () => ({
   nowIL: () => new Date('2026-06-03T00:00:00Z'),
   ilHour: () => mockHour,
+  ilDayOfMonth: () => mockDayOfMonth,
 }));
 
 import { GET } from '@/app/api/cron/tick/route';
@@ -48,7 +66,11 @@ beforeEach(() => {
   runPaymentFollowup.mockClear();
   reconcileCancellations.mockClear();
   getSettings.mockClear();
+  runPaymentRequests.mockClear();
+  runPaymentConfirms.mockClear();
+  runReceiptReminders.mockClear();
   mockHour = 9;
+  mockDayOfMonth = 3;
 });
 
 describe('GET /api/cron/tick', () => {
@@ -98,5 +120,35 @@ describe('GET /api/cron/tick', () => {
     const body = await res.json();
     expect(res.status).toBe(200);
     expect(body.ran.calendarScanError).toBe('boom');
+  });
+
+  it('runs collection on EVERY tick, not just the reminder hour', async () => {
+    // A lesson can start at any hour, so billing cannot wait for 18:00.
+    mockHour = 9;
+    await GET(authedReq());
+    expect(runPaymentRequests).toHaveBeenCalledTimes(1);
+    expect(runPaymentConfirms).toHaveBeenCalledTimes(1);
+  });
+
+  it('reminds about receipts only on the 1st, at the reminder hour', async () => {
+    mockDayOfMonth = 1;
+    mockHour = 18;
+    await GET(authedReq());
+    expect(runReceiptReminders).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not remind about receipts on other days', async () => {
+    mockDayOfMonth = 12;
+    mockHour = 18;
+    await GET(authedReq());
+    expect(runReceiptReminders).not.toHaveBeenCalled();
+  });
+
+  it('does not remind about receipts at the wrong hour on the 1st', async () => {
+    // Otherwise the hourly tick would send it 24 times that day.
+    mockDayOfMonth = 1;
+    mockHour = 9;
+    await GET(authedReq());
+    expect(runReceiptReminders).not.toHaveBeenCalled();
   });
 });

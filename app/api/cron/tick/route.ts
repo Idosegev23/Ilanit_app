@@ -6,9 +6,10 @@ import {
   runPaymentFollowup,
 } from '@/lib/jobs';
 import { runPaymentRequests, runPaymentConfirms } from '@/lib/payments';
+import { runReceiptReminders } from '@/lib/jobs/receipt-reminders';
 import { reconcileCancellations } from '@/lib/jobs/reconcile-cancellations';
 import { getSettings } from '@/lib/settings';
-import { ilHour, nowIL } from '@/lib/time';
+import { ilDayOfMonth, ilHour, nowIL } from '@/lib/time';
 
 // Hourly cron (vercel.json: "0 * * * *"). Jobs, each tz-gated in Asia/Jerusalem:
 //   (א) day-before reminders — only at the hour of settings.reminder_time
@@ -63,6 +64,19 @@ export async function GET(req: Request): Promise<Response> {
     ran.paymentConfirms = await runPaymentConfirms();
   } catch (err) {
     ran.paymentConfirmsError = err instanceof Error ? err.message : String(err);
+  }
+
+  /*
+    Receipt reminders — on the 1st, at the reminder hour. The system issues no
+    receipts; this only tells Ilanit which ones are waiting. The message-log
+    key is per month, so extra runs that day are no-ops.
+  */
+  if (ilDayOfMonth(now) === 1 && atReminderHour) {
+    try {
+      ran.receiptReminders = await runReceiptReminders();
+    } catch (err) {
+      ran.receiptRemindersError = err instanceof Error ? err.message : String(err);
+    }
   }
 
   // (ד) Cancellation reconcile — every run. Frees slots for future standalone

@@ -112,16 +112,23 @@ const builders: Record<TemplateKey, (v: Vars) => string> = {
     `בהמתנה שמתאימים: ${s(v, 'count')}\n` +
     `לצפייה ואישור: ${s(v, 'actionUrl')}`,
 
+  /*
+    The optional `debt` line rides on the reminder rather than going out as its
+    own message: a parent who owes money already hears from us tomorrow, and a
+    separate chase would be a second notification for the same conversation.
+  */
   reminder_day_before_individual: (v) =>
     `תזכורת 📚 שלום ${s(v, 'studentName')}!\n` +
     `מחר יש לך שיעור ב-${s(v, 'datetime')}.\n` +
     `כתובת: ${s(v, 'location')}\n` +
+    (s(v, 'debt') ? `\n${s(v, 'debt')}\n` : '') +
     `נתראה!`,
 
   reminder_day_before_group: (v) =>
     `תזכורת 👥 שלום ${s(v, 'studentName')}!\n` +
     `מחר יש מפגש של קבוצת "${s(v, 'groupName')}" ב-${s(v, 'datetime')}.\n` +
     `כתובת: ${s(v, 'location')}\n` +
+    (s(v, 'debt') ? `\n${s(v, 'debt')}\n` : '') +
     `נתראה!`,
 
   reminder_day_before_ilanit: (v) =>

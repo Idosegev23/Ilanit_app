@@ -33,6 +33,11 @@ export function ilMinute(date: Date): number {
 }
 
 /** Weekday (0=Sunday … 6=Saturday) in Asia/Jerusalem. */
+/** Day of the calendar month in Asia/Jerusalem (1-31). */
+export function ilDayOfMonth(date: Date): number {
+  return Number(toILDateStr(date).slice(8, 10));
+}
+
 export function ilWeekday(date: Date): number {
   return toZonedTime(date, IL_TZ).getDay();
 }
