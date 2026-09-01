@@ -270,6 +270,60 @@ export const actionTokens = pgTable(
   }),
 );
 
+/*
+  Bulk WhatsApp sends. A broadcast is one composed message; a recipient row is
+  one delivery attempt against one PHONE (not one student — siblings share a
+  parent's number, so several students can be covered by a single row).
+*/
+export const broadcasts = pgTable('broadcasts', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  /** The composed text, still containing any {שם} tokens. */
+  body: text('body').notNull(),
+  status: text('status', { enum: ['draft', 'sending', 'done'] })
+    .notNull()
+    .default('draft'),
+  totalCount: integer('total_count').notNull().default(0),
+  sentCount: integer('sent_count').notNull().default(0),
+  failedCount: integer('failed_count').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const broadcastRecipients = pgTable(
+  'broadcast_recipients',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    broadcastId: uuid('broadcast_id')
+      .notNull()
+      .references(() => broadcasts.id, { onDelete: 'cascade' }),
+    // set null, not cascade: deleting a student must not erase the record that
+    // we messaged them.
+    studentId: uuid('student_id').references(() => students.id, { onDelete: 'set null' }),
+    /*
+      Snapshots, for the same reason lessons carry bookedByName/bookedByPhone:
+      the history has to stay readable after a rename or a deletion.
+      `nameSnapshot` is the name the {שם} token was rendered with.
+    */
+    nameSnapshot: text('name_snapshot').notNull(),
+    phoneSnapshot: text('phone_snapshot').notNull(),
+    /** Other students reachable at this same number, for display. */
+    alsoCovers: text('also_covers'),
+    status: text('status', { enum: ['pending', 'sent', 'failed'] })
+      .notNull()
+      .default('pending'),
+    error: text('error'),
+    providerMsgId: text('provider_msg_id'),
+    sentAt: timestamp('sent_at', { withTimezone: true }),
+  },
+  (t) => ({
+    broadcastIdx: index('broadcast_recipients_broadcast_idx').on(t.broadcastId, t.status),
+    // The double-click guard: one row per phone per broadcast.
+    phoneUnique: uniqueIndex('broadcast_recipients_phone_unique').on(
+      t.broadcastId,
+      t.phoneSnapshot,
+    ),
+  }),
+);
+
 export const messageLog = pgTable(
   'message_log',
   {

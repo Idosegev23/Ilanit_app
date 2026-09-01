@@ -1,5 +1,7 @@
 import type * as React from 'react';
 import { listConversations } from '@/lib/messages';
+import Link from 'next/link';
+import { Megaphone } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { MessagesView } from './MessagesView';
 
@@ -18,6 +20,15 @@ export default async function MessagesPage() {
       <PageHeader
         title="הודעות"
         subtitle="התכתבות בוואטסאפ עם התלמידים — שליחה, קבלה, וסטטוס נשלח/נמסר/נקרא."
+        actions={
+          <Link
+            href="/messages/broadcast"
+            className="inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-fg shadow-glow transition hover:-translate-y-px hover:bg-primary-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
+          >
+            <Megaphone className="size-4" aria-hidden="true" />
+            תפוצה
+          </Link>
+        }
       />
       <div style={{ ['--i' as string]: 1 } as React.CSSProperties}>
         <MessagesView initialConversations={conversations} />
