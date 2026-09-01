@@ -82,6 +82,23 @@ export async function updateMessageLog(
  * this system did not send (e.g. other projects sharing the GreenAPI instance).
  * Monotonic: never downgrades a row (a late 'delivered' won't overwrite 'read').
  */
+/**
+ * True when a message with this provider id is already logged.
+ *
+ * Guards against double-logging one outbound message: the relay reports it, and
+ * GreenAPI's own outgoing webhook would report the same message again if it is
+ * ever enabled at the instance.
+ */
+export async function loggedProviderMsgId(providerMsgId: string): Promise<boolean> {
+  if (!providerMsgId) return false;
+  const rows = await db
+    .select({ id: messageLog.id })
+    .from(messageLog)
+    .where(eq(messageLog.providerMsgId, providerMsgId))
+    .limit(1);
+  return rows.length > 0;
+}
+
 export async function advanceStatusByProviderMsgId(
   providerMsgId: string,
   status: MessageStatus,

@@ -1,4 +1,9 @@
-import { advanceStatusByProviderMsgId, logMessage, type MessageStatus } from '@/lib/message-log';
+import {
+  advanceStatusByProviderMsgId,
+  logMessage,
+  loggedProviderMsgId,
+  type MessageStatus,
+} from '@/lib/message-log';
 import { resolveContactStudent } from '@/lib/messages';
 
 // Processes GreenAPI incoming webhook notifications. Two kinds matter:
@@ -71,6 +76,51 @@ export async function handleGreenNotification(n: GreenNotification): Promise<Han
     return {
       handled: advanced,
       note: advanced ? `status→${mapped}` : 'status: not our message',
+    };
+  }
+
+  /*
+    A message SENT from this WhatsApp account, carrying its body.
+
+    Two sources produce it. The bot posts one here after relaying Ilanit's reply
+    to a parent — without that the app showed the customer's question but not
+    her answer, so the thread read as unanswered. GreenAPI also emits this type
+    natively for anything sent from the phone itself, so enabling outgoing
+    webhooks at the instance would additionally capture replies she types
+    directly in WhatsApp, with no further change here.
+
+    Deduplicated on the provider id, because both sources can report the same
+    message.
+  */
+  if (type === 'outgoingMessageReceived' || type === 'outgoingAPIMessageReceived') {
+    const phone = n.senderData?.chatId ? chatIdToE164(n.senderData.chatId) : null;
+    if (!phone) return { handled: false, note: 'outgoing: no recipient' };
+
+    const student = await resolveContactStudent(phone);
+    if (!student) return { handled: false, note: 'outgoing: unknown recipient (ignored)' };
+
+    if (n.idMessage && (await loggedProviderMsgId(n.idMessage))) {
+      return { handled: false, note: 'outgoing: already logged' };
+    }
+
+    const body =
+      n.messageData?.textMessageData?.textMessage ??
+      n.messageData?.extendedTextMessageData?.text ??
+      '[מדיה]';
+
+    await logMessage({
+      toPhone: phone,
+      template: 'reply',
+      body,
+      direction: 'out',
+      providerMsgId: n.idMessage,
+      status: 'sent',
+    });
+    return {
+      handled: true,
+      note: 'outgoing stored',
+      student: { id: student.id, name: student.name, phone },
+      text: body,
     };
   }
 
