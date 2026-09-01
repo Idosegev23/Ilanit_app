@@ -28,6 +28,7 @@ export type TemplateKey =
   | 'pay_request_individual'
   | 'pay_request_group'
   | 'pay_intent_ilanit'
+  | 'pay_declared_ilanit'
   | 'pay_confirm_ilanit'
   | 'pay_nudge_student'
   | 'receipts_due_ilanit';
@@ -172,6 +173,16 @@ const builders: Record<TemplateKey, (v: Vars) => string> = {
     `${s(v, 'studentName')} בחר/ה ${s(v, 'methodLabel')} 💳\n` +
     `סכום: ${money(v, 'amount')}\n` +
     `${s(v, 'context')}`,
+
+  /*
+    The parent says it is already settled but not how. Ask Ilanit for the method
+    and let her confirm in one step — the link opens her settle screen, where
+    bit/cash is chosen.
+  */
+  pay_declared_ilanit: (v) =>
+    `${s(v, 'studentName')} סימן/ה *שילמתי* ✅\n` +
+    `עבור ${s(v, 'context')} · ${money(v, 'amount')}\n` +
+    `איך שולם — ביט או מזומן? לעדכון ואישור: ${s(v, 'actionUrl')}`,
 
   /** The loop-closer: nothing comes back from Bit or cash, so we ask. */
   pay_confirm_ilanit: (v) =>

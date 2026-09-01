@@ -134,7 +134,12 @@ export const payments = pgTable(
       the payment itself — the intent is only a signal that Ilanit should be
       asked to confirm. `paidAt` stays the record of an actual settlement.
     */
-    intent: text('intent', { enum: ['cash', 'bit'] }),
+    /*
+      'paid' — the parent says it is already settled and does not say how; the
+      method is captured from Ilanit, who is the one who needs it for her books.
+      'bit'  — the parent opened the Bit link to pay now.
+    */
+    intent: text('intent', { enum: ['paid', 'bit'] }),
     intentAt: timestamp('intent_at', { withTimezone: true }),
     /** Set once Ilanit has been asked to confirm, so she is asked only once. */
     confirmAskedAt: timestamp('confirm_asked_at', { withTimezone: true }),

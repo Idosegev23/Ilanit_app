@@ -24,8 +24,11 @@ import { formatILDateTime, nowIL } from '@/lib/time';
   paid, which is the one failure here that costs real money.
 */
 
-/** A private lesson is only billed once this long after it ends. */
-const PRIVATE_REQUEST_DELAY_MIN = 30;
+/*
+  The request goes out when the lesson STARTS, not after it ends: the parent is
+  usually there at drop-off, which is exactly when paying is convenient, and
+  many have already paid by then anyway.
+*/
 /*
   ...and never if it ended longer ago than this.
 
@@ -47,7 +50,7 @@ export interface PayView {
   context: string;
   bitLink: string | null;
   settled: boolean;
-  intent: 'cash' | 'bit' | null;
+  intent: 'paid' | 'bit' | null;
 }
 
 /** Resolves a parent's link for RENDERING, without consuming it. */
@@ -89,7 +92,7 @@ export async function peekPayToken(rawToken: string): Promise<PayView | null> {
  */
 export async function declareIntent(
   rawToken: string,
-  intent: 'cash' | 'bit',
+  intent: 'paid' | 'bit',
 ): Promise<{ ok: boolean; error?: string }> {
   const consumed = await consumeActionToken(rawToken);
   if (!consumed || consumed.type !== 'pay') {
@@ -101,30 +104,65 @@ export async function declareIntent(
   if (!pay) return { ok: false, error: 'התשלום לא נמצא' };
   if (pay.status === 'paid') return { ok: true };
 
+  /*
+    The METHOD is deliberately not taken from the parent. "שילמתי" carries no
+    claim about how, and Ilanit is the one who needs bit-vs-cash for her books —
+    so it is captured from her when she confirms, and left null here.
+  */
   await db
     .update(payments)
-    .set({ intent, intentAt: new Date(), method: intent })
+    .set({ intent, intentAt: new Date() })
     .where(eq(payments.id, pay.id));
 
   const lesson = (
     await db.select().from(lessons).where(eq(lessons.id, consumed.lessonId)).limit(1)
   )[0];
+  const context =
+    lesson?.type === 'group_session'
+      ? 'מפגש קבוצתי'
+      : `שיעור ב-${lesson ? formatILDateTime(lesson.startsAt) : ''}`;
+
   try {
-    await notify(
-      'pay_intent_ilanit',
-      env().ILANIT_PHONE,
-      {
-        studentName: lesson?.bookedByName ?? '',
-        methodLabel: intent === 'bit' ? 'תשלום בביט' : 'תשלום במזומן',
-        amount: pay.amount,
-        context:
-          lesson?.type === 'group_session'
-            ? 'מפגש קבוצתי'
-            : `שיעור ב-${lesson ? formatILDateTime(lesson.startsAt) : ''}`,
-      },
-      `intent:${pay.id}`,
-      consumed.lessonId,
-    );
+    if (intent === 'paid') {
+      /*
+        Already paid, method unknown. Ask her straight away and send the settle
+        link with it — /p/[token] is where she picks bit or cash and confirms,
+        so one message both informs and resolves it.
+      */
+      const raw = await createActionToken('payment', consumed.lessonId, PAY_TOKEN_TTL_MIN);
+      await notify(
+        'pay_declared_ilanit',
+        env().ILANIT_PHONE,
+        {
+          studentName: lesson?.bookedByName ?? '',
+          amount: pay.amount,
+          context,
+          actionUrl: `${env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/p/${raw}`,
+        },
+        `declared:${pay.id}`,
+        consumed.lessonId,
+      );
+      // She has been asked; runPaymentConfirms must not ask again.
+      await db
+        .update(payments)
+        .set({ confirmAskedAt: new Date() })
+        .where(eq(payments.id, pay.id));
+    } else {
+      // Opened Bit to pay now — nothing to confirm yet, so this is only a
+      // heads-up. runPaymentConfirms asks about it a day later.
+      await notify(
+        'pay_intent_ilanit',
+        env().ILANIT_PHONE,
+        {
+          studentName: lesson?.bookedByName ?? '',
+          methodLabel: 'תשלום בביט',
+          amount: pay.amount,
+          context,
+        },
+        `intent:${pay.id}`,
+        consumed.lessonId,
+      );
+    }
   } catch (err) {
     console.error('[payments] intent notification failed:', err);
   }
@@ -151,7 +189,6 @@ export interface PaymentRequestsResult {
  */
 export async function runPaymentRequests(): Promise<PaymentRequestsResult> {
   const now = nowIL();
-  const cutoff = new Date(now.getTime() - PRIVATE_REQUEST_DELAY_MIN * 60_000);
   const floor = new Date(now.getTime() - PRIVATE_REQUEST_WINDOW_H * 3600_000);
 
   const due = await db
@@ -163,8 +200,9 @@ export async function runPaymentRequests(): Promise<PaymentRequestsResult> {
       and(
         eq(lessons.type, 'individual'),
         eq(lessons.status, 'confirmed'),
-        lt(lessons.endsAt, cutoff),
-        gt(lessons.endsAt, floor),
+        // Started already, and recently enough not to reach into the past.
+        lt(lessons.startsAt, now),
+        gt(lessons.startsAt, floor),
         isNull(payments.id),
       ),
     )
@@ -229,8 +267,9 @@ export async function runPaymentConfirms(): Promise<PaymentConfirmsResult> {
   let asked = 0;
   for (const { pay, lesson } of pending) {
     if (!pay.intent || !pay.intentAt) continue;
-    const ready = pay.intent === 'bit' ? pay.intentAt < bitCutoff : lesson.endsAt < now;
-    if (!ready) continue;
+    // Only the Bit branch reaches here — a 'paid' declaration is asked about
+    // the moment it arrives, and stamped confirmAskedAt on the spot.
+    if (pay.intent !== 'bit' || pay.intentAt >= bitCutoff) continue;
 
     try {
       const raw = await createActionToken('payment', lesson.id, PAY_TOKEN_TTL_MIN);
@@ -239,7 +278,7 @@ export async function runPaymentConfirms(): Promise<PaymentConfirmsResult> {
         env().ILANIT_PHONE,
         {
           studentName: lesson.bookedByName ?? '',
-          methodLabel: pay.intent === 'bit' ? 'תשלום בביט' : 'תשלום במזומן',
+          methodLabel: 'תשלום בביט',
           amount: pay.amount,
           context:
             lesson.type === 'group_session'

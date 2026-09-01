@@ -8,9 +8,9 @@ import { declareIntent } from '@/lib/payments';
 */
 export async function declareIntentAction(
   token: string,
-  intent: 'cash' | 'bit',
+  intent: 'paid' | 'bit',
 ): Promise<{ ok: boolean; error?: string }> {
-  if (intent !== 'cash' && intent !== 'bit') {
+  if (intent !== 'paid' && intent !== 'bit') {
     return { ok: false, error: 'בחירה לא תקינה' };
   }
   return declareIntent(token, intent);

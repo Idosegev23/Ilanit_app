@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({
   notified: [] as any[],
   consumed: null as null | { type: string; lessonId: string },
   now: new Date('2026-09-01T12:00:00.000Z'),
+  bounds: [] as Array<{ op: string; col: unknown; v: unknown }>,
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -52,12 +53,20 @@ vi.mock('@/lib/time', async () => {
   const actual = await vi.importActual<typeof import('@/lib/time')>('@/lib/time');
   return { ...actual, nowIL: () => state.now };
 });
+// Record the range predicates so the window can be asserted as behaviour
+// rather than by matching source text.
 vi.mock('drizzle-orm', () => ({
   and: (...a: unknown[]) => a,
   eq: () => ({}),
   isNull: () => ({}),
-  lt: () => ({}),
-  gt: () => ({}),
+  lt: (col: unknown, v: unknown) => {
+    state.bounds.push({ op: 'lt', col, v });
+    return {};
+  },
+  gt: (col: unknown, v: unknown) => {
+    state.bounds.push({ op: 'gt', col, v });
+    return {};
+  },
 }));
 // Tagged so the db mock can answer by TABLE rather than by call order — the
 // two functions under test query in different orders.
@@ -106,6 +115,7 @@ beforeEach(() => {
   state.inserted = [];
   state.updates = [];
   state.notified = [];
+  state.bounds = [];
   state.consumed = { type: 'pay', lessonId: 'lesson-1' };
   Object.values(mocks).forEach((m) => m.mockClear());
 });
@@ -114,11 +124,11 @@ describe('declareIntent — a declaration is never a payment', () => {
   it('records the intent WITHOUT settling the row', async () => {
     state.payments = [{ id: 'pay-1', status: 'due', amount: 140, lessonId: 'lesson-1' }];
 
-    const res = await declareIntent('tok', 'cash');
+    const res = await declareIntent('tok', 'paid');
 
     expect(res.ok).toBe(true);
     const patch = state.updates[0];
-    expect(patch.intent).toBe('cash');
+    expect(patch.intent).toBe('paid');
     // The load-bearing assertion: nothing here settles the debt.
     expect(patch.status).toBeUndefined();
     expect(patch.paidAt).toBeUndefined();
@@ -138,7 +148,7 @@ describe('declareIntent — a declaration is never a payment', () => {
     // A cancel or approve link must not be able to settle a payment.
     state.consumed = { type: 'cancel', lessonId: 'lesson-1' };
 
-    const res = await declareIntent('tok', 'cash');
+    const res = await declareIntent('tok', 'paid');
 
     expect(res.ok).toBe(false);
     expect(state.updates).toHaveLength(0);
@@ -147,7 +157,7 @@ describe('declareIntent — a declaration is never a payment', () => {
   it('is a no-op once the payment is already settled', async () => {
     state.payments = [{ id: 'pay-1', status: 'paid', amount: 140, lessonId: 'lesson-1' }];
 
-    const res = await declareIntent('tok', 'cash');
+    const res = await declareIntent('tok', 'paid');
 
     expect(res.ok).toBe(true);
     expect(state.updates).toHaveLength(0);
@@ -175,15 +185,25 @@ describe('runPaymentRequests', () => {
     expect(msg.vars.actionUrl).toContain('/pay/');
   });
 
-  it('never reaches back beyond its window', async () => {
-    // Without a lower bound the first run after enabling collection bills the
-    // whole back catalogue at once — nine lessons and four surprised parents,
-    // when this was written.
-    const mod = await import('@/lib/payments');
-    const src = (await import('node:fs')).readFileSync('lib/payments/index.ts', 'utf8');
-    expect(src).toContain('PRIVATE_REQUEST_WINDOW_H');
-    expect(src).toContain('gt(lessons.endsAt, floor)');
-    expect(typeof mod.runPaymentRequests).toBe('function');
+  it('bounds the query on BOTH sides so it cannot reach into the past', async () => {
+    /*
+      Without a lower bound, the first run after enabling collection bills the
+      entire back catalogue — measured against production before switching on,
+      that was nine lessons going back to July landing on four parents at once.
+      So assert an upper AND a lower bound, and that the lower one is a few
+      hours back rather than open-ended.
+    */
+    await runPaymentRequests();
+
+    const upper = state.bounds.find((b) => b.op === 'lt');
+    const lower = state.bounds.find((b) => b.op === 'gt');
+    expect(upper).toBeTruthy();
+    expect(lower).toBeTruthy();
+
+    const floor = lower!.v as Date;
+    const hoursBack = (state.now.getTime() - floor.getTime()) / 3600_000;
+    expect(hoursBack).toBeGreaterThan(1);
+    expect(hoursBack).toBeLessThanOrEqual(24);
   });
 
   it('skips a student whose price is zero — an exemption, not a debt', async () => {

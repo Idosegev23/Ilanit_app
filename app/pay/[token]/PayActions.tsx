@@ -7,12 +7,17 @@ import { Card, CardBody } from '@/components/ui/card';
 import { declareIntentAction } from './actions';
 
 /*
-  What the parent taps.
+  What the parent taps. Two buttons, matching the two situations they are
+  actually in:
 
-  The wording is "שילמתי במזומן", not "אשלם" — a promise is not trackable, and
-  Ilanit confirms the money separately either way. The Bit button opens her
-  permanent link, which carries no amount, so the sum is stated on screen and in
-  the message for the parent to type in.
+    שילמתי       — already settled, and they should not have to remember or
+                   declare HOW. Ilanit is the one who needs bit-vs-cash for her
+                   books, so the method is captured from her instead.
+    לתשלום בביט  — not paid yet; open Ilanit's link and pay now.
+
+  The wording is past tense throughout: a promise to pay is not trackable, and
+  the money is confirmed by Ilanit either way. Her Bit link carries no amount,
+  so the sum is stated on screen and in the message for them to type in.
 */
 export function PayActions({
   token,
@@ -24,11 +29,11 @@ export function PayActions({
   bitLink: string | null;
 }) {
   const [phase, setPhase] = React.useState<'choose' | 'done'>('choose');
-  const [chosen, setChosen] = React.useState<'cash' | 'bit' | null>(null);
+  const [chosen, setChosen] = React.useState<'paid' | 'bit' | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
-  async function pick(intent: 'cash' | 'bit') {
+  async function pick(intent: 'paid' | 'bit') {
     setBusy(true);
     setError(null);
     try {
@@ -58,7 +63,7 @@ export function PayActions({
           <p className="max-w-xs text-sm leading-relaxed text-muted">
             {chosen === 'bit'
               ? 'נפתח עבורך ביט. אחרי שתשלמו, אילנית תאשר את קבלת התשלום.'
-              : 'רשמנו שהתשלום בוצע במזומן. אילנית תאשר את קבלתו.'}
+              : 'רשמנו שהתשלום בוצע. אילנית תאשר את קבלתו.'}
           </p>
           {chosen === 'bit' && bitLink && (
             <a
@@ -95,10 +100,10 @@ export function PayActions({
         size="lg"
         className="w-full"
         loading={busy}
-        onClick={() => pick('cash')}
+        onClick={() => pick('paid')}
       >
         <Banknote className="size-5" aria-hidden="true" />
-        שילמתי במזומן
+        שילמתי כבר
       </Button>
 
       {error && (
