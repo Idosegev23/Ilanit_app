@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 /*
-  Two rules carry the weight here:
-    • a move must not collide with the lesson's OWN slot, or nothing can ever
-      be moved;
-    • a parent declining must not silently move the lesson back, because Ilanit
-      is the one who knows what else can give — and two people believing
-      different things about when a lesson is, is worse than a clash she can see.
+  The rule carrying the weight: a move must not collide with the lesson's OWN
+  slot, or nothing can ever be moved.
+
+  The parent is informed rather than asked — Ilanit settles any objection with
+  them directly — so the notification is a plain update with no link to click.
 */
 
 const state = vi.hoisted(() => ({
@@ -17,7 +16,6 @@ const state = vi.hoisted(() => ({
   updates: [] as Record<string, unknown>[],
   notified: [] as Array<{ template: string; vars: Record<string, unknown> }>,
   patched: [] as unknown[],
-  consumed: null as null | { type: string; lessonId: string | null; groupBillingId: string | null },
 }));
 
 const mocks = vi.hoisted(() => ({
@@ -39,8 +37,6 @@ const mocks = vi.hoisted(() => ({
       return { ok: true };
     },
   ),
-  createActionToken: vi.fn(async () => 'raw-tok'),
-  consumeActionToken: vi.fn(async () => state.consumed),
 }));
 
 vi.mock('@/lib/availability', () => ({ hasSlotConflict: mocks.hasSlotConflict }));
@@ -48,11 +44,6 @@ vi.mock('@/lib/google-calendar', () => ({ patchEvent: mocks.patchEvent }));
 vi.mock('@/lib/notifications/dispatch', () => ({
   notify: mocks.notify,
   notifyStudent: mocks.notifyStudent,
-}));
-vi.mock('@/lib/tokens', () => ({
-  createActionToken: mocks.createActionToken,
-  consumeActionToken: mocks.consumeActionToken,
-  hashToken: (r: string) => `h-${r}`,
 }));
 vi.mock('@/lib/env', () => ({
   env: () => ({ NEXT_PUBLIC_APP_URL: 'https://app.test', ILANIT_PHONE: '972545886779' }),
@@ -87,7 +78,7 @@ vi.mock('@/lib/db', () => ({
   },
 }));
 
-import { rescheduleLesson, answerReschedule } from '@/lib/lessons/reschedule';
+import { rescheduleLesson } from '@/lib/lessons/reschedule';
 
 const NEW_START = new Date('2026-09-02T12:15:00.000Z');
 
@@ -108,7 +99,6 @@ beforeEach(() => {
   state.updates = [];
   state.notified = [];
   state.patched = [];
-  state.consumed = { type: 'reschedule', lessonId: 'l1', groupBillingId: null };
   Object.values(mocks).forEach((m) => m.mockClear());
 });
 
@@ -161,7 +151,7 @@ describe('rescheduleLesson', () => {
     expect(state.notified).toHaveLength(0);
   });
 
-  it('asks the parent with both the old and the new time', async () => {
+  it('tells the parent both the old and the new time, with nothing to click', async () => {
     const res = await rescheduleLesson({
       lessonId: 'l1',
       startsAt: NEW_START,
@@ -173,7 +163,8 @@ describe('rescheduleLesson', () => {
     expect(msg?.vars.oldWhen).toBeTruthy();
     expect(msg?.vars.newWhen).toBeTruthy();
     expect(msg?.vars.oldWhen).not.toEqual(msg?.vars.newWhen);
-    expect(String(msg?.vars.actionUrl)).toContain('/r/');
+    // No approval round-trip: an update, not a request.
+    expect(msg?.vars.actionUrl).toBeUndefined();
   });
 
   it('still reports success when the calendar patch fails', async () => {
@@ -198,31 +189,5 @@ describe('rescheduleLesson', () => {
       notifyParent: false,
     });
     expect(res.ok).toBe(false);
-  });
-});
-
-describe('answerReschedule', () => {
-  it('tells Ilanit when the parent accepts', async () => {
-    const res = await answerReschedule('tok', true);
-    expect(res.ok).toBe(true);
-    const msg = state.notified.find((n) => n.template === 'lesson_move_reply_ilanit');
-    expect(String(msg?.vars.decision)).toContain('אישר');
-  });
-
-  it('does NOT move the lesson back when the parent declines', async () => {
-    // She is the one who knows what else can give; undoing behind her back
-    // would leave the two of them believing different things.
-    const res = await answerReschedule('tok', false);
-    expect(res.ok).toBe(true);
-    expect(state.updates).toHaveLength(0);
-    const msg = state.notified.find((n) => n.template === 'lesson_move_reply_ilanit');
-    expect(String(msg?.vars.decision)).toContain('לא');
-  });
-
-  it('rejects a token of another kind', async () => {
-    state.consumed = { type: 'cancel', lessonId: 'l1', groupBillingId: null };
-    const res = await answerReschedule('tok', true);
-    expect(res.ok).toBe(false);
-    expect(state.notified).toHaveLength(0);
   });
 });

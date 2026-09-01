@@ -287,9 +287,8 @@ export const actionTokens = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     tokenHash: text('token_hash').notNull(),
     // 'payment' is Ilanit's own settle screen; 'pay' is the PARENT-facing one.
-    // 'reschedule' asks the PARENT to accept or decline a moved lesson.
     type: text('type', {
-      enum: ['approve', 'payment', 'assign_student', 'cancel', 'pay', 'reschedule'],
+      enum: ['approve', 'payment', 'assign_student', 'cancel', 'pay'],
     }).notNull(),
     /*
       A token points at EITHER a lesson or a monthly group charge — exactly one

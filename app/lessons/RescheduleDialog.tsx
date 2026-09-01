@@ -14,9 +14,12 @@ import { rescheduleLessonAction } from './actions';
 
   Two steps on purpose. Ilanit picks the new time and saves; only then is she
   asked whether to tell the parent. Bundling the two would make "move it five
-  minutes because I typed it wrong" send a message asking a family to confirm a
-  change they never noticed — and the fix for that would be her avoiding the
-  edit screen entirely.
+  minutes because I typed it wrong" message a family about a change they never
+  noticed — and the fix for that would be her avoiding the edit screen entirely.
+
+  The parent is informed, not asked: she settles any objection with them
+  directly, so there is nothing for them to click and no lesson left in limbo
+  waiting on a tap.
 
   Times step in quarter hours, which is how she actually schedules.
 */
@@ -211,7 +214,7 @@ export function RescheduleDialog({
               המועד ישתנה ל־
               <span className="font-bold"> {date} בשעה {time}</span>.
               <br />
-              לשלוח להורה הודעה עם בקשת אישור?
+              לשלוח להורה הודעת עדכון?
             </p>
             <div className="space-y-1.5">
               <Label htmlFor="resched-note">הערה להורה (לא חובה)</Label>
@@ -224,8 +227,8 @@ export function RescheduleDialog({
               />
             </div>
             <p className="rounded-xl bg-surface-2/70 px-3.5 py-2.5 text-xs leading-relaxed text-muted">
-              ההורה יקבל וואטסאפ עם המועד הישן והחדש, ושני כפתורים — מתאים לי / לא
-              מתאים. התשובה תגיע אלייך.
+              ההורה יקבל וואטסאפ עם המועד הישן והחדש. זו הודעת עדכון בלבד — אין
+              מה לאשר, וכל שינוי נוסף תסגרי איתו ישירות.
             </p>
 
             {error && (
@@ -253,7 +256,7 @@ export function RescheduleDialog({
                 onClick={() => save(true)}
               >
                 <Send className="size-4" aria-hidden="true" />
-                שמירה ושליחה להורה
+                שמירה ועדכון ההורה
               </Button>
             </div>
           </div>
@@ -267,7 +270,7 @@ export function RescheduleDialog({
             <p className="text-lg font-bold text-ink">המועד עודכן</p>
             <p className="max-w-xs text-sm leading-relaxed text-muted">
               {notified
-                ? 'נשלחה הודעה להורה עם בקשת אישור. התשובה תגיע אלייך בוואטסאפ.'
+                ? 'נשלחה להורה הודעת עדכון עם המועד החדש.'
                 : 'לא נשלחה הודעה להורה.'}
             </p>
             <Button variant="secondary" size="lg" onClick={onClose}>

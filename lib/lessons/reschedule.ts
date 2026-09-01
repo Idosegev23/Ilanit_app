@@ -1,11 +1,10 @@
 import { db } from '@/lib/db';
-import { lessons, students, actionTokens } from '@/db/schema';
-import { and, eq } from 'drizzle-orm';
+import { lessons, students } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { env } from '@/lib/env';
 import { patchEvent } from '@/lib/google-calendar';
-import { createActionToken, consumeActionToken, hashToken } from '@/lib/tokens';
-import { notify, notifyStudent } from '@/lib/notifications/dispatch';
-import { formatILDateTime, nowIL } from '@/lib/time';
+import { notifyStudent } from '@/lib/notifications/dispatch';
+import { formatILDateTime } from '@/lib/time';
 import { hasSlotConflict } from '@/lib/availability';
 
 /*
@@ -16,12 +15,11 @@ import { hasSlotConflict } from '@/lib/availability';
   its payment row, its calendar event — is torn down and rebuilt. Moving keeps
   one lesson and one conversation.
 
-  The parent is ASKED, not told. They may have arranged the day around the old
-  time, so the message carries an accept and a decline: a "no" should come back
-  as an answer rather than as an empty chair.
+  The parent is INFORMED, not asked. Ilanit settles any objection with them
+  directly, so an accept/decline round-trip would only add a step to a
+  conversation she is already having — and leave the lesson in limbo while
+  nobody clicks.
 */
-
-const RESCHEDULE_TTL_MIN = 60 * 24 * 14;
 
 export interface RescheduleResult {
   ok: boolean;
@@ -90,7 +88,6 @@ export async function rescheduleLesson(input: {
     )[0];
     if (student) {
       try {
-        const raw = await createActionToken('reschedule', lesson.id, RESCHEDULE_TTL_MIN);
         await notifyStudent(
           student,
           'lesson_moved_student',
@@ -99,7 +96,6 @@ export async function rescheduleLesson(input: {
             oldWhen,
             newWhen: formatILDateTime(input.startsAt),
             note: input.note?.trim() ?? '',
-            actionUrl: `${env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/r/${raw}`,
           },
           // Keyed on the new time, so moving twice asks twice.
           `moved:${lesson.id}:${input.startsAt.getTime()}`,
@@ -113,73 +109,4 @@ export async function rescheduleLesson(input: {
   }
 
   return { ok: true, notified };
-}
-
-export interface RescheduleView {
-  studentName: string;
-  newWhen: string;
-  location: string | null;
-  closed: boolean;
-}
-
-/** Resolves a parent's accept/decline link for rendering, without consuming it. */
-export async function peekRescheduleToken(rawToken: string): Promise<RescheduleView | null> {
-  const row = (
-    await db
-      .select({ token: actionTokens, lesson: lessons })
-      .from(actionTokens)
-      .innerJoin(lessons, eq(lessons.id, actionTokens.lessonId))
-      .where(
-        and(eq(actionTokens.tokenHash, hashToken(rawToken)), eq(actionTokens.type, 'reschedule')),
-      )
-      .limit(1)
-  )[0];
-  if (!row) return null;
-  return {
-    studentName: row.lesson.bookedByName ?? 'תלמיד/ה',
-    newWhen: formatILDateTime(row.lesson.startsAt),
-    location: row.lesson.location,
-    closed:
-      row.token.usedAt !== null ||
-      row.token.expiresAt < nowIL() ||
-      (row.lesson.status !== 'confirmed' && row.lesson.status !== 'pending'),
-  };
-}
-
-/**
- * Records the parent's answer.
- *
- * A decline does NOT move the lesson back: it stays where Ilanit put it and she
- * is told, because she is the one who knows what else can give. Silently undoing
- * her change would leave the two of them believing different things.
- */
-export async function answerReschedule(
-  rawToken: string,
-  accepted: boolean,
-): Promise<{ ok: boolean; error?: string }> {
-  const consumed = await consumeActionToken(rawToken);
-  if (!consumed || consumed.type !== 'reschedule' || !consumed.lessonId) {
-    return { ok: false, error: 'הקישור אינו תקין או שכבר נוצל' };
-  }
-  const lesson = (
-    await db.select().from(lessons).where(eq(lessons.id, consumed.lessonId)).limit(1)
-  )[0];
-  if (!lesson) return { ok: false, error: 'השיעור לא נמצא' };
-
-  try {
-    await notify(
-      'lesson_move_reply_ilanit',
-      env().ILANIT_PHONE,
-      {
-        studentName: lesson.bookedByName ?? '',
-        decision: accepted ? 'אישר/ה ✅' : 'לא יכול/ה ❌',
-        newWhen: formatILDateTime(lesson.startsAt),
-      },
-      `move-reply:${lesson.id}:${accepted ? 'y' : 'n'}`,
-      lesson.id,
-    );
-  } catch (err) {
-    console.error('[reschedule] reply notification failed:', err);
-  }
-  return { ok: true };
 }
