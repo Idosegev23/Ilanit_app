@@ -16,6 +16,7 @@ import {
   findOrCreateStudentByName,
 } from '@/lib/students';
 import { getSettings } from '@/lib/settings';
+import { rescheduleLesson } from '@/lib/lessons/reschedule';
 import { nowIL, parseILDateTime, formatILDateTime, toILDateStr, toILTimeStr } from '@/lib/time';
 import { normalizePhoneIL } from '@/lib/utils';
 import { env } from '@/lib/env';
@@ -334,6 +335,39 @@ export async function markLessonNotALesson(lessonId: string): Promise<ActionResu
  *
  * There is no path left that creates a student as a side effect.
  */
+/**
+ * Moves a lesson to a new date/time, optionally asking the parent to confirm.
+ *
+ * Separate from replaceLesson (which swaps WHO the lesson is for): this keeps
+ * the same student and changes only WHEN, so the payment, the calendar entry
+ * and the conversation all survive the change.
+ */
+export async function rescheduleLessonAction(input: {
+  lessonId: string;
+  date: string;
+  time: string;
+  durationMin: number;
+  notifyParent: boolean;
+  note?: string;
+}): Promise<ActionResult & { notified?: boolean }> {
+  if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+  if (!input.date || !input.time) return { ok: false, error: 'יש לבחור תאריך ושעה' };
+
+  const startsAt = parseILDateTime(input.date, input.time);
+  const res = await rescheduleLesson({
+    lessonId: input.lessonId,
+    startsAt,
+    durationMin: input.durationMin,
+    notifyParent: input.notifyParent,
+    note: input.note,
+  });
+  if (!res.ok) return { ok: false, error: res.error };
+
+  revalidatePath('/lessons');
+  revalidatePath('/dashboard');
+  return { ok: true, notified: res.notified };
+}
+
 export async function createManualLesson(formData: FormData): Promise<ActionResult> {
   try {
     const studentId = String(formData.get('studentId') ?? '').trim();

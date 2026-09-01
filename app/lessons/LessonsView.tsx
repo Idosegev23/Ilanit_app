@@ -29,11 +29,35 @@ import { ManualLessonForm } from './ManualLessonForm';
 import { RecurringForm } from './RecurringForm';
 import { LessonDialog } from './LessonDialog';
 import { AssignStudentDialog } from './AssignStudentDialog';
+import { RescheduleDialog, type RescheduleTarget } from './RescheduleDialog';
 import { ReplaceLessonDialog } from './ReplaceLessonDialog';
 import { CalendarShell } from './calendar/CalendarShell';
 import type { LessonRow, StudentOption, GroupOption } from './data';
 
 type CreateTab = 'manual' | 'recurring';
+
+/*
+  The edit dialog needs Israel-local yyyy-MM-dd / HH:mm, which is not what a
+  Date serialises to. Derived here rather than in the dialog so the dialog stays
+  a dumb form.
+*/
+function toDateInput(d: Date | string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jerusalem',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(d));
+}
+
+function toTimeInput(d: Date | string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jerusalem',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(d));
+}
 
 export function LessonsView({
   lessons,
@@ -53,6 +77,7 @@ export function LessonsView({
   const [formKey, setFormKey] = React.useState(0);
   const [assignTarget, setAssignTarget] = React.useState<LessonRow | null>(null);
   const [replaceTarget, setReplaceTarget] = React.useState<LessonRow | null>(null);
+  const [rescheduleTarget, setRescheduleTarget] = React.useState<LessonRow | null>(null);
   const [backfilling, setBackfilling] = React.useState(false);
   const [aiResolving, setAiResolving] = React.useState(false);
   const [notice, setNotice] = React.useState<string | null>(null);
@@ -289,6 +314,7 @@ export function LessonsView({
             onAction={handleAction}
             onAssign={setAssignTarget}
             onReplace={setReplaceTarget}
+            onReschedule={setRescheduleTarget}
             busyId={busyId}
           />
         </CardContent>
@@ -356,6 +382,28 @@ export function LessonsView({
         eventTitle={assignTarget?.studentName ?? null}
         studentOptions={studentOptions}
         onAssigned={() => setNotice('השיעור שויך בהצלחה')}
+      />
+
+      <RescheduleDialog
+        lesson={
+          rescheduleTarget
+            ? {
+                id: rescheduleTarget.id,
+                studentName: rescheduleTarget.studentName ?? 'שיעור',
+                date: toDateInput(rescheduleTarget.startsAt),
+                time: toTimeInput(rescheduleTarget.startsAt),
+                durationMin: Math.max(
+                  5,
+                  Math.round(
+                    (new Date(rescheduleTarget.endsAt).getTime() -
+                      new Date(rescheduleTarget.startsAt).getTime()) /
+                      60000,
+                  ),
+                ),
+              }
+            : null
+        }
+        onClose={() => setRescheduleTarget(null)}
       />
 
       <ReplaceLessonDialog

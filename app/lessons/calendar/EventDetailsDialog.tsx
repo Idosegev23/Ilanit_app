@@ -15,6 +15,7 @@ import {
   User,
   Users,
   UserPlus,
+  CalendarClock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StatusPill, type StatusKind } from '@/components/ui/badge';
@@ -51,6 +52,7 @@ export function EventDetailsDialog({
   onAction,
   onAssign,
   onReplace,
+  onReschedule,
   busy,
 }: {
   lesson: LessonRow | null;
@@ -59,6 +61,7 @@ export function EventDetailsDialog({
   onAction: (id: string, fn: () => Promise<ActionResult>) => void;
   onAssign: (lesson: LessonRow) => void;
   onReplace: (lesson: LessonRow) => void;
+  onReschedule: (lesson: LessonRow) => void;
   busy: boolean;
 }) {
   if (!lesson) return null;
@@ -228,16 +231,28 @@ export function EventDetailsDialog({
               {lesson.status === 'confirmed' && (
                 <>
                   {!isGroup && (
-                    <Button
-                      size="md"
-                      variant="secondary"
-                      disabled={busy}
-                      className="flex-1"
-                      onClick={() => onReplace(lesson!)}
-                    >
-                      <Repeat className="size-4" aria-hidden="true" />
-                      החלף
-                    </Button>
+                    <>
+                      <Button
+                        size="md"
+                        variant="secondary"
+                        disabled={busy}
+                        className="flex-1"
+                        onClick={() => onReschedule(lesson!)}
+                      >
+                        <CalendarClock className="size-4" aria-hidden="true" />
+                        שינוי מועד
+                      </Button>
+                      <Button
+                        size="md"
+                        variant="secondary"
+                        disabled={busy}
+                        className="flex-1"
+                        onClick={() => onReplace(lesson!)}
+                      >
+                        <Repeat className="size-4" aria-hidden="true" />
+                        החלף
+                      </Button>
+                    </>
                   )}
                   <Button
                     size="md"

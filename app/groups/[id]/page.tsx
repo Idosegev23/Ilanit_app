@@ -17,7 +17,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/empty-state';
-import { getGroup, listMembers } from '@/lib/groups';
+import {
+  getGroup,
+  listMembers,
+  listGroupSchedule,
+  countGroupSessions,
+} from '@/lib/groups';
+import { GroupCreatedBanner } from '@/app/groups/GroupCreatedBanner';
 import { listStudents } from '@/lib/students';
 import { formatShekels } from '@/lib/utils';
 import { toILDateStr } from '@/lib/time';
@@ -29,10 +35,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function GroupDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ created?: string }>;
 }) {
   const { id } = await params;
+  const { created } = await searchParams;
   const group = await getGroup(id);
   if (!group) notFound();
 
@@ -40,6 +49,12 @@ export default async function GroupDetailPage({
     listMembers(id, true),
     listStudents(),
   ]);
+
+  // Only loaded for the confirmation, which is why it is not in the parallel
+  // fetch above.
+  const justCreated = created === '1';
+  const createdSlots = justCreated ? await listGroupSchedule(id) : [];
+  const createdSessions = justCreated ? await countGroupSessions(id) : 0;
   const memberStudentIds = new Set(
     members.filter((m) => m.active).map((m) => m.studentId),
   );
@@ -54,6 +69,18 @@ export default async function GroupDetailPage({
 
   return (
     <div className="space-y-8">
+      {justCreated && (
+        <div className="rise">
+          <GroupCreatedBanner
+            name={group.name}
+            monthlyPrice={group.monthlyPrice}
+            location={group.location}
+            maxMembers={group.maxMembers}
+            slots={createdSlots}
+            sessionCount={createdSessions}
+          />
+        </div>
+      )}
       <div className="rise">
         <Link
           href="/groups"

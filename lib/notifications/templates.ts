@@ -31,7 +31,9 @@ export type TemplateKey =
   | 'pay_declared_ilanit'
   | 'pay_confirm_ilanit'
   | 'pay_nudge_student'
-  | 'receipts_due_ilanit';
+  | 'receipts_due_ilanit'
+  | 'lesson_moved_student'
+  | 'lesson_move_reply_ilanit';
 
 type Vars = Record<string, string | number>;
 
@@ -202,6 +204,24 @@ const builders: Record<TemplateKey, (v: Vars) => string> = {
     `שלום ${s(v, 'studentName')} 🙏\n` +
     `תזכורת קטנה — נותר תשלום פתוח של ${money(v, 'amount')} עבור ${s(v, 'context')}.\n` +
     `לתשלום ולעדכון: ${s(v, 'actionUrl')}`,
+
+  /*
+    A moved lesson needs the parent's agreement, not just their awareness —
+    they may already have arranged the day around the old time. The two links
+    are an accept and a decline, so a "no" comes back as an answer rather than
+    as a missed lesson.
+  */
+  lesson_moved_student: (v) =>
+    `שלום ${s(v, 'studentName')} 🗓️\n` +
+    `אילנית מבקשת להזיז את השיעור\n` +
+    `מ-${s(v, 'oldWhen')}\n` +
+    `ל-${s(v, 'newWhen')}\n` +
+    (s(v, 'note') ? `${s(v, 'note')}\n` : '') +
+    `\nמתאים לך? ${s(v, 'actionUrl')}`,
+
+  lesson_move_reply_ilanit: (v) =>
+    `${s(v, 'studentName')} ${s(v, 'decision')} את המועד החדש\n` +
+    `${s(v, 'newWhen')}`,
 
   /** The system never issues a receipt; it only reminds Ilanit to. */
   receipts_due_ilanit: (v) =>

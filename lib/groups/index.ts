@@ -5,12 +5,14 @@ import {
   groupBilling,
   students,
   receipts,
+  recurrences,
+  lessons,
   type Group,
   type NewGroup,
   type GroupMember,
   type GroupBilling,
 } from '@/db/schema';
-import { and, asc, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
 import { getSettings } from '@/lib/settings';
 import {
   getStudent,
@@ -415,6 +417,31 @@ function normalizeMonth(monthISO: string): string {
  */
 /** A month's pay link stays usable for 60 days — well past its own month. */
 const GROUP_PAY_TOKEN_TTL_MIN = 60 * 24 * 60;
+
+/** A group's recurring weekly slots, for the post-create confirmation. */
+export async function listGroupSchedule(
+  groupId: string,
+): Promise<Array<{ weekday: number; startTime: string; durationMin: number }>> {
+  const rows = await db
+    .select({
+      weekday: recurrences.weekday,
+      startTime: recurrences.startTime,
+      durationMin: recurrences.durationMin,
+    })
+    .from(recurrences)
+    .where(and(eq(recurrences.groupId, groupId), eq(recurrences.active, true)))
+    .orderBy(asc(recurrences.weekday), asc(recurrences.startTime));
+  return rows;
+}
+
+/** How many sessions the group has in the diary — the proof it worked. */
+export async function countGroupSessions(groupId: string): Promise<number> {
+  const rows = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(lessons)
+    .where(eq(lessons.groupId, groupId));
+  return rows[0]?.n ?? 0;
+}
 
 export async function generateMonthlyBilling(monthISO: string): Promise<{ created: number }> {
   const month = normalizeMonth(monthISO);

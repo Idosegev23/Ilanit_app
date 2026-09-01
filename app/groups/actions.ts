@@ -90,7 +90,10 @@ export async function createGroupAction(form: FormData): Promise<void> {
   );
   revalidatePath('/groups');
   revalidatePath('/lessons');
-  redirect(`/groups/${group.id}`);
+  // ?created=1 so the destination can confirm what was saved. Creating a group
+  // also generates its sessions, which is too much to happen behind a redirect
+  // that lands on a page looking like any other.
+  redirect(`/groups/${group.id}?created=1`);
 }
 
 export async function updateGroupAction(form: FormData): Promise<void> {

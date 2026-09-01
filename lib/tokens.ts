@@ -13,7 +13,9 @@ export type ActionTokenType =
   | 'assign_student'
   | 'cancel'
   // Parent-facing settle screen, distinct from 'payment' which is Ilanit's.
-  | 'pay';
+  | 'pay'
+  // Parent accepts or declines a lesson Ilanit moved.
+  | 'reschedule';
 
 export function hashToken(raw: string): string {
   return createHash('sha256').update(raw).digest('hex');

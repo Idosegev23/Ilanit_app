@@ -210,6 +210,37 @@ function isNotFoundError(err: unknown): boolean {
  * Deletes (cancels) an event, notifying participants. An event that is already
  * gone (404/410) is treated as success so the caller's flow stays idempotent.
  */
+/**
+ * Moves an existing event to new times.
+ *
+ * Patches rather than delete-and-recreate so the entry already sitting in the
+ * student's own calendar shifts in place — recreating would leave them with a
+ * cancellation and a separate new invitation for the same lesson. Returns false
+ * when the event is gone, which is a lesson whose calendar entry was deleted by
+ * hand, not an error worth failing the move over.
+ */
+export async function patchEvent(
+  eventId: string,
+  times: { startISO: string; endISO: string },
+): Promise<boolean> {
+  const calendar = await getCalendar();
+  try {
+    await calendar.events.patch({
+      calendarId: calendarId(),
+      eventId,
+      sendUpdates: 'all',
+      requestBody: {
+        start: { dateTime: times.startISO, timeZone: TIMEZONE },
+        end: { dateTime: times.endISO, timeZone: TIMEZONE },
+      },
+    });
+    return true;
+  } catch (err) {
+    if (isNotFoundError(err)) return false;
+    throw err;
+  }
+}
+
 export async function cancelEvent(eventId: string): Promise<void> {
   const calendar = await getCalendar();
   try {
