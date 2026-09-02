@@ -108,6 +108,22 @@ describe('runGroupBillingOnFirstSession', () => {
     expect(generateMonthlyBilling).not.toHaveBeenCalled();
   });
 
+  it('writes no charge it cannot announce', async () => {
+    /*
+      generateMonthlyBilling refuses when the collection engine is off. This
+      test guards the seam: the job must surface that refusal as "nothing
+      billed" rather than reporting success on rows nobody was told about —
+      which is how ₪3,900 accrued unannounced on a group that never met.
+    */
+    state.firstSession = [{ startsAt: new Date('2026-09-02T13:15:00Z') }];
+    generateMonthlyBilling.mockResolvedValueOnce({ created: 0 });
+
+    const res = await runGroupBillingOnFirstSession();
+
+    expect(res.billed).toEqual([]);
+    expect(res.created).toBe(0);
+  });
+
   it('does not bill twice in the same month', async () => {
     state.firstSession = [{ startsAt: new Date('2026-09-02T13:15:00Z') }];
     state.billing = [{ id: 'gb1' }];

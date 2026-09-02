@@ -109,11 +109,13 @@ vi.mock('@/lib/whatsapp/provider', () => ({
   sendFileByUrl: vi.fn(async () => ({ ok: true, messageId: 'wa-1' })),
 }));
 
+const collectionOn = vi.hoisted(() => ({ value: true }));
 vi.mock('@/lib/env', () => ({
   env: vi.fn(() => ({
     NEXT_PUBLIC_APP_URL: 'https://ilanit.example.com',
     ILANIT_PHONE: '972545886779',
   })),
+  collectionEnabled: () => collectionOn.value,
 }));
 
 import {
@@ -478,6 +480,23 @@ describe('generateMonthlyBilling', () => {
       }),
       'group_roster:g1:2026-06-01',
     );
+  });
+
+  it('writes nothing at all while the collection engine is off', async () => {
+    /*
+      A debt the parent is never told about is worse than no debt: it surfaces
+      weeks later as an argument. ₪3,900 accrued on «מתמטיקה עולות לז'» exactly
+      this way — rows written on 01/08 and 01/09 while the engine was off, every
+      request dropped in silence. So billing declines to write at all.
+    */
+    collectionOn.value = false;
+    try {
+      const res = await generateMonthlyBilling('2026-09-01');
+      expect(res.created).toBe(0);
+      expect(dbMock.inserted).toHaveLength(0);
+    } finally {
+      collectionOn.value = true;
+    }
   });
 
   it('skips members already billed for the month (no duplicate insert)', async () => {

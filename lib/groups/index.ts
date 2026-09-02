@@ -24,7 +24,7 @@ import { createReceipt } from '@/lib/morning';
 import { createGroupBillingToken } from '@/lib/tokens';
 import { notify } from '@/lib/notifications/dispatch';
 import { sendFileByUrl } from '@/lib/whatsapp/provider';
-import { env } from '@/lib/env';
+import { env, collectionEnabled } from '@/lib/env';
 import { toILMonthStr } from '@/lib/groups/month';
 import { createSeries } from '@/lib/recurrence';
 
@@ -458,6 +458,17 @@ export async function generateMonthlyBilling(
   const monthLabel = toILMonthStr(month);
   const appUrl = env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
   const ilanitPhone = env().ILANIT_PHONE;
+
+  /*
+    A charge nobody is told about is the worst state this system can be in: the
+    debt exists, the parent has no idea, and it surfaces weeks later as an
+    argument. That is exactly how ₪3,900 accumulated on «מתמטיקה עולות לז'» —
+    the rows were written on 01/08 and 01/09 while the collection engine was
+    off, so every request was dropped in silence.
+
+    So billing refuses to run at all rather than write debts it cannot announce.
+  */
+  if (!collectionEnabled()) return { created: 0 };
 
   const all = await db.select().from(groups).where(eq(groups.active, true));
   const activeGroups = onlyGroupIds
