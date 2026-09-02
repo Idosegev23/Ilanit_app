@@ -27,6 +27,7 @@ import {
   TableNumCell,
 } from '@/components/ui/table';
 import { getGroup, rosterFor, groupReceiptLabel } from '@/lib/groups';
+import { receiptsEnabled } from '@/lib/env';
 import { formatShekels } from '@/lib/utils';
 import { toILMonthStr } from '@/lib/groups/month';
 import { markPaidAction, markUnpaidAction } from '@/app/groups/actions';
@@ -67,6 +68,8 @@ export default async function GroupBillingRosterPage({
   }
 
   const roster = await rosterFor(id, month);
+  // Off by default — the roster must not offer a document it will not issue.
+  const withReceipt = receiptsEnabled();
   const paidCount = roster.filter((r) => r.status === 'paid').length;
   const totalDue = roster
     .filter((r) => r.status === 'due')
@@ -239,11 +242,15 @@ export default async function GroupBillingRosterPage({
                           {/* Editable receipt description — presets + free text.
                              Defaults to the student's receiptLabel, else
                              "חוג {group name}". */}
-                          <ReceiptDescriptionField
-                            id={`desc-${r.billingId}`}
-                            defaultValue={r.receiptLabel?.trim() || groupReceiptLabel(group.name)}
-                            ariaLabel={`תיאור הקבלה עבור ${r.name}`}
-                          />
+                          {withReceipt && (
+                            <ReceiptDescriptionField
+                              id={`desc-${r.billingId}`}
+                              defaultValue={
+                                r.receiptLabel?.trim() || groupReceiptLabel(group.name)
+                              }
+                              ariaLabel={`תיאור הקבלה עבור ${r.name}`}
+                            />
+                          )}
                           <div className="flex flex-wrap items-center justify-end gap-2">
                             <label
                               htmlFor={`method-${r.billingId}`}
@@ -265,7 +272,7 @@ export default async function GroupBillingRosterPage({
                             </Select>
                             <Button type="submit" variant="ink" size="md">
                               <Receipt className="size-4" aria-hidden="true" />
-                              סמני כשולם + קבלה
+                              {withReceipt ? 'סמני כשולם + קבלה' : 'אישור קבלת התשלום'}
                             </Button>
                           </div>
                         </form>
@@ -281,9 +288,18 @@ export default async function GroupBillingRosterPage({
             <p className="mt-5 flex items-start gap-2.5 rounded-2xl bg-accent-soft px-4 py-3.5 text-xs leading-relaxed text-accent-text ring-1 ring-inset ring-white/50">
               <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
               <span>
-                סימון &quot;שולם&quot; מפיק קבלה רשמית (Morning) עם תיאור הקבלה
-                שבחרת ושולח אותה אוטומטית להורה בוואטסאפ. ניתן לבטל סימון אם נעשתה
-                טעות.
+                {withReceipt ? (
+                  <>
+                    סימון &quot;שולם&quot; מפיק קבלה רשמית (Morning) עם תיאור הקבלה
+                    שבחרת ושולח אותה אוטומטית להורה בוואטסאפ. ניתן לבטל סימון אם
+                    נעשתה טעות.
+                  </>
+                ) : (
+                  <>
+                    סימון &quot;שולם&quot; רושם שהתשלום התקבל — לא מופקת קבלה ולא
+                    נשלחת הודעה להורה. ניתן לבטל סימון אם נעשתה טעות.
+                  </>
+                )}
               </span>
             </p>
           )}

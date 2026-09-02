@@ -110,12 +110,16 @@ vi.mock('@/lib/whatsapp/provider', () => ({
 }));
 
 const collectionOn = vi.hoisted(() => ({ value: true }));
+// markBillingPaid's receipt cases need the flag ON; production default is OFF
+// and has its own case.
+const receiptsOn = vi.hoisted(() => ({ value: true }));
 vi.mock('@/lib/env', () => ({
   env: vi.fn(() => ({
     NEXT_PUBLIC_APP_URL: 'https://ilanit.example.com',
     ILANIT_PHONE: '972545886779',
   })),
   collectionEnabled: () => collectionOn.value,
+  receiptsEnabled: () => receiptsOn.value,
 }));
 
 import {
@@ -516,6 +520,32 @@ describe('generateMonthlyBilling', () => {
 });
 
 describe('markBillingPaid', () => {
+  it('settles the charge WITHOUT a receipt when receipts are off', async () => {
+    // Production default: confirming the money and issuing a tax document are
+    // separate decisions. This also unblocks settling when Morning is down.
+    receiptsOn.value = false;
+    dbMock.selectResults.push([
+      { id: 'b1', groupId: 'g1', studentId: 's1', month: '2026-06-01', amount: 320, status: 'due' },
+    ]);
+    dbMock.selectResults.push([{ id: 'g1', name: 'אנגלית כיתה ו' }]);
+    vi.mocked(getStudent).mockResolvedValue({
+      id: 's1',
+      name: 'דריה טפר',
+      phone: '+972500000001',
+    } as never);
+    try {
+      await markBillingPaid('b1', 'bit');
+
+      expect(createReceipt).not.toHaveBeenCalled();
+      expect(dbMock.inserted.find((i) => i.table === 'receipts')).toBeUndefined();
+      const paid = dbMock.updated.find((u) => (u.set as any)?.status === 'paid');
+      expect(paid).toBeDefined();
+      expect((paid!.set as any).receiptId).toBeUndefined();
+    } finally {
+      receiptsOn.value = true;
+    }
+  });
+
   it('creates Morning receipt, persists receipts row, marks paid, sends PDF attachment', async () => {
     // billing lookup
     dbMock.selectResults.push([

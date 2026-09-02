@@ -24,8 +24,9 @@ import { createReceipt } from '@/lib/morning';
 import { createGroupBillingToken } from '@/lib/tokens';
 import { notify } from '@/lib/notifications/dispatch';
 import { sendFileByUrl } from '@/lib/whatsapp/provider';
-import { env, collectionEnabled } from '@/lib/env';
+import { env, collectionEnabled, receiptsEnabled } from '@/lib/env';
 import { toILMonthStr } from '@/lib/groups/month';
+import { mayAskToday } from '@/lib/payments/collect-window';
 import { createSeries } from '@/lib/recurrence';
 
 /** Default receipt description for a group payment: "חוג {group name}". */
@@ -483,6 +484,7 @@ export async function generateMonthlyBilling(
         name: students.name,
         phone: students.phone,
         guardianPhone: students.guardianPhone,
+        collectFromDay: students.collectFromDay,
       })
       .from(groupMembers)
       .innerJoin(students, eq(groupMembers.studentId, students.id))
@@ -523,6 +525,10 @@ export async function generateMonthlyBilling(
         two choices as a private lesson ("שילמתי כבר" / "לתשלום בביט") instead
         of being a bare statement of what is owed.
       */
+      // A family with a fixed pay-day is charged now but asked later; the
+      // deferred pass sends the request once that day arrives.
+      if (!mayAskToday(member)) continue;
+
       const payToken = await createGroupBillingToken(
         'pay',
         billing.id,
@@ -590,6 +596,20 @@ export async function markBillingPaid(
   const settings = await getSettings();
   const docType = settings.morningDocType ?? 'receipt';
   const monthLabel = toILMonthStr(billing.month);
+
+  /*
+    Confirming the money arrived and issuing a numbered tax document are two
+    decisions, and only the first is on by default. With receipts off the charge
+    simply settles — which also removes the old coupling where a Morning outage
+    made it impossible to record a payment Ilanit had already received.
+  */
+  if (!receiptsEnabled()) {
+    await db
+      .update(groupBilling)
+      .set({ status: 'paid', method: normalizedMethod, paidAt: new Date() })
+      .where(eq(groupBilling.id, billing.id));
+    return;
+  }
 
   // Receipt description: explicit edit → student default → "חוג {group name}".
   const receiptDescription =

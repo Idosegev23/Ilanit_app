@@ -261,6 +261,57 @@ describe('runPaymentRequests', () => {
     expect(state.notified.find((n) => n.template === 'pay_request_individual')).toBeUndefined();
   });
 
+  it('records the charge but holds the request until the family pay-day', async () => {
+    /*
+      דריה טפר pays on the 15th. Charging her on the 2nd is correct; ASKING her
+      on the 2nd is a fortnight of nagging. The row is written either way so
+      Ilanit sees the money owed, and the deferred pass does the asking on the
+      15th.
+    */
+    state.now = new Date('2026-09-02T12:00:00.000Z');
+    state.lessons = [
+      {
+        lesson: {
+          id: 'l1', type: 'individual', status: 'confirmed', price: 140,
+          startsAt: new Date('2026-09-02T08:00:00Z'),
+          endsAt: new Date('2026-09-02T09:00:00Z'),
+        },
+        student: {
+          id: 's1', name: 'דריה טפר', defaultPrice: 140,
+          autoCollect: true, collectFromDay: 15,
+        },
+      },
+    ];
+
+    const res = await runPaymentRequests();
+
+    expect(state.inserted[0]).toMatchObject({ status: 'due', amount: 140 });
+    expect(res.requested).toBe(0);
+    expect(state.notified.find((n) => n.template === 'pay_request_individual')).toBeUndefined();
+  });
+
+  it('asks once the pay-day has arrived', async () => {
+    state.now = new Date('2026-09-15T12:00:00.000Z');
+    state.lessons = [
+      {
+        lesson: {
+          id: 'l1', type: 'individual', status: 'confirmed', price: 140,
+          startsAt: new Date('2026-09-15T08:00:00Z'),
+          endsAt: new Date('2026-09-15T09:00:00Z'),
+        },
+        student: {
+          id: 's1', name: 'דריה טפר', defaultPrice: 140,
+          autoCollect: true, collectFromDay: 15,
+        },
+      },
+    ];
+
+    const res = await runPaymentRequests();
+
+    expect(res.requested).toBe(1);
+    expect(state.notified.find((n) => n.template === 'pay_request_individual')).toBeDefined();
+  });
+
   it('bounds the query on BOTH sides so it cannot reach into the past', async () => {
     /*
       Without a lower bound, the first run after enabling collection bills the

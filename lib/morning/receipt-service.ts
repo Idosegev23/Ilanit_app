@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { lessons, payments, receipts, students, type Student } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { put } from '@vercel/blob';
-import { env } from '@/lib/env';
+import { env, receiptsEnabled } from '@/lib/env';
 import { getSettings } from '@/lib/settings';
 import { sendFileByUrl } from '@/lib/whatsapp/provider';
 import { notify } from '@/lib/notifications/dispatch';
@@ -112,9 +112,23 @@ export async function markLessonPaidAndIssueReceipt(
     await db.update(lessons).set({ status: 'completed' }).where(eq(lessons.id, lessonId));
   }
 
-  // Issue the official Morning receipt. The description line is, in priority
-  // order: the text Ilanit chose on the action page → the student's default
-  // receipt label → a sensible default; the lesson date is appended for context.
+  /*
+    Settling is done. Everything below issues the official Morning document,
+    and it is a separate decision on purpose: confirming that money arrived is
+    something Ilanit does daily, while putting a numbered tax document behind it
+    is not, and a receipt cannot be un-issued.
+
+    So when receipts are off, the payment stands as settled and we stop here —
+    rather than the old behaviour, where a Morning failure returned an error to
+    a screen whose payment had ALREADY been marked paid.
+  */
+  if (!receiptsEnabled()) {
+    return { ok: true };
+  }
+
+  // The description line is, in priority order: the text Ilanit chose on the
+  // action page → the student's default receipt label → a sensible default; the
+  // lesson date is appended for context.
   const baseDescription =
     input.description?.trim() || student?.receiptLabel?.trim() || 'שיעור פרטי';
   const description = `${baseDescription} – ${formatILDateTime(lesson.startsAt)}`;

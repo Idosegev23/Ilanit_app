@@ -44,6 +44,7 @@ export default async function StudentFilePage({
       notes: student.notes,
       archived: student.archived,
       autoCollect: student.autoCollect,
+      collectFromDay: student.collectFromDay,
     },
     lessons: lessons.map((l: Lesson) => {
       const pay = paymentByLesson.get(l.id);

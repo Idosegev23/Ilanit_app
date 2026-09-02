@@ -64,6 +64,18 @@ function durationMin(form: FormData, key: string, fallback: number): number {
   return Math.round(n);
 }
 
+/**
+ * Day-of-month a family may first be asked for money, or null for no limit.
+ * Capped at 28 so it exists in February too.
+ */
+function collectDay(form: FormData): number | null {
+  const raw = str(form, 'collectFromDay').trim();
+  if (!raw) return null;
+  const n = Math.round(Number(raw));
+  if (!Number.isFinite(n) || n < 1 || n > 28) return null;
+  return n;
+}
+
 export async function createStudentAction(form: FormData): Promise<StudentActionResult> {
   if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
 
@@ -119,6 +131,7 @@ export async function createStudentAction(form: FormData): Promise<StudentAction
       defaultDurationMin: durationMin(form, 'defaultDurationMin', 60),
       notes,
       autoCollect: str(form, 'manualBilling') !== 'on',
+      collectFromDay: collectDay(form),
     });
     revalidatePath('/students');
     return { ok: true, id: student.id };
@@ -187,6 +200,7 @@ export async function updateStudentAction(form: FormData): Promise<StudentAction
       archived: str(form, 'archived') === 'on',
       // The checkbox asks the opposite question from the column it sets.
       autoCollect: str(form, 'manualBilling') !== 'on',
+      collectFromDay: collectDay(form),
     });
     revalidatePath('/students');
     revalidatePath(`/students/${id}`);

@@ -56,6 +56,7 @@ export interface StudentFileVM {
     notes: string | null;
     archived: boolean;
     autoCollect: boolean;
+    collectFromDay: number | null;
   };
   lessons: { id: string; when: string; status: StatusKind; price: number | null; payStatus: StatusKind | null }[];
   payments: { id: string; amount: number; status: StatusKind; method: string | null; paidAt: string | null }[];

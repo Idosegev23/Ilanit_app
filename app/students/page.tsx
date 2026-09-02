@@ -22,6 +22,7 @@ export default async function StudentsPage() {
     notes: s.notes,
     archived: s.archived,
     autoCollect: s.autoCollect,
+    collectFromDay: s.collectFromDay,
   }));
 
   return (

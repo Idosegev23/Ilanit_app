@@ -18,6 +18,7 @@ import {
 } from '@/lib/tokens';
 import { notify, notifyStudent } from '@/lib/notifications/dispatch';
 import { formatILDateTime, nowIL } from '@/lib/time';
+import { mayAskToday } from '@/lib/payments/collect-window';
 
 /**
  * Who a charge is FOR, in the words Ilanit needs to read it.
@@ -360,6 +361,16 @@ export async function runPaymentRequests(): Promise<PaymentRequestsResult> {
       continue;
     }
 
+    /*
+      Some parents pay on a fixed day of the month. The charge is recorded now
+      either way; the asking waits, and runDeferredPaymentRequests sends it once
+      that day arrives.
+    */
+    if (!mayAskToday(student)) {
+      skipped++;
+      continue;
+    }
+
     try {
       await notifyStudent(
         student,
@@ -471,3 +482,8 @@ export async function openDebts(): Promise<OpenDebt[]> {
   }
   return [...by.values()].sort((a, b) => b.amount - a.amount);
 }
+
+export {
+  runDeferredPaymentRequests,
+  type DeferredRequestsResult,
+} from '@/lib/payments/deferred';

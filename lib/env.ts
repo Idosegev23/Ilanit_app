@@ -89,3 +89,17 @@ export function resetEnvCache(): void {
 export function collectionEnabled(): boolean {
   return process.env.COLLECTION_ENABLED === 'true';
 }
+
+/**
+ * Whether settling a payment also issues an official Morning receipt.
+ *
+ * Default OFF. Ilanit confirms that money arrived far more often than she is
+ * ready to put a numbered tax document behind it, and a receipt is not a step
+ * you can take back — so the confirmation and the document are separate
+ * decisions, and only the confirmation is on. Flip by setting
+ * RECEIPTS_ENABLED=true; every receipt already issued stays in the client file
+ * either way.
+ */
+export function receiptsEnabled(): boolean {
+  return process.env.RECEIPTS_ENABLED === 'true';
+}

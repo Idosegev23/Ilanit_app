@@ -6,7 +6,11 @@ import {
   runPaymentFollowup,
   runGroupBillingOnFirstSession,
 } from '@/lib/jobs';
-import { runPaymentRequests, runPaymentConfirms } from '@/lib/payments';
+import {
+  runPaymentRequests,
+  runPaymentConfirms,
+  runDeferredPaymentRequests,
+} from '@/lib/payments';
 import { runReceiptReminders } from '@/lib/jobs/receipt-reminders';
 import { reconcileCancellations } from '@/lib/jobs/reconcile-cancellations';
 import { getSettings } from '@/lib/settings';
@@ -65,6 +69,17 @@ export async function GET(req: Request): Promise<Response> {
     ran.paymentConfirms = await runPaymentConfirms();
   } catch (err) {
     ran.paymentConfirmsError = err instanceof Error ? err.message : String(err);
+  }
+
+  /*
+    Requests held back for a family's pay-day, sent once that day arrives.
+    Message-log dedup makes it safe hourly: only charges never actually asked
+    about go out, so a request lost to an outage is recovered here too.
+  */
+  try {
+    ran.deferredRequests = await runDeferredPaymentRequests();
+  } catch (err) {
+    ran.deferredRequestsError = err instanceof Error ? err.message : String(err);
   }
 
   /*

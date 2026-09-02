@@ -38,6 +38,12 @@ interface Props {
   suggestedAmount: number;
   /** Default receipt description for this student (students.receiptLabel). */
   defaultDescription?: string | null;
+  /**
+   * Whether settling also issues an official Morning receipt. Off by default:
+   * Ilanit confirms money arrived far more often than she is ready to put a
+   * numbered tax document behind it, so the screen must not promise one.
+   */
+  receiptsEnabled?: boolean;
 }
 
 type Phase = 'choose' | 'paid' | 'done-paid' | 'done-request';
@@ -47,7 +53,12 @@ type Phase = 'choose' | 'paid' | 'done-paid' | 'done-request';
  * editing the (integer-shekel) amount and selecting a payment method, then post
  * to /api/payment. Money is always whole shekels — the input rejects decimals.
  */
-export function PaymentForm({ token, suggestedAmount, defaultDescription }: Props) {
+export function PaymentForm({
+  token,
+  suggestedAmount,
+  defaultDescription,
+  receiptsEnabled = false,
+}: Props) {
   const initialDescription = defaultDescription?.trim() || DEFAULT_RECEIPT_LABEL;
   const [phase, setPhase] = useState<Phase>('choose');
   const [amount, setAmount] = useState<number>(suggestedAmount > 0 ? suggestedAmount : 0);
@@ -111,10 +122,12 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
           </span>
         </span>
         <p className="text-2xl font-extrabold tracking-tight text-success">
-          הקבלה הופקה ונשלחה
+          {receiptsEnabled ? 'הקבלה הופקה ונשלחה' : 'התשלום נרשם'}
         </p>
         <p className="max-w-xs text-sm leading-relaxed text-ink">
-          התשלום עודכן, הקבלה נשלחה לתלמיד/ה כצרופה ועותק נשמר בתיק הלקוח.
+          {receiptsEnabled
+            ? 'התשלום עודכן, הקבלה נשלחה לתלמיד/ה כצרופה ועותק נשמר בתיק הלקוח.'
+            : 'התשלום נרשם בתיק הלקוח. לא הופקה קבלה.'}
         </p>
       </div>
     );
@@ -163,7 +176,7 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
             onClick={() => setPhase('paid')}
           >
             <ReceiptText className="size-5" aria-hidden="true" />
-            שולם — הפקת קבלה
+            {receiptsEnabled ? 'שולם — הפקת קבלה' : 'שולם — אישור קבלת התשלום'}
           </Button>
           <Button
             variant="secondary"
@@ -219,48 +232,51 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
           />
         </div>
         <p className="mt-1 text-xs tabular-nums text-muted">
-          לקבלה: {formatShekels(roundedAmount)}
+          {receiptsEnabled ? 'לקבלה: ' : 'יירשם: '}
+          {formatShekels(roundedAmount)}
         </p>
       </div>
 
-      <fieldset className="space-y-2">
-        <legend className="mb-2 block text-sm font-semibold text-ink">תיאור לקבלה</legend>
-        <div className="flex flex-wrap gap-2">
-          {RECEIPT_PRESETS.map((preset) => {
-            const selected = description.trim() === preset;
-            return (
-              <button
-                key={preset}
-                type="button"
-                onClick={() => setDescription(preset)}
-                aria-pressed={selected}
-                className={cn(
-                  'inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
-                  selected
-                    ? 'border-primary bg-primary font-bold text-primary-fg shadow-glow'
-                    : 'border-white/70 bg-white/80 font-medium text-ink shadow-soft backdrop-blur hover:-translate-y-0.5 hover:border-primary-300 hover:bg-primary-50',
-                )}
-              >
-                {selected && <Check className="size-4 shrink-0" aria-hidden="true" />}
-                {preset}
-              </button>
-            );
-          })}
-        </div>
-        <Label htmlFor="receipt-description" className="sr-only">
-          תיאור חופשי לקבלה
-        </Label>
-        <Input
-          id="receipt-description"
-          type="text"
-          value={description}
-          maxLength={120}
-          placeholder="תיאור חופשי לקבלה"
-          onChange={(e) => setDescription(e.target.value)}
-          className="text-ink"
-        />
-        <p className="text-xs text-muted">השורה שתופיע בקבלה. אפשר לבחור מהקיצורים או להקליד חופשי.</p>
-      </fieldset>
+      {receiptsEnabled && (
+        <fieldset className="space-y-2">
+          <legend className="mb-2 block text-sm font-semibold text-ink">תיאור לקבלה</legend>
+          <div className="flex flex-wrap gap-2">
+            {RECEIPT_PRESETS.map((preset) => {
+              const selected = description.trim() === preset;
+              return (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setDescription(preset)}
+                  aria-pressed={selected}
+                  className={cn(
+                    'inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2 focus-visible:ring-offset-surface',
+                    selected
+                      ? 'border-primary bg-primary font-bold text-primary-fg shadow-glow'
+                      : 'border-white/70 bg-white/80 font-medium text-ink shadow-soft backdrop-blur hover:-translate-y-0.5 hover:border-primary-300 hover:bg-primary-50',
+                  )}
+                >
+                  {selected && <Check className="size-4 shrink-0" aria-hidden="true" />}
+                  {preset}
+                </button>
+              );
+            })}
+          </div>
+          <Label htmlFor="receipt-description" className="sr-only">
+            תיאור חופשי לקבלה
+          </Label>
+          <Input
+            id="receipt-description"
+            type="text"
+            value={description}
+            maxLength={120}
+            placeholder="תיאור חופשי לקבלה"
+            onChange={(e) => setDescription(e.target.value)}
+            className="text-ink"
+          />
+          <p className="text-xs text-muted">השורה שתופיע בקבלה. אפשר לבחור מהקיצורים או להקליד חופשי.</p>
+        </fieldset>
+      )}
 
       <fieldset className="space-y-2">
         <legend className="mb-2 block text-sm font-semibold text-ink">אמצעי תשלום</legend>
@@ -313,7 +329,7 @@ export function PaymentForm({ token, suggestedAmount, defaultDescription }: Prop
           onClick={() => submit('paid')}
         >
           {!submitting && <Check className="size-5" aria-hidden="true" />}
-          אישור והפקת קבלה
+          {receiptsEnabled ? 'אישור והפקת קבלה' : 'אישור קבלת התשלום'}
         </Button>
         <Button
           variant="ghost"

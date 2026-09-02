@@ -15,6 +15,7 @@ import {
   StickyNote,
   Archive,
   HandCoins,
+  CalendarClock,
   UserCog,
   PhoneCall,
   ReceiptText,
@@ -47,6 +48,7 @@ export interface StudentFormValues {
   notes: string | null;
   archived: boolean;
   autoCollect: boolean;
+  collectFromDay: number | null;
 }
 
 interface StudentFormDialogProps {
@@ -431,6 +433,41 @@ export function StudentFormDialog({
                     placeholder="העדפות, מקצוע, הורה מלווה…"
                   />
                 </Field>
+
+                {/*
+                  Some parents pay on a fixed date — a salary date, usually.
+                  Asking earlier is not a reminder, it is a fortnight of
+                  nagging, so the charge is recorded on time and only the
+                  asking waits.
+                */}
+                <div className="rounded-2xl border border-line bg-primary-50/60 px-3.5 py-3">
+                  <div className="flex items-start gap-2.5">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-700 shadow-soft ring-1 ring-inset ring-white/70">
+                      <CalendarClock className="size-4" aria-hidden="true" />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <Label htmlFor={`${titleId}-collect-day`}>
+                        לא לבקש תשלום לפני יום בחודש
+                      </Label>
+                      <Input
+                        id={`${titleId}-collect-day`}
+                        name="collectFromDay"
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        max={28}
+                        step={1}
+                        className="mt-1.5"
+                        defaultValue={student?.collectFromDay ?? ''}
+                        placeholder="ריק = בכל יום"
+                      />
+                      <p className="mt-1 text-xs text-muted">
+                        למשל 15 למי שמשלמ/ת באמצע החודש. החיוב עדיין נרשם בזמן
+                        ומופיע בדוחות — רק הבקשה ממתינה.
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
                 {/*
                   Shown for new students too, unlike the archive toggle: the

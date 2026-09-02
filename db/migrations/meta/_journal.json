@@ -120,6 +120,13 @@
       "when": 1788277345771,
       "tag": "0016_add_auto_collect",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1788365034370,
+      "tag": "0017_add_collect_from_day",
+      "breakpoints": true
     }
   ]
 }

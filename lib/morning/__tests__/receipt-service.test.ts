@@ -2,8 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mocks for all cross-module + external deps (mock BEFORE importing SUT) ──
 
+// These cases exercise the receipt-issuing path, so the flag is ON here; the
+// production default is OFF and is covered by its own case below.
+const receiptsOn = vi.hoisted(() => ({ value: true }));
 vi.mock('@/lib/env', () => ({
   env: () => ({ BLOB_READ_WRITE_TOKEN: 'blob-token', MORNING_DOC_TYPE: undefined }),
+  receiptsEnabled: () => receiptsOn.value,
 }));
 
 vi.mock('@/lib/settings', () => ({
@@ -139,6 +143,39 @@ beforeEach(() => {
 });
 
 describe('markLessonPaidAndIssueReceipt', () => {
+  it('settles the payment WITHOUT a receipt when receipts are off', async () => {
+    /*
+      The production default. Ilanit confirms money arrived far more often than
+      she is ready to put a numbered tax document behind it, and a receipt
+      cannot be un-issued — so the two are separate decisions.
+
+      This also removes an old trap: the payment was marked paid BEFORE Morning
+      was called, so a Morning outage returned ok:false from a screen whose
+      money had already been recorded as settled.
+    */
+    receiptsOn.value = false;
+    try {
+      const res = await markLessonPaidAndIssueReceipt({
+        lessonId: 'lesson-1',
+        amount: 140,
+        method: 'bit',
+      });
+
+      expect(res.ok).toBe(true);
+      expect(res.docNumber).toBeUndefined();
+      expect(createReceipt).not.toHaveBeenCalled();
+      // The money is still recorded — only the document is skipped.
+      const settled =
+        state.inserts.find((i) => (i.values as any)?.status === 'paid') ??
+        state.updates.find((u) => (u.set as any)?.status === 'paid');
+      expect(settled).toBeDefined();
+      // …and no receipts row was written.
+      expect(state.inserts.find((i) => i.table === 'receipts')).toBeUndefined();
+    } finally {
+      receiptsOn.value = true;
+    }
+  });
+
   it('marks paid, creates Morning receipt, mirrors to Blob, sends attachment, saves receipt row', async () => {
     const res = await markLessonPaidAndIssueReceipt({
       lessonId: 'lesson-1',

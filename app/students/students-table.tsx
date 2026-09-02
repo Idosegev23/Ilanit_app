@@ -43,6 +43,7 @@ export interface StudentRow {
   notes: string | null;
   archived: boolean;
   autoCollect: boolean;
+  collectFromDay: number | null;
 }
 
 interface StudentsTableProps {

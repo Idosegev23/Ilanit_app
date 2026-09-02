@@ -47,6 +47,17 @@ export const students = pgTable(
       summary. It suppresses the chasing, never the bookkeeping.
     */
     autoCollect: boolean('auto_collect').notNull().default(true),
+    /*
+      Earliest day of the month this family may be ASKED for money (1-28), or
+      null for no restriction.
+
+      Some parents pay on a fixed date — a salary date, usually — and a request
+      that arrives on the 2nd for someone who pays on the 15th is not a reminder,
+      it is nagging for two weeks. The charge is still created on time and Ilanit
+      still sees it; only the asking waits, and a catch-up pass sends the request
+      once the day arrives.
+    */
+    collectFromDay: integer('collect_from_day'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => ({

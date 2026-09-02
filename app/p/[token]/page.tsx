@@ -9,6 +9,7 @@ import {
 import { AuthLayout } from '@/components/ui/auth-layout';
 import { StatusPill } from '@/components/ui/badge';
 import { peekPaymentToken } from '@/lib/morning/payment-token';
+import { receiptsEnabled } from '@/lib/env';
 import { formatILDateTime } from '@/lib/time';
 import { PaymentForm } from './payment-form';
 
@@ -25,12 +26,18 @@ export default async function PaymentPage({
 }) {
   const { token } = await params;
   const view = await peekPaymentToken(token);
+  // Off by default — the screen must not promise a document it will not issue.
+  const withReceipt = receiptsEnabled();
 
   if (!view) {
     return (
       <AuthLayout
-        eyebrow="תשלום וקבלה"
-        valueProp="עדכון תשלומים והפקת קבלות — ישירות מהנייד, אחרי כל שיעור."
+        eyebrow={withReceipt ? 'תשלום וקבלה' : 'עדכון תשלום'}
+        valueProp={
+          withReceipt
+            ? 'עדכון תשלומים והפקת קבלות — ישירות מהנייד, אחרי כל שיעור.'
+            : 'עדכון תשלומים — ישירות מהנייד, אחרי כל שיעור.'
+        }
       >
         <header className="mb-6 flex items-start gap-3.5 rise">
           <span
@@ -50,7 +57,9 @@ export default async function PaymentPage({
         </header>
         <div className="rounded-2xl border border-white/60 bg-white/60 px-5 py-8 text-center shadow-soft backdrop-blur">
           <p className="text-sm leading-relaxed text-muted">
-            אפשר לעדכן את התשלום ולהפיק קבלה ישירות מהמערכת.
+            {withReceipt
+              ? 'אפשר לעדכן את התשלום ולהפיק קבלה ישירות מהמערכת.'
+              : 'אפשר לעדכן את התשלום ישירות מהמערכת.'}
           </p>
         </div>
       </AuthLayout>
@@ -59,13 +68,24 @@ export default async function PaymentPage({
 
   return (
     <AuthLayout
-      eyebrow="תשלום וקבלה"
-      valueProp="סמני אם התקבל תשלום עבור השיעור — קבלה מופקת ונשלחת אוטומטית."
-      highlights={[
-        'קבלה נשלחת לתלמיד/ה כצרופה',
-        'עותק נשמר אוטומטית בתיק הלקוח',
-        'אפשר לשלוח בקשת תשלום בלחיצה אחת',
-      ]}
+      eyebrow={withReceipt ? 'תשלום וקבלה' : 'עדכון תשלום'}
+      valueProp={
+        withReceipt
+          ? 'סמני אם התקבל תשלום עבור השיעור — קבלה מופקת ונשלחת אוטומטית.'
+          : 'סמני אם התקבל תשלום עבור השיעור.'
+      }
+      highlights={
+        withReceipt
+          ? [
+              'קבלה נשלחת לתלמיד/ה כצרופה',
+              'עותק נשמר אוטומטית בתיק הלקוח',
+              'אפשר לשלוח בקשת תשלום בלחיצה אחת',
+            ]
+          : [
+              'התשלום נרשם בתיק הלקוח',
+              'אפשר לשלוח בקשת תשלום בלחיצה אחת',
+            ]
+      }
     >
       <header className="mb-6 flex items-start gap-3.5 rise">
         <span
@@ -76,7 +96,7 @@ export default async function PaymentPage({
         </span>
         <div className="min-w-0">
           <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-ink">
-            עדכון תשלום והפקת קבלה
+            {withReceipt ? 'עדכון תשלום והפקת קבלה' : 'עדכון תשלום'}
           </h1>
           <p className="mt-1 text-sm leading-relaxed text-muted">
             סמני אם התקבל תשלום עבור השיעור
@@ -102,6 +122,7 @@ export default async function PaymentPage({
       </dl>
 
       <PaymentForm
+        receiptsEnabled={withReceipt}
         token={token}
         suggestedAmount={view.amount}
         defaultDescription={view.receiptLabel}
