@@ -4,6 +4,7 @@ import {
   runDayBeforeReminders,
   runCalendarScan,
   runPaymentFollowup,
+  runGroupBillingOnFirstSession,
 } from '@/lib/jobs';
 import { runPaymentRequests, runPaymentConfirms } from '@/lib/payments';
 import { runReceiptReminders } from '@/lib/jobs/receipt-reminders';
@@ -64,6 +65,17 @@ export async function GET(req: Request): Promise<Response> {
     ran.paymentConfirms = await runPaymentConfirms();
   } catch (err) {
     ran.paymentConfirmsError = err instanceof Error ? err.message : String(err);
+  }
+
+  /*
+    Group billing — charged when the group actually MEETS, not on a calendar
+    date. Checked every hour so the charge lands during the month's first
+    session; idempotent per group and month.
+  */
+  try {
+    ran.groupBilling = await runGroupBillingOnFirstSession();
+  } catch (err) {
+    ran.groupBillingError = err instanceof Error ? err.message : String(err);
   }
 
   /*

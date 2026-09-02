@@ -1,40 +1,35 @@
 import { NextResponse } from 'next/server';
 import { isAuthorizedCron } from '@/lib/jobs/cron-auth';
-import { runGroupBilling } from '@/lib/jobs';
-import { getSettings } from '@/lib/settings';
-import { nowIL, toILDateStr } from '@/lib/time';
+import { runGroupBillingOnFirstSession } from '@/lib/jobs';
 
-// Daily cron (vercel.json: "0 4 * * *"). Runs monthly group billing ONLY on
-// the configured day-of-month (settings.group_billing_day, default 1) in
-// Asia/Jerusalem. Auth: Authorization: Bearer <CRON_SECRET>.
+/*
+  Daily safety net for group billing (vercel.json: "0 4 * * *").
 
+  This route used to BE the billing rule: on settings.group_billing_day it
+  charged every active group, whether or not that group had met. That is how
+  «מתמטיקה עולות לז'» came to be billed ₪650 twice for months in which it never
+  met once.
+
+  The rule now lives on the group's own first session of the month, checked
+  hourly by /api/cron/tick. This route runs the same job so a tick that failed
+  or was skipped still gets a second chance the next morning; it is idempotent,
+  so on an ordinary day it finds nothing to do.
+
+  Auth: Authorization: Bearer <CRON_SECRET>.
+*/
 export const dynamic = 'force-dynamic';
-
-/** Day-of-month (1-31) in Asia/Jerusalem. */
-function ilDayOfMonth(date: Date): number {
-  // toILDateStr → yyyy-MM-dd; the day component is the IL calendar day.
-  return Number(toILDateStr(date).slice(8, 10));
-}
 
 export async function GET(req: Request): Promise<Response> {
   if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  const settings = await getSettings();
-  const today = ilDayOfMonth(nowIL());
-  const isBillingDay = today === settings.groupBillingDay;
-
-  if (!isBillingDay) {
-    return NextResponse.json({ ok: true, isBillingDay, day: today });
-  }
-
   try {
-    const result = await runGroupBilling();
-    return NextResponse.json({ ok: true, isBillingDay, result });
+    const result = await runGroupBillingOnFirstSession();
+    return NextResponse.json({ ok: true, result });
   } catch (err) {
     return NextResponse.json(
-      { ok: false, isBillingDay, error: err instanceof Error ? err.message : String(err) },
+      { ok: false, error: err instanceof Error ? err.message : String(err) },
       { status: 500 },
     );
   }

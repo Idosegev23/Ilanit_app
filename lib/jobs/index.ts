@@ -3,3 +3,7 @@ export { runDayBeforeReminders, type DayBeforeResult } from '@/lib/jobs/day-befo
 export { runCalendarScan, type CalendarScanResult } from '@/lib/jobs/calendar-scan';
 export { runPaymentFollowup, type PaymentFollowupResult } from '@/lib/jobs/payment-followup';
 export { runGroupBilling, type GroupBillingResult } from '@/lib/jobs/group-billing';
+export {
+  runGroupBillingOnFirstSession,
+  type GroupBillingOnSessionResult,
+} from '@/lib/jobs/group-billing-on-session';

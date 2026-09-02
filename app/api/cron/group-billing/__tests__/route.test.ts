@@ -1,20 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+/*
+  This route no longer decides WHEN to bill. It used to fire on
+  settings.group_billing_day and charge every active group, which is how a group
+  that had not met since July was billed ₪650 for August and again for
+  September. The decision now belongs to each group's own first session; the
+  route is only a daily second chance for a tick that failed.
+*/
+
 vi.mock('@/lib/env', () => ({ env: () => ({ CRON_SECRET: 'super-secret-cron-value-1234' }) }));
 
-const runGroupBilling = vi.fn((..._a: unknown[]) =>
-  Promise.resolve({ monthISO: '2026-06-01', created: 4 }),
+const runGroupBillingOnFirstSession = vi.fn((..._a: unknown[]) =>
+  Promise.resolve({ billed: ['אנגלית כיתה ו'], created: 3 }),
 );
-vi.mock('@/lib/jobs', () => ({ runGroupBilling: (...a: unknown[]) => runGroupBilling(...a) }));
-
-const getSettings = vi.fn(async () => ({ groupBillingDay: 1 }));
-vi.mock('@/lib/settings', () => ({ getSettings: () => getSettings() }));
-
-// Controllable IL date — the route derives the day-of-month from toILDateStr.
-let mockDateStr = '2026-06-01';
-vi.mock('@/lib/time', () => ({
-  nowIL: () => new Date('2026-06-01T00:00:00Z'),
-  toILDateStr: () => mockDateStr,
+vi.mock('@/lib/jobs', () => ({
+  runGroupBillingOnFirstSession: (...a: unknown[]) => runGroupBillingOnFirstSession(...a),
 }));
 
 import { GET } from '@/app/api/cron/group-billing/route';
@@ -26,41 +26,35 @@ function authedReq(token = 'super-secret-cron-value-1234'): Request {
 }
 
 beforeEach(() => {
-  runGroupBilling.mockClear();
-  getSettings.mockClear();
-  mockDateStr = '2026-06-01';
+  runGroupBillingOnFirstSession.mockClear();
 });
 
 describe('GET /api/cron/group-billing', () => {
   it('401s without a valid CRON_SECRET', async () => {
     const res = await GET(new Request('https://x/api/cron/group-billing'));
     expect(res.status).toBe(401);
-    expect(runGroupBilling).not.toHaveBeenCalled();
+    expect(runGroupBillingOnFirstSession).not.toHaveBeenCalled();
   });
 
-  it('runs billing on the configured billing day', async () => {
-    mockDateStr = '2026-06-01'; // day 1 === groupBillingDay
-    const res = await GET(authedReq());
-    const body = await res.json();
-    expect(res.status).toBe(200);
-    expect(body.isBillingDay).toBe(true);
-    expect(runGroupBilling).toHaveBeenCalledTimes(1);
-    expect(body.result.created).toBe(4);
+  it('401s with a wrong token', async () => {
+    const res = await GET(authedReq('nope-nope-nope-nope-nope'));
+    expect(res.status).toBe(401);
+    expect(runGroupBillingOnFirstSession).not.toHaveBeenCalled();
   });
 
-  it('does nothing on a non-billing day', async () => {
-    mockDateStr = '2026-06-15'; // day 15 !== 1
+  it('runs the session-triggered job on EVERY day, not just the 1st', async () => {
+    // A group's first session can fall on any date, so the safety net cannot be
+    // gated on one.
     const res = await GET(authedReq());
     const body = await res.json();
+
     expect(res.status).toBe(200);
-    expect(body.isBillingDay).toBe(false);
-    expect(body.day).toBe(15);
-    expect(runGroupBilling).not.toHaveBeenCalled();
+    expect(runGroupBillingOnFirstSession).toHaveBeenCalledTimes(1);
+    expect(body.result.created).toBe(3);
   });
 
   it('returns 500 when billing throws', async () => {
-    mockDateStr = '2026-06-01';
-    runGroupBilling.mockRejectedValueOnce(new Error('billing failed'));
+    runGroupBillingOnFirstSession.mockRejectedValueOnce(new Error('billing failed'));
     const res = await GET(authedReq());
     const body = await res.json();
     expect(res.status).toBe(500);

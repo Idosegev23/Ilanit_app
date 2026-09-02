@@ -443,13 +443,26 @@ export async function countGroupSessions(groupId: string): Promise<number> {
   return rows[0]?.n ?? 0;
 }
 
-export async function generateMonthlyBilling(monthISO: string): Promise<{ created: number }> {
+/**
+ * Creates a month's charges for active groups and asks each member to pay.
+ *
+ * `onlyGroupIds` narrows it to specific groups, which is what the
+ * first-session trigger needs: groups no longer all bill on the same date, so
+ * they have to be billable one at a time.
+ */
+export async function generateMonthlyBilling(
+  monthISO: string,
+  onlyGroupIds?: string[],
+): Promise<{ created: number }> {
   const month = normalizeMonth(monthISO);
   const monthLabel = toILMonthStr(month);
   const appUrl = env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '');
   const ilanitPhone = env().ILANIT_PHONE;
 
-  const activeGroups = await db.select().from(groups).where(eq(groups.active, true));
+  const all = await db.select().from(groups).where(eq(groups.active, true));
+  const activeGroups = onlyGroupIds
+    ? all.filter((g) => onlyGroupIds.includes(g.id))
+    : all;
 
   let created = 0;
   for (const group of activeGroups) {
