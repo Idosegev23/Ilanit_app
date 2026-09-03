@@ -12,6 +12,8 @@ import {
   findStudentByPhone,
   findStudentsByContactPhone,
   findStudentsByNormalizedName,
+  describeFamily,
+  siblingFieldsFor,
   getStudent,
 } from '@/lib/students';
 import { getSettings } from '@/lib/settings';
@@ -118,10 +120,7 @@ export async function createStudentAction(form: FormData): Promise<StudentAction
     return {
       ok: false,
       error: `המספר הזה כבר רשום ל${family.map((f) => f.name).join(', ')}`,
-      sameNumberAs: {
-        names: family.map((f) => f.name),
-        guardianName: family.find((f) => f.guardianName)?.guardianName ?? null,
-      },
+      sameNumberAs: describeFamily(family),
     };
   }
 
@@ -169,13 +168,13 @@ export async function createStudentAction(form: FormData): Promise<StudentAction
       the index — and would make the family unreadable besides.
     */
     const isSibling = addAsSibling && family.length > 0;
+    const sibling = isSibling ? siblingFieldsFor(phone, family) : null;
     const student = await createStudent({
       name,
-      phone: isSibling ? null : phone,
+      phone: sibling ? sibling.phone : phone,
       email,
-      guardianName:
-        guardianName ?? (isSibling ? (family.find((f) => f.guardianName)?.guardianName ?? null) : null),
-      guardianPhone: isSibling ? phone : guardianPhone,
+      guardianName: guardianName ?? sibling?.guardianName ?? null,
+      guardianPhone: sibling ? sibling.guardianPhone : guardianPhone,
       receiptLabel,
       defaultPrice: price,
       defaultDurationMin: durationMin(form, 'defaultDurationMin', 60),

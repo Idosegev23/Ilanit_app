@@ -79,13 +79,22 @@ vi.mock('@/lib/settings', () => ({
   })),
 }));
 
-vi.mock('@/lib/students', () => ({
-  getStudent: vi.fn(),
-  findStudentByPhone: vi.fn(async () => null),
-  createStudent: vi.fn(),
-  contactPhoneFor: (s: { phone: string; guardianPhone?: string | null }) =>
-    s.guardianPhone?.trim() || s.phone,
-}));
+const familyAtNumber = vi.hoisted(() => ({ value: [] as any[] }));
+vi.mock('@/lib/students', async () => {
+  // siblingFieldsFor is pure — use the real one, so what it produces is what
+  // these tests actually assert on.
+  const actual = await vi.importActual<typeof import('@/lib/students')>('@/lib/students');
+  return {
+    getStudent: vi.fn(),
+    findStudentByPhone: vi.fn(async () => null),
+    findStudentsByContactPhone: vi.fn(async () => familyAtNumber.value),
+    siblingFieldsFor: actual.siblingFieldsFor,
+    describeFamily: actual.describeFamily,
+    createStudent: vi.fn(),
+    contactPhoneFor: (s: { phone: string; guardianPhone?: string | null }) =>
+      s.guardianPhone?.trim() || s.phone,
+  };
+});
 
 vi.mock('@/lib/recurrence', () => ({
   createSeries: vi.fn(async () => ({ count: 4 })),
@@ -303,10 +312,16 @@ describe('createGroupWithSchedule', () => {
 });
 
 describe('addChildMember', () => {
+  /*
+    A family is matched by NAME within the number, never by the number alone.
+    The old code reused whichever student happened to hold the guardian phone,
+    so adding a second child of the same mother silently enrolled the FIRST —
+    which is how איתן בישלה ended up in «אנגלית כיתה ו» in place of her sister
+    תהל, and why the group reminder went to the wrong girl.
+  */
   it('creates the child student with guardian fields, then enrols them', async () => {
-    vi.mocked(findStudentByPhone).mockResolvedValue(null);
+    familyAtNumber.value = [];
     vi.mocked(createStudent).mockResolvedValue({ id: 's-new' } as never);
-    // addMember: existing membership lookup → none, then insert
     dbMock.selectResults.push([]);
     dbMock.insertResults.push([{ id: 'm1', groupId: 'g1', studentId: 's-new', active: true }]);
 
@@ -326,17 +341,45 @@ describe('addChildMember', () => {
     expect(dbMock.inserted[0].values).toMatchObject({ studentId: 's-new', active: true });
   });
 
-  it('reuses an existing student that already owns the guardian phone', async () => {
-    vi.mocked(findStudentByPhone).mockResolvedValue({ id: 's-existing' } as never);
-    dbMock.selectResults.push([]); // membership lookup → none
-    dbMock.insertResults.push([{ id: 'm2', studentId: 's-existing', active: true }]);
+  it('gives a SIBLING their own record instead of enrolling the wrong child', async () => {
+    // איתן already holds the family number; תהל is a different girl.
+    familyAtNumber.value = [
+      { id: 's-eitan', name: 'איתן בישלה', phone: '+972524864005', guardianName: 'בת-אל' },
+    ];
+    vi.mocked(createStudent).mockResolvedValue({ id: 's-tahel' } as never);
+    dbMock.selectResults.push([]);
+    dbMock.insertResults.push([{ id: 'm2', studentId: 's-tahel', active: true }]);
 
     const m = await addChildMember('g1', {
-      childName: 'יואב',
-      guardianPhone: '+972500000010',
+      childName: 'תהל בישלה',
+      guardianPhone: '+972524864005',
     });
-    expect(createStudent).not.toHaveBeenCalled();
+
+    // The unique index means only איתן can hold the number outright.
+    expect(createStudent).toHaveBeenCalledWith({
+      name: 'תהל בישלה',
+      phone: null,
+      guardianPhone: '+972524864005',
+      guardianName: 'בת-אל',
+    });
     expect(m.id).toBe('m2');
+  });
+
+  it('reuses the record when the SAME child is added again', async () => {
+    // Same name on the same number — re-adding, not a new sibling.
+    familyAtNumber.value = [
+      { id: 's-eitan', name: 'איתן בישלה', phone: '+972524864005', guardianName: 'בת-אל' },
+    ];
+    dbMock.selectResults.push([]);
+    dbMock.insertResults.push([{ id: 'm3', studentId: 's-eitan', active: true }]);
+
+    const m = await addChildMember('g1', {
+      childName: '  איתן בישלה ',
+      guardianPhone: '+972524864005',
+    });
+
+    expect(createStudent).not.toHaveBeenCalled();
+    expect(m.id).toBe('m3');
   });
 
   it('rejects a missing child name or guardian phone', async () => {

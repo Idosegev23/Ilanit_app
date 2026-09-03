@@ -33,7 +33,10 @@ vi.mock('@/lib/notifications/dispatch', () => ({ notifyStudent: async () => ({ o
 vi.mock('@/lib/calendar-link', () => ({ addToCalendarUrl: () => '' }));
 vi.mock('@/lib/availability/cancel', () => ({ createCancelUrl: async () => '' }));
 
-vi.mock('@/lib/students', () => ({
+// describeFamily / siblingFieldsFor are pure — use the real ones, so the shape
+// they produce is what these tests actually assert on.
+vi.mock('@/lib/students', async () => ({
+  ...(await vi.importActual<typeof import('@/lib/students')>('@/lib/students')),
   createStudent: async (data: any) => {
     state.created.push(data);
     return { id: 'new-1', ...data };
@@ -119,3 +122,4 @@ describe('adding a sibling', () => {
     expect(state.created).toHaveLength(0);
   });
 });
+

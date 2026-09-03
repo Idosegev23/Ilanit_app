@@ -18,7 +18,8 @@ import {
   getStudent,
   contactPhoneFor,
   createStudent,
-  findStudentByPhone,
+  findStudentsByContactPhone,
+  siblingFieldsFor,
 } from '@/lib/students';
 import { createReceipt } from '@/lib/morning';
 import { createGroupBillingToken } from '@/lib/tokens';
@@ -352,9 +353,14 @@ export interface AddChildMemberInput {
  * Adds a NEW child to a group: creates the student record (the child) with the
  * parent's contact captured in the guardian fields, then enrols them. The
  * guardian phone becomes the routing target for all of the child's outbound
- * WhatsApp (`contactPhoneFor`). If a student already uses the guardian phone as
- * their own `phone` we reuse that record (the phone column is unique), so the
- * child's own `phone` defaults to the guardian phone until set otherwise.
+ * WhatsApp (`contactPhoneFor`).
+ *
+ * A family is matched by NAME within the number, never by the number alone.
+ * The old code reused whichever student happened to hold the guardian phone,
+ * so adding a second child of the same mother silently enrolled the FIRST one:
+ * that is how איתן בישלה ended up in «אנגלית כיתה ו» in place of her sister
+ * תהל, and why the group's reminder went out addressed to the wrong girl until
+ * the parent corrected it by hand.
  *
  * Returns the resulting (group, student) membership.
  */
@@ -368,16 +374,32 @@ export async function addChildMember(
   if (!childName) throw new Error('child name is required');
   if (!guardianPhone) throw new Error('guardian phone is required');
 
-  // The child's own `phone` defaults to the guardian phone (phone is unique and
-  // notNull); guardian fields carry the parent contact used for routing.
-  let student = await findStudentByPhone(guardianPhone);
+  /*
+    Everyone already reachable at this number — the child's own phone or their
+    guardian's. A match on NAME is the same child being re-added; anything else
+    is a sibling and gets a record of their own.
+  */
+  const family = await findStudentsByContactPhone(guardianPhone);
+  const normalize = (v: string) => v.trim().toLowerCase().replace(/\s+/g, ' ');
+  let student = family.find((f) => normalize(f.name) === normalize(childName)) ?? null;
+
   if (!student) {
-    student = await createStudent({
-      name: childName,
-      phone: guardianPhone,
-      guardianName,
-      guardianPhone,
-    });
+    /*
+      `students.phone` is unique, so only the first child in a family can hold
+      the number outright; siblings are reached through `guardianPhone`.
+    */
+    student = family.length
+      ? await createStudent({
+          name: childName,
+          ...siblingFieldsFor(guardianPhone, family),
+          guardianName: guardianName ?? siblingFieldsFor(guardianPhone, family).guardianName,
+        })
+      : await createStudent({
+          name: childName,
+          phone: guardianPhone,
+          guardianName,
+          guardianPhone,
+        });
   }
 
   return addMember(groupId, student.id);

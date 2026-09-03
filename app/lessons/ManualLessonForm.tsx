@@ -2,7 +2,14 @@
 
 import * as React from 'react';
 import { useActionState } from 'react';
-import { CheckCircle2, AlertCircle, User, CalendarClock, ArrowRight } from 'lucide-react';
+import {
+  CheckCircle2,
+  AlertCircle,
+  User,
+  CalendarClock,
+  ArrowRight,
+  Users,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -89,6 +96,19 @@ export function ManualLessonForm({
   const [creating, setCreating] = React.useState(false);
   const [newName, setNewName] = React.useState('');
 
+  /*
+    Written imperatively rather than through state: the offer button is a
+    SUBMIT, so its onClick and the form submission happen in the same event and
+    a setState would not have landed in time. Mutating the DOM value does,
+    because the form is serialised after the click handler runs.
+  */
+  const siblingFlagRef = React.useRef<HTMLInputElement>(null);
+  React.useEffect(() => {
+    // Clear it whenever the offer is not on screen, so a later ordinary create
+    // is never silently treated as adding a sibling.
+    if (!state.sameNumberAs && siblingFlagRef.current) siblingFlagRef.current.value = '';
+  }, [state.sameNumberAs]);
+
   React.useEffect(() => {
     if (succeeded) {
       const id = setTimeout(() => onSuccess?.(), 700);
@@ -116,6 +136,7 @@ export function ManualLessonForm({
               </button>
             </div>
             <input type="hidden" name="createNew" value="1" />
+            <input ref={siblingFlagRef} type="hidden" name="addAsSibling" defaultValue="" />
             <Field label="שם תלמיד" htmlFor="manual-name" required>
               <Input
                 id="manual-name"
@@ -200,14 +221,51 @@ export function ManualLessonForm({
         </Field>
       </Section>
 
-      {state.error && (
-        <p
-          className="flex animate-fade-in items-center gap-2 rounded-2xl border border-danger bg-danger-soft px-3.5 py-3 text-sm font-semibold text-danger"
-          role="alert"
-        >
-          <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
-          {state.error}
-        </p>
+      {/*
+        A number already in the roster is usually a SIBLING — one mother,
+        several children, one phone. So it is a question, not a refusal, and it
+        is answerable right here rather than sending Ilanit off to the students
+        screen to add the child first.
+      */}
+      {state.sameNumberAs ? (
+        <div className="animate-fade-in rounded-2xl border border-accent-600/40 bg-accent-soft px-3.5 py-3">
+          <div className="flex items-start gap-2">
+            <Users className="mt-0.5 size-4 shrink-0 text-accent-text" aria-hidden="true" />
+            <div className="min-w-0 text-sm text-ink">
+              <p className="font-semibold">
+                המספר הזה כבר רשום ל{state.sameNumberAs.names.join(', ')}
+              </p>
+              <p className="mt-0.5 text-accent-text">
+                {state.sameNumberAs.guardianName
+                  ? `אם זה עוד ילד/ה של ${state.sameNumberAs.guardianName}, אפשר להוסיף כאח/ות.`
+                  : 'אם זה עוד ילד/ה באותה משפחה, אפשר להוסיף כאח/ות.'}
+              </p>
+              <Button
+                type="submit"
+                variant="secondary"
+                size="md"
+                className="mt-2.5"
+                loading={pending}
+                onClick={() => {
+                  if (siblingFlagRef.current) siblingFlagRef.current.value = '1';
+                }}
+              >
+                <Users className="size-4" aria-hidden="true" />
+                כן, להוסיף כאח/ות ולקבוע
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        state.error && (
+          <p
+            className="flex animate-fade-in items-center gap-2 rounded-2xl border border-danger bg-danger-soft px-3.5 py-3 text-sm font-semibold text-danger"
+            role="alert"
+          >
+            <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
+            {state.error}
+          </p>
+        )
       )}
       {succeeded && (
         <p

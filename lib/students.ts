@@ -66,6 +66,43 @@ export async function findStudentsByContactPhone(e164: string): Promise<Student[
     .orderBy(asc(students.name));
 }
 
+/**
+ * How a family already sitting on a phone number should be described when
+ * offering to add another child to it.
+ */
+export interface FamilyAtNumber {
+  names: string[];
+  guardianName: string | null;
+}
+
+export function describeFamily(family: Student[]): FamilyAtNumber {
+  return {
+    names: family.map((f) => f.name),
+    guardianName: family.find((f) => f.guardianName)?.guardianName ?? null,
+  };
+}
+
+/**
+ * The contact fields for a NEW child joining a family that already occupies
+ * this number.
+ *
+ * `students.phone` is UNIQUE, so exactly one child in a family can hold the
+ * number outright; every sibling is reached through `guardianPhone` instead.
+ * Writing the number into `phone` for a second child is rejected by the index —
+ * and even where it slips through (nobody holds it yet) it leaves a family that
+ * cannot be read back as one.
+ */
+export function siblingFieldsFor(
+  phone: string,
+  family: Student[],
+): { phone: null; guardianPhone: string; guardianName: string | null } {
+  return {
+    phone: null,
+    guardianPhone: phone,
+    guardianName: family.find((f) => f.guardianName)?.guardianName ?? null,
+  };
+}
+
 /** Creates a student. */
 export async function createStudent(data: NewStudent): Promise<Student> {
   const inserted = await db.insert(students).values(data).returning();

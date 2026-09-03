@@ -11,7 +11,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 */
 
 const state = vi.hoisted(() => ({
-  byPhone: [] as Array<{ id: string; name: string }>,
+  byPhone: [] as Array<{ id: string; name: string; guardianName?: string | null }>,
   byName: [] as Array<{ id: string; name: string }>,
   created: null as Record<string, unknown> | null,
 }));
@@ -31,7 +31,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/auth', () => ({ auth: vi.fn(async () => ({ user: { email: 'owner' } })) }));
-vi.mock('@/lib/students', () => ({
+vi.mock('@/lib/students', async () => ({
+  // describeFamily / siblingFieldsFor are pure — the real ones, so what they
+  // produce is what these tests assert on.
+  ...(await vi.importActual<typeof import('@/lib/students')>('@/lib/students')),
   findStudentsByContactPhone: mocks.findStudentsByContactPhone,
   findStudentsByNormalizedName: mocks.findStudentsByNormalizedName,
   createStudent: mocks.createStudent,
@@ -143,6 +146,26 @@ describe('createManualLesson — duplicates are unreachable', () => {
     expect(res.ok).toBe(false);
     expect(String(res.error)).toContain('לינוי רשף');
     expect(String(res.error)).toContain('מתן רשף');
+    // …and the caller is given what it needs to OFFER the sibling path rather
+    // than only refuse: נטע really is another רשף child.
+    expect(res.sameNumberAs?.names).toEqual(['לינוי רשף', 'מתן רשף']);
+  });
+
+  it('adds the sibling on the shared number when Ilanit confirms', async () => {
+    state.byPhone = [{ id: 'a', name: 'לינוי רשף', guardianName: 'אירנה' }];
+
+    const res = await createManualLesson(
+      base({ createNew: '1', name: 'נטע רשף', phone: '0528773140', addAsSibling: '1' }),
+    );
+
+    expect(res.ok).toBe(true);
+    // `students.phone` is unique, so only לינוי holds the number outright.
+    expect(state.created).toMatchObject({
+      name: 'נטע רשף',
+      phone: null,
+      guardianPhone: '+972528773140',
+      guardianName: 'אירנה',
+    });
   });
 
   it('creates only when the person is genuinely new', async () => {

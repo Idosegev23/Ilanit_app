@@ -13,6 +13,8 @@ import {
   findStudentsByContactPhone,
   findStudentsByNormalizedName,
   createStudent,
+  describeFamily,
+  siblingFieldsFor,
   findOrCreateStudentByName,
 } from '@/lib/students';
 import { getSettings } from '@/lib/settings';
@@ -32,6 +34,13 @@ import { createCancelUrl } from '@/lib/availability/cancel';
 export interface ActionResult {
   ok: boolean;
   error?: string;
+  /**
+   * Set when the number typed already belongs to a family. Siblings share one
+   * parent's phone, so this is far more often another child of the same mother
+   * than a mistake — the caller is given the names, and can offer the sibling
+   * path instead of a dead end.
+   */
+  sameNumberAs?: { names: string[]; guardianName: string | null };
 }
 
 /** True when the request is the authenticated owner (Ilanit). */
@@ -372,6 +381,9 @@ export async function createManualLesson(formData: FormData): Promise<ActionResu
   try {
     const studentId = String(formData.get('studentId') ?? '').trim();
     const createNew = String(formData.get('createNew') ?? '') === '1';
+    // Ilanit's answer to "is this a sibling of the family already on this
+    // number?" — see the phone check below.
+    const addAsSibling = String(formData.get('addAsSibling') ?? '') === '1';
     const name = String(formData.get('name') ?? '').trim();
     const phoneRaw = String(formData.get('phone') ?? '').trim();
     const dateStr = String(formData.get('date') ?? '').trim();
@@ -407,13 +419,11 @@ export async function createManualLesson(formData: FormData): Promise<ActionResu
       // matter: the phone catches the same person re-entered exactly, the name
       // catches them re-entered with a typo in the number, which is the case a
       // phone check alone would wave through.
-      const byPhone = await findStudentsByContactPhone(phone);
-      if (byPhone.length > 0) {
-        return {
-          ok: false,
-          error: `המספר הזה כבר רשום אצל ${byPhone.map((s) => s.name).join(', ')} — בחרי מהרשימה במקום ליצור חדש/ה`,
-        };
-      }
+      /*
+        The name check runs FIRST here. A shared number is usually a sibling and
+        has a way forward; the same name twice is the duplicate we actually
+        cleaned up on 17/08, and has none.
+      */
       const byName = await findStudentsByNormalizedName(name);
       if (byName.length > 0) {
         return {
@@ -421,7 +431,21 @@ export async function createManualLesson(formData: FormData): Promise<ActionResu
           error: `כבר קיים/ת תלמיד/ה בשם "${byName[0].name}" — בחרי מהרשימה, או שני את השם אם זה באמת מישהו אחר`,
         };
       }
-      student = await createStudent({ name, phone });
+
+      const byPhone = await findStudentsByContactPhone(phone);
+      if (byPhone.length > 0 && !addAsSibling) {
+        // Not a refusal — a question. Siblings share one parent's number, so
+        // the caller is told who has it and offered the sibling path.
+        return {
+          ok: false,
+          error: `המספר הזה כבר רשום אצל ${byPhone.map((s) => s.name).join(', ')}`,
+          sameNumberAs: describeFamily(byPhone),
+        };
+      }
+      student =
+        byPhone.length > 0
+          ? await createStudent({ name, ...siblingFieldsFor(phone, byPhone) })
+          : await createStudent({ name, phone });
     }
 
     const price = priceRaw ? Number(priceRaw) : (student.defaultPrice ?? null);
