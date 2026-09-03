@@ -16,6 +16,7 @@ import {
   Archive,
   HandCoins,
   CalendarClock,
+  Users,
   UserCog,
   PhoneCall,
   ReceiptText,
@@ -76,6 +77,21 @@ export function StudentFormDialog({
   const [open, setOpen] = React.useState(false);
   const [pending, setPending] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  /*
+    Set when the typed number already belongs to a family. Siblings share one
+    parent's phone, so this is far more often another child of the same mother
+    than a mistake — the form offers that path instead of stopping.
+  */
+  const [sameNumberAs, setSameNumberAs] = React.useState<{
+    names: string[];
+    guardianName: string | null;
+  } | null>(null);
+  /*
+    A ref, not state: the button's onClick fires in the same event as the form
+    submit, so a setState would not have landed by the time onSubmit reads it —
+    and the sibling flag would be lost on the very click that sets it.
+  */
+  const asSiblingRef = React.useRef(false);
   // After a NEW student is created we offer "קבע שיעור עכשיו" — a smooth
   // add→schedule hand-off. `justCreated` holds the new student so the colocated
   // ScheduleLessonDialog (opened via `scheduleOpen`) can be pre-filled.
@@ -142,14 +158,17 @@ export function StudentFormDialog({
   async function onSubmit(formData: FormData) {
     setError(null);
     setPending(true);
+    if (asSiblingRef.current) formData.set('addAsSibling', 'on');
     try {
       const result = isEdit
         ? await updateStudentAction(formData)
         : await createStudentAction(formData);
       if (!result.ok) {
         setError(result.error ?? 'אירעה שגיאה');
+        setSameNumberAs(result.sameNumberAs ?? null);
         return;
       }
+      setSameNumberAs(null);
       if (!isEdit && result.id) {
         // Add→schedule hand-off: surface the "קבע שיעור עכשיו" offer in-place
         // using the values she just typed (price/duration default the dialog).
@@ -166,6 +185,7 @@ export function StudentFormDialog({
       setOpen(false);
       router.refresh();
     } finally {
+      asSiblingRef.current = false;
       setPending(false);
     }
   }
@@ -516,14 +536,54 @@ export function StudentFormDialog({
                   </label>
                 )}
 
-                {error && (
-                  <div
-                    role="alert"
-                    className="flex items-start gap-2 rounded-2xl bg-danger-soft px-3.5 py-3 text-sm text-danger ring-1 ring-inset ring-white/50"
-                  >
-                    <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                    <span>{error}</span>
+                {/*
+                  A taken number is a QUESTION, not a verdict: one mother, several
+                  children, one phone. Answering it here keeps the roster's own
+                  sibling shape — the first child holds the number, the rest are
+                  reached through it — without asking Ilanit to know that.
+                */}
+                {sameNumberAs ? (
+                  <div className="rounded-2xl bg-accent-soft px-3.5 py-3 ring-1 ring-inset ring-white/50">
+                    <div className="flex items-start gap-2">
+                      <Users
+                        className="mt-0.5 size-4 shrink-0 text-accent-text"
+                        aria-hidden="true"
+                      />
+                      <div className="min-w-0 text-sm text-ink">
+                        <p className="font-semibold">
+                          המספר הזה כבר רשום ל{sameNumberAs.names.join(', ')}
+                        </p>
+                        <p className="mt-0.5 text-accent-text">
+                          {sameNumberAs.guardianName
+                            ? `אם זה עוד ילד/ה של ${sameNumberAs.guardianName}, אפשר להוסיף כאח/ות — המספר יישמר כטלפון ההורה.`
+                            : 'אם זה עוד ילד/ה באותה משפחה, אפשר להוסיף כאח/ות — המספר יישמר כטלפון ההורה.'}
+                        </p>
+                        <Button
+                          type="submit"
+                          variant="secondary"
+                          size="md"
+                          className="mt-2.5"
+                          disabled={pending}
+                          onClick={() => {
+                            asSiblingRef.current = true;
+                          }}
+                        >
+                          <Users className="size-4" aria-hidden="true" />
+                          כן, להוסיף כאח/ות
+                        </Button>
+                      </div>
+                    </div>
                   </div>
+                ) : (
+                  error && (
+                    <div
+                      role="alert"
+                      className="flex items-start gap-2 rounded-2xl bg-danger-soft px-3.5 py-3 text-sm text-danger ring-1 ring-inset ring-white/50"
+                    >
+                      <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                      <span>{error}</span>
+                    </div>
+                  )
                 )}
               </div>
 

@@ -10,6 +10,8 @@ import {
   createStudent,
   updateStudent,
   findStudentByPhone,
+  findStudentsByContactPhone,
+  findStudentsByNormalizedName,
   getStudent,
 } from '@/lib/students';
 import { getSettings } from '@/lib/settings';
@@ -32,6 +34,13 @@ export interface StudentActionResult {
   ok: boolean;
   error?: string;
   id?: string;
+  /**
+   * Set when the number typed already belongs to a family. Siblings share one
+   * parent's phone, so this is far more often "another child of the same
+   * mother" than a mistake — and the caller is offered the sibling path
+   * instead of a dead end.
+   */
+  sameNumberAs?: { names: string[]; guardianName: string | null };
 }
 
 async function requireOwner(): Promise<boolean> {
@@ -92,10 +101,43 @@ export async function createStudentAction(form: FormData): Promise<StudentAction
     return { ok: false, error: 'מספר טלפון לא תקין' };
   }
 
-  // The phone column is unique — surface a friendly conflict message.
-  const existing = await findStudentByPhone(phone);
-  if (existing) {
-    return { ok: false, error: 'כבר קיים תלמיד עם מספר טלפון זה' };
+  /*
+    A number already in the roster is usually a SIBLING, not a duplicate: one
+    mother, several children, one phone. `students.phone` is unique, so a family
+    is modelled with the first child holding the number and the rest carrying it
+    as `guardianPhone` — which is how the רשף and בישלה families already sit in
+    the roster.
+
+    So a match is not an error on its own. It is an error only until Ilanit says
+    which of the two it is, and `addAsSibling` is her answer.
+  */
+  const addAsSibling = str(form, 'addAsSibling') === 'on';
+  const family = await findStudentsByContactPhone(phone);
+
+  if (family.length > 0 && !addAsSibling) {
+    return {
+      ok: false,
+      error: `המספר הזה כבר רשום ל${family.map((f) => f.name).join(', ')}`,
+      sameNumberAs: {
+        names: family.map((f) => f.name),
+        guardianName: family.find((f) => f.guardianName)?.guardianName ?? null,
+      },
+    };
+  }
+
+  if (addAsSibling && family.length === 0) {
+    // Nothing to be a sibling of — fall through and create normally rather
+    // than silently filing the number in the wrong column.
+  }
+
+  /*
+    The same-name guard still applies, sibling or not: the duplicate we actually
+    cleaned up on 17/08 was one child entered twice, and "add as sibling" must
+    not become a way past that.
+  */
+  const sameName = await findStudentsByNormalizedName(name);
+  if (sameName.length > 0) {
+    return { ok: false, error: `כבר קיימת רשומה בשם "${sameName[0].name}"` };
   }
 
   const price = optionalIntShekels(form, 'defaultPrice');
@@ -120,12 +162,20 @@ export async function createStudentAction(form: FormData): Promise<StudentAction
   const receiptLabel = str(form, 'receiptLabel') || null;
 
   try {
+    /*
+      A sibling does not hold the shared number: `students.phone` is unique, so
+      only one child in a family can carry it and everyone else is reached
+      through `guardianPhone`. Storing it in both places would be rejected by
+      the index — and would make the family unreadable besides.
+    */
+    const isSibling = addAsSibling && family.length > 0;
     const student = await createStudent({
       name,
-      phone,
+      phone: isSibling ? null : phone,
       email,
-      guardianName,
-      guardianPhone,
+      guardianName:
+        guardianName ?? (isSibling ? (family.find((f) => f.guardianName)?.guardianName ?? null) : null),
+      guardianPhone: isSibling ? phone : guardianPhone,
       receiptLabel,
       defaultPrice: price,
       defaultDurationMin: durationMin(form, 'defaultDurationMin', 60),
