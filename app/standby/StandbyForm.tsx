@@ -20,6 +20,19 @@ async function action(_prev: StandbyResult, formData: FormData): Promise<Standby
 export function StandbyForm() {
   const [state, formAction, pending] = useActionState(action, initial);
 
+  /*
+    Submitted by hand, not via `<form action={formAction}>`: React 19 resets a
+    form given a function action once that action settles, INCLUDING on failure,
+    so a rejected submit used to wipe everything typed.
+  */
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    // Read the form before the transition — currentTarget does not survive it.
+    const data = new FormData(e.currentTarget);
+    React.startTransition(() => formAction(data));
+  }
+
+
   if (state.ok) {
     return (
       <div
@@ -44,7 +57,7 @@ export function StandbyForm() {
   }
 
   return (
-    <form action={formAction} className="space-y-5">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="sb-name" required>

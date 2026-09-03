@@ -92,6 +92,19 @@ export function RecurringForm({
 }) {
   const [kind, setKind] = React.useState<'individual' | 'group'>('individual');
   const [state, formAction, pending] = useActionState(action, initialState);
+
+  /*
+    Submitted by hand, not via `<form action={formAction}>`: React 19 resets a
+    form given a function action once that action settles, INCLUDING on failure,
+    so a rejected submit used to wipe everything typed.
+  */
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    // Read the form before the transition — currentTarget does not survive it.
+    const data = new FormData(e.currentTarget);
+    React.startTransition(() => formAction(data));
+  }
+
   const succeeded = state.ok && !state.error;
 
   React.useEffect(() => {
@@ -102,7 +115,7 @@ export function RecurringForm({
   }, [succeeded, onSuccess]);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <Section icon={Repeat} title="משתתפים">
         <Field label="סוג" htmlFor="rec-kind">
           <Select

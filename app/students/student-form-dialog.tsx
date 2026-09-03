@@ -105,6 +105,7 @@ export function StudentFormDialog({
     if (pending) return;
     setOpen(false);
     setError(null);
+    setSameNumberAs(null);
     setJustCreated(null);
     // A create that ended at the "schedule now?" offer still wrote a student —
     // refresh the route so the directory reflects it even if she skips scheduling.
@@ -154,6 +155,23 @@ export function StudentFormDialog({
     });
     return () => cancelAnimationFrame(id);
   }, [open]);
+
+  /*
+    A plain submit handler with preventDefault, NOT `<form action={fn}>`.
+
+    React 19 resets a form passed a function action once that action settles —
+    on failure as much as on success. So every rejected save wiped everything
+    Ilanit had typed, and the sibling offer was unusable: the moment it appeared
+    the fields behind it were already blank, and confirming it saved an empty
+    record. The dialog unmounts on close, so a fresh open still starts clean
+    without needing React to clear it.
+  */
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    // Read the form BEFORE any await — currentTarget is gone by the time an
+    // async handler resumes.
+    await onSubmit(new FormData(e.currentTarget));
+  }
 
   async function onSubmit(formData: FormData) {
     setError(null);
@@ -294,7 +312,7 @@ export function StudentFormDialog({
                 </div>
               </div>
             ) : (
-            <form action={onSubmit} className="flex min-h-0 flex-1 flex-col">
+            <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
               <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">
                 {isEdit && <input type="hidden" name="id" value={student!.id} />}
 

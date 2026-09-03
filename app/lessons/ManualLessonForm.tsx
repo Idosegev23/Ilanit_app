@@ -86,6 +86,21 @@ export function ManualLessonForm({
   studentOptions: StudentOption[];
 }) {
   const [state, formAction, pending] = useActionState(action, initialState);
+
+  /*
+    Submitted by hand rather than via `<form action={formAction}>`.
+
+    React 19 resets a form given a function action once that action settles —
+    including when it FAILS. Every rejected create therefore wiped everything
+    typed, and the sibling offer could never be acted on: by the time it
+    appeared the fields behind it were blank.
+  */
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    // Read the form before the transition — currentTarget does not survive it.
+    const data = new FormData(e.currentTarget);
+    React.startTransition(() => formAction(data));
+  }
   const succeeded = state.ok && !state.error;
 
   // Picking from the roster is the default. Creating someone is a separate mode
@@ -117,7 +132,7 @@ export function ManualLessonForm({
   }, [succeeded, onSuccess]);
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <Section icon={User} title="פרטי התלמיד">
         {creating ? (
           <>
