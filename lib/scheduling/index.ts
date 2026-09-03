@@ -72,6 +72,7 @@ export async function placeConfirmedLesson(input: PlaceLessonInput): Promise<Pla
           studentName: student.name,
           datetime: formatILDateTime(startsAt),
           location: location ?? '',
+          price: price ?? 0,
           calendarUrl: addToCalendarUrl({
             title: 'שיעור עם אילנית',
             start: startsAt,

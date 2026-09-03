@@ -387,6 +387,7 @@ export async function scheduleStudentLesson(form: FormData): Promise<ScheduleRes
         studentName: student.name,
         datetime: formatILDateTime(startsAt),
         location: location ?? '',
+        price: price ?? 0,
         calendarUrl: addToCalendarUrl({
           title: 'שיעור עם אילנית',
           start: startsAt,
@@ -473,6 +474,8 @@ export async function scheduleStudentSeries(form: FormData): Promise<ScheduleRes
           studentName: student.name,
           datetime: formatILDateTime(res.firstStartsAt),
           location: settings.locationAddress ?? '',
+          // Same fallback chain the series itself used when it set each price.
+          price: price ?? student.defaultPrice ?? settings.defaultPrivatePrice ?? 0,
           calendarUrl: addToCalendarUrl({
             title: 'שיעור עם אילנית',
             start: res.firstStartsAt,

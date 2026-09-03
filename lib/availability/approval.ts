@@ -195,6 +195,7 @@ async function approveLesson(data: LessonWithStudent): Promise<ApproveResult> {
           studentName: data.studentName,
           datetime: formatILDateTime(lesson.startsAt),
           location,
+          price: lesson.price ?? 0,
           calendarUrl: addToCalendarUrl({
             title: 'שיעור עם אילנית',
             start: lesson.startsAt,

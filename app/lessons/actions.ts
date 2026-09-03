@@ -102,6 +102,7 @@ export async function approveLesson(lessonId: string): Promise<ActionResult> {
           studentName: student.name,
           datetime: formatILDateTime(lesson.startsAt),
           location: lesson.location ?? '',
+          price: lesson.price ?? 0,
           calendarUrl: addToCalendarUrl({
             title: 'שיעור עם אילנית',
             start: lesson.startsAt,
@@ -501,6 +502,7 @@ export async function createManualLesson(formData: FormData): Promise<ActionResu
           studentName: student.name,
           datetime: formatILDateTime(startsAt),
           location: location ?? '',
+          price: price ?? 0,
           calendarUrl: addToCalendarUrl({
             title: 'שיעור עם אילנית',
             start: startsAt,

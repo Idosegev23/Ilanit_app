@@ -83,10 +83,17 @@ const builders: Record<TemplateKey, (v: Vars) => string> = {
     `מתי: ${s(v, 'datetime')}\n` +
     `הביטול נעשה על ידי התלמיד/ה דרך הקישור, והזמן התפנה ביומן.`,
 
+  /*
+    The price is stated here, at the moment the lesson is confirmed, so the
+    first time a parent hears a number is not the payment request after the
+    lesson has already happened. Omitted when there is none — a 0₪ student is a
+    standing exemption, and "עלות: 0 ₪" reads like a mistake.
+  */
   booking_approved_student: (v) =>
     `מצוין ${s(v, 'studentName')}! ✅\n` +
     `השיעור שלך אושר ל-${s(v, 'datetime')}.\n` +
     `כתובת: ${s(v, 'location')}\n` +
+    (Number(v.price) > 0 ? `עלות השיעור: ${money(v, 'price')}\n` : '') +
     (s(v, 'calendarUrl') ? `הוספה ליומן: ${s(v, 'calendarUrl')}\n` : '') +
     (s(v, 'cancelUrl') ? `לשינוי או ביטול המועד: ${s(v, 'cancelUrl')}\n` : '') +
     `נתראה!`,

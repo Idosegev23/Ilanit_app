@@ -410,6 +410,7 @@ export async function bookLesson(req: BookRequest): Promise<BookResult> {
           studentName: student.name,
           datetime,
           location: location ?? '',
+          price: price ?? 0,
           calendarUrl: addToCalendarUrl({ title: 'שיעור עם אילנית', start, end, location }),
           cancelUrl,
         },
