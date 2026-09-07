@@ -400,6 +400,8 @@ export function LessonsView({
                       60000,
                   ),
                 ),
+                recurrenceId: rescheduleTarget.recurrenceId,
+                price: rescheduleTarget.price,
               }
             : null
         }

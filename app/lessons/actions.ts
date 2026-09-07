@@ -18,7 +18,7 @@ import {
   findOrCreateStudentByName,
 } from '@/lib/students';
 import { getSettings } from '@/lib/settings';
-import { rescheduleLesson } from '@/lib/lessons/reschedule';
+import { rescheduleLesson, type RescheduleScope } from '@/lib/lessons/reschedule';
 import { nowIL, parseILDateTime, formatILDateTime, toILDateStr, toILTimeStr } from '@/lib/time';
 import { normalizePhoneIL } from '@/lib/utils';
 import { env } from '@/lib/env';
@@ -359,9 +359,20 @@ export async function rescheduleLessonAction(input: {
   durationMin: number;
   notifyParent: boolean;
   note?: string;
-}): Promise<ActionResult & { notified?: boolean }> {
+  scope?: RescheduleScope;
+  price?: number | null;
+}): Promise<
+  ActionResult & { notified?: boolean; movedCount?: number; skippedConflicts?: number }
+> {
   if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
   if (!input.date || !input.time) return { ok: false, error: 'יש לבחור תאריך ושעה' };
+  if (
+    input.price !== undefined &&
+    input.price !== null &&
+    (!Number.isInteger(input.price) || input.price < 0)
+  ) {
+    return { ok: false, error: 'מחיר חייב להיות מספר שלם של שקלים' };
+  }
 
   const startsAt = parseILDateTime(input.date, input.time);
   const res = await rescheduleLesson({
@@ -370,12 +381,19 @@ export async function rescheduleLessonAction(input: {
     durationMin: input.durationMin,
     notifyParent: input.notifyParent,
     note: input.note,
+    scope: input.scope,
+    price: input.price,
   });
   if (!res.ok) return { ok: false, error: res.error };
 
   revalidatePath('/lessons');
   revalidatePath('/dashboard');
-  return { ok: true, notified: res.notified };
+  return {
+    ok: true,
+    notified: res.notified,
+    movedCount: res.movedCount,
+    skippedConflicts: res.skippedConflicts,
+  };
 }
 
 export async function createManualLesson(formData: FormData): Promise<ActionResult> {
