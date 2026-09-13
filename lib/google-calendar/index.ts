@@ -42,6 +42,12 @@ export interface EndedEvent {
   id: string;
   summary: string;
   endISO: string;
+  /**
+   * The event's real start. Needed to tell one occurrence of a recurring series
+   * from another: they all share a master id, so the start is what identifies
+   * WHICH occurrence this is.
+   */
+  startISO?: string;
   attendeeEmail?: string;
   type?: 'individual' | 'group';
   studentId?: string;
@@ -352,6 +358,7 @@ export async function listEndedSince(
       id: event.id,
       summary: event.summary ?? '',
       endISO,
+      startISO: event.start?.dateTime ?? event.start?.date ?? undefined,
       attendeeEmail: event.attendees?.[0]?.email ?? undefined,
       type,
       studentId: readPrivate(event, 'student_id'),

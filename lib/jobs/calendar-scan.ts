@@ -75,16 +75,46 @@ export async function runCalendarScan(
 
   if (events.length === 0) return result;
 
-  // Look up every lesson that already references one of these event ids, so we
-  // can match existing lessons and skip ones we've already handled.
-  const eventIds = events.map((e) => e.id);
+  /*
+    Matching an event back to the lesson that already represents it.
+
+    A recurring series is ONE Google event: createSeries stamps every occurrence
+    with the MASTER id. But listEndedSince asks for singleEvents, so Google
+    returns INSTANCES, whose ids are `<master>_<utc timestamp>`. Looking up the
+    instance id therefore never found the lesson, and the scan re-imported every
+    recurring lesson that ended as a fresh copy with no price — which is where
+    the phantom debts, the ₪0 payment requests and the missing "was it paid?"
+    prompts all came from.
+
+    So the master is derived from the instance, and the occurrence is identified
+    by master + start. A keyed-by-id map alone cannot do this: fourteen lessons
+    share one master, and building a Map from them keeps only the last.
+  */
+  const masterOf = (eventId: string) => eventId.split('_')[0];
+
+  const lookupIds = [...new Set(events.flatMap((e) => [e.id, masterOf(e.id)]))];
   const existing = await db
     .select()
     .from(lessons)
-    .where(inArray(lessons.googleEventId, eventIds));
-  const lessonByEventId = new Map<string, Lesson>(
-    existing.filter((l) => l.googleEventId).map((l) => [l.googleEventId as string, l]),
-  );
+    .where(inArray(lessons.googleEventId, lookupIds));
+
+  const lessonByEventId = new Map<string, Lesson>();
+  const lessonByMasterAndStart = new Map<string, Lesson>();
+  for (const l of existing) {
+    if (!l.googleEventId) continue;
+    lessonByEventId.set(l.googleEventId, l);
+    lessonByMasterAndStart.set(`${l.googleEventId}|${l.startsAt.toISOString()}`, l);
+  }
+
+  function findExistingLesson(event: EndedEvent): Lesson | undefined {
+    if (event.startISO) {
+      const byStart = lessonByMasterAndStart.get(
+        `${masterOf(event.id)}|${new Date(event.startISO).toISOString()}`,
+      );
+      if (byStart) return byStart;
+    }
+    return lessonByEventId.get(event.id);
+  }
 
   for (const event of events) {
     // Group sessions never trigger a payment prompt — mark + skip.
@@ -93,16 +123,16 @@ export async function runCalendarScan(
       continue;
     }
 
+    const matched = findExistingLesson(event);
+
     // Non-teaching events (Preply online lessons of the family, all-day markers
     // / personal events) are never imported — don't create a lesson, don't
     // prompt. The only exception is an event already represented by a lesson
     // row, which we still let fall through so an existing lesson isn't stranded.
-    if (isNonTeachingEvent(event) && !lessonByEventId.has(event.id)) {
+    if (isNonTeachingEvent(event) && !matched) {
       result.nonTeachingSkipped++;
       continue;
     }
-
-    const matched = lessonByEventId.get(event.id);
 
     if (matched) {
       // A lesson already exists for this event. Only act on still-open ones.
@@ -187,6 +217,9 @@ async function createImportedLesson(
 
 /** Estimates a start time when only the end is known (fallback to duration). */
 function deriveStart(event: EndedEvent, durationMin: number): Date {
+  // Google tells us the start; the duration fallback is only for the rare
+  // event that arrives without one.
+  if (event.startISO) return new Date(event.startISO);
   const end = new Date(event.endISO);
   return new Date(end.getTime() - durationMin * 60 * 1000);
 }
@@ -209,6 +242,14 @@ async function completeAndPrompt(
   }
 
   const amount = lesson.price ?? 0;
+
+  /*
+    A lesson with no price is an exemption or an unpriced import — never a ₪0
+    debt. Opening one produced a charge nobody owed, and then asked Ilanit
+    "התקבל תשלום של ₪0?" and the parent "עבור השיעור: ₪0". The lesson is still
+    marked completed above; it simply carries no charge.
+  */
+  if (amount <= 0) return;
 
   // Open exactly one payment per lesson (payments.lessonId is unique).
   const existingPayment = await db

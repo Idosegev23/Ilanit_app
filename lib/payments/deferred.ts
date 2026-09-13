@@ -47,7 +47,15 @@ export async function runDeferredPaymentRequests(): Promise<DeferredRequestsResu
     .from(payments)
     .innerJoin(lessons, eq(lessons.id, payments.lessonId))
     .innerJoin(students, eq(students.id, lessons.studentId))
-    .where(and(eq(payments.status, 'due'), gt(payments.createdAt, since)));
+    // amount > 0: a ₪0 row is an exemption or an unpriced import, and asking a
+    // parent for ₪0 is how רוני and ירדן were both billed for nothing.
+    .where(
+      and(
+        eq(payments.status, 'due'),
+        gt(payments.createdAt, since),
+        gt(payments.amount, 0),
+      ),
+    );
 
   for (const { pay, lesson, student } of openLessons) {
     if (!student.autoCollect || !mayAskToday(student, now)) continue;
@@ -73,7 +81,13 @@ export async function runDeferredPaymentRequests(): Promise<DeferredRequestsResu
     .from(groupBilling)
     .innerJoin(groups, eq(groups.id, groupBilling.groupId))
     .innerJoin(students, eq(students.id, groupBilling.studentId))
-    .where(and(eq(groupBilling.status, 'due'), gt(groupBilling.createdAt, since)));
+    .where(
+      and(
+        eq(groupBilling.status, 'due'),
+        gt(groupBilling.createdAt, since),
+        gt(groupBilling.amount, 0),
+      ),
+    );
 
   for (const { bill, group, student } of openBills) {
     if (!student.autoCollect || !mayAskToday(student, now)) continue;
