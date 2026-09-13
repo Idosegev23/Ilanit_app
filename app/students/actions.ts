@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { eq } from 'drizzle-orm';
 import { auth } from '@/auth';
 import { db } from '@/lib/db';
-import { lessons } from '@/db/schema';
+import { lessons, payments } from '@/db/schema';
 import { normalizePhoneIL } from '@/lib/utils';
 import {
   createStudent,
@@ -17,6 +17,10 @@ import {
   getStudent,
 } from '@/lib/students';
 import { getSettings } from '@/lib/settings';
+import {
+  markLessonPaidAndIssueReceipt,
+  type PaymentMethod,
+} from '@/lib/morning/receipt-service';
 import { nowIL, parseILDateTime, formatILDateTime } from '@/lib/time';
 import { insertEvent } from '@/lib/google-calendar';
 import { hasSlotConflict, overlappingLessons, type OverlappingLesson } from '@/lib/availability';
@@ -499,4 +503,71 @@ export async function scheduleStudentSeries(form: FormData): Promise<ScheduleRes
     console.error('[students] schedule series failed:', err);
     return { ok: false, error: err instanceof Error ? err.message : 'יצירת הסדרה נכשלה' };
   }
+}
+
+/*
+  Settling a lesson payment from inside the app.
+
+  Until now the ONLY way to mark an individual lesson paid was the /p/[token]
+  link, minted into a WhatsApp message. When that message never arrived — as
+  happened to מילנה, רוני and אלמה while the calendar scan was closing imported
+  copies instead of the real lessons — the debt was unclearable: it reappeared
+  in the nightly note every evening with no button anywhere to settle it.
+
+  Groups have had an in-app roster for this all along; individual lessons never
+  got the equivalent. This is it.
+*/
+export async function settlePaymentAction(
+  paymentId: string,
+  method: PaymentMethod,
+): Promise<StudentActionResult> {
+  if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+
+  const rows = await db
+    .select({ pay: payments, lesson: lessons })
+    .from(payments)
+    .innerJoin(lessons, eq(lessons.id, payments.lessonId))
+    .where(eq(payments.id, paymentId))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return { ok: false, error: 'התשלום לא נמצא' };
+  if (row.pay.status === 'paid') return { ok: true }; // idempotent
+
+  const res = await markLessonPaidAndIssueReceipt({
+    lessonId: row.lesson.id,
+    amount: row.pay.amount,
+    method,
+  });
+  if (!res.ok) return { ok: false, error: res.error ?? 'עדכון התשלום נכשל' };
+
+  if (row.lesson.studentId) revalidatePath(`/students/${row.lesson.studentId}`);
+  revalidatePath('/reports');
+  return { ok: true };
+}
+
+/**
+ * Marks a charge as not owed. The amount is KEPT rather than zeroed: what was
+ * waived is part of the record, and a phantom charge cleared to "₪0 waived"
+ * loses the very number that explains why it was there.
+ */
+export async function waivePaymentAction(paymentId: string): Promise<StudentActionResult> {
+  if (!(await requireOwner())) return { ok: false, error: 'אין הרשאה' };
+
+  const rows = await db
+    .select({ pay: payments, lesson: lessons })
+    .from(payments)
+    .innerJoin(lessons, eq(lessons.id, payments.lessonId))
+    .where(eq(payments.id, paymentId))
+    .limit(1);
+  const row = rows[0];
+  if (!row) return { ok: false, error: 'התשלום לא נמצא' };
+
+  await db
+    .update(payments)
+    .set({ status: 'waived', paidAt: null, method: null })
+    .where(eq(payments.id, paymentId));
+
+  if (row.lesson.studentId) revalidatePath(`/students/${row.lesson.studentId}`);
+  revalidatePath('/reports');
+  return { ok: true };
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   ChevronRight,
@@ -22,6 +23,7 @@ import {
 import { Card, CardBody } from '@/components/ui/card';
 import { Badge, StatusPill, type StatusKind } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Select } from '@/components/ui/select';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
   Table,
@@ -34,6 +36,7 @@ import {
 } from '@/components/ui/table';
 import { formatShekels, cn } from '@/lib/utils';
 import { StudentFormDialog } from '../student-form-dialog';
+import { settlePaymentAction, waivePaymentAction } from '@/app/students/actions';
 import { ScheduleLessonDialog } from '../schedule-lesson-dialog';
 
 // Tabbed client file. The page (RSC) pre-aggregates + pre-formats the data into
@@ -529,6 +532,7 @@ function PaymentsPanel({ payments }: { payments: StudentFileVM['payments'] }) {
           <TableHead>סטטוס</TableHead>
           <TableHead>אמצעי</TableHead>
           <TableHead>שולם בתאריך</TableHead>
+          <TableHead>פעולה</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -550,10 +554,85 @@ function PaymentsPanel({ payments }: { payments: StudentFileVM['payments'] }) {
             <TableCell className="whitespace-nowrap tabular-nums">
               {p.paidAt ? p.paidAt : <span className="text-muted">—</span>}
             </TableCell>
+            <TableCell>
+              {p.status === 'due' ? <SettleCell paymentId={p.id} /> : null}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
     </Table>
+  );
+}
+
+/*
+  Clearing an open charge without a WhatsApp round-trip.
+
+  The method is asked for because Ilanit needs it for her books, and it is the
+  one thing the money itself never reports: a Bit "me" link carries no amount
+  and no reference, and cash reports nothing at all.
+*/
+function SettleCell({ paymentId }: { paymentId: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = React.useState(false);
+  const [method, setMethod] = React.useState<'bit' | 'cash' | 'transfer' | 'other'>('bit');
+  const [error, setError] = React.useState<string | null>(null);
+
+  async function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fn();
+      if (!res.ok) {
+        setError(res.error ?? 'אירעה שגיאה');
+        return;
+      }
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <label className="sr-only" htmlFor={`m-${paymentId}`}>
+        אמצעי תשלום
+      </label>
+      <Select
+        id={`m-${paymentId}`}
+        value={method}
+        disabled={busy}
+        onChange={(e) => setMethod(e.target.value as typeof method)}
+        className="h-10 w-auto text-sm"
+      >
+        <option value="bit">ביט</option>
+        <option value="cash">מזומן</option>
+        <option value="transfer">העברה</option>
+        <option value="other">אחר</option>
+      </Select>
+      <Button
+        type="button"
+        variant="ink"
+        size="sm"
+        loading={busy}
+        onClick={() => run(() => settlePaymentAction(paymentId, method))}
+      >
+        סמני כשולם
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={busy}
+        onClick={() => run(() => waivePaymentAction(paymentId))}
+      >
+        ללא חיוב
+      </Button>
+      {error && (
+        <span role="alert" className="text-xs text-danger">
+          {error}
+        </span>
+      )}
+    </div>
   );
 }
 
