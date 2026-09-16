@@ -139,7 +139,31 @@ describe('runDayBeforeReminders', () => {
     // student reminder went to the student's phone, keyed idempotently
     const studentCall = notify.mock.calls.find((c) => c[0] === 'reminder_day_before_individual')!;
     expect(studentCall[1]).toBe('+972500000001');
-    expect(studentCall[3]).toBe('l1:s1');
+    expect(String(studentCall[3])).toMatch(/^l1:s1:/);
+  });
+
+  it('reminds again when the lesson has been MOVED since the last reminder', async () => {
+    /*
+      הילי פריזאת: reminded on 13/09 for the 14th, moved to the 16th, and never
+      reminded for the new time — the old key (lesson + student) matched, so the
+      new reminder was dropped as a duplicate. The time is now part of the key.
+    */
+    const run = async (startISO: string) => {
+      notify.mockClear();
+      queueResult('lessons', [
+        { id: 'l1', type: 'individual', status: 'confirmed', studentId: 's1', groupId: null,
+          startsAt: new Date(startISO), location: null },
+      ]);
+      queueResult('students', [{ id: 's1', name: 'הילי', phone: '+972500000001', autoCollect: true }]);
+      queueResult('groups', []);
+      await runDayBeforeReminders();
+      return String(notify.mock.calls.find((c) => c[0] === 'reminder_day_before_individual')![3]);
+    };
+
+    const before = await run('2026-09-14T14:00:00.000Z');
+    const after = await run('2026-09-16T14:10:00.000Z');
+
+    expect(after).not.toBe(before);
   });
 
   it('reminds every active group member for a group session', async () => {

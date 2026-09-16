@@ -113,6 +113,22 @@ export async function runDayBeforeReminders(): Promise<DayBeforeResult> {
       : `💳 נותרו ${d.count} תשלומים פתוחים — סה״כ ${d.amount}₪.`;
   }
 
+  /*
+    The dedup key includes WHEN the lesson is, not just which lesson it is.
+
+    Moving a lesson keeps the same row and the same id. With a key of only
+    lesson + student, a reminder already sent for the old time looked identical
+    to the one for the new time, and was silently dropped as a duplicate: הילי
+    פריזאת got her reminder on 13/09 for the 14th, Ilanit moved the lesson to the
+    16th, and on the 15th the reminder for the new time never went out — while
+    Ilanit's own summary that same evening listed it correctly.
+
+    Same lesson at the same time still reminds once; a moved lesson reminds again.
+  */
+  function reminderKey(lesson: { id: string; startsAt: Date }, studentId: string): string {
+    return `${lesson.id}:${studentId}:${new Date(lesson.startsAt).toISOString()}`;
+  }
+
   const summaryLines: string[] = [];
 
   for (const lesson of tomorrowLessons) {
@@ -127,7 +143,7 @@ export async function runDayBeforeReminders(): Promise<DayBeforeResult> {
           student,
           'reminder_day_before_individual',
           { studentName: student.name, datetime: when, location, debt: debtLine(student) },
-          `${lesson.id}:${student.id}`,
+          reminderKey(lesson, student.id),
           lesson.id,
         );
         studentReminders++;
@@ -153,7 +169,7 @@ export async function runDayBeforeReminders(): Promise<DayBeforeResult> {
               location,
               debt: debtLine(student),
             },
-            `${lesson.id}:${student.id}`,
+            reminderKey(lesson, student.id),
             lesson.id,
           );
           groupMemberReminders++;
