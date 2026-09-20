@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { isAuthorizedCron } from '@/lib/jobs/cron-auth';
+import { isQuietNow, quietUntil } from '@/lib/env';
 import {
   runDayBeforeReminders,
   runCalendarScan,
@@ -33,6 +34,15 @@ const SCAN_LOOKBACK_MIN = 90;
 export async function GET(req: Request): Promise<Response> {
   if (!isAuthorizedCron(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
+  /*
+    Quiet window (QUIET_UNTIL): a holiday or a break. Nothing scheduled runs —
+    no reminders, no payment requests, no debt notes. It lapses on its own, so
+    normal service resumes without anyone having to remember to switch it back.
+  */
+  if (isQuietNow(nowIL())) {
+    return NextResponse.json({ ok: true, quiet: true, until: quietUntil() });
   }
 
   const settings = await getSettings();

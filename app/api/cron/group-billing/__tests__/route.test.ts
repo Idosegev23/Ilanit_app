@@ -8,7 +8,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
   route is only a daily second chance for a tick that failed.
 */
 
-vi.mock('@/lib/env', () => ({ env: () => ({ CRON_SECRET: 'super-secret-cron-value-1234' }) }));
+// Quiet window (holidays): off by default in these tests.
+const quiet = vi.hoisted(() => ({ value: false }));
+vi.mock('@/lib/env', () => ({ env: () => ({ CRON_SECRET: 'super-secret-cron-value-1234' }),
+  isQuietNow: () => quiet.value,
+  quietUntil: () => null,
+}));
 
 const runGroupBillingOnFirstSession = vi.fn((..._a: unknown[]) =>
   Promise.resolve({ billed: ['אנגלית כיתה ו'], created: 3 }),

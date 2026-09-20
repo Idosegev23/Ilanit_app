@@ -1,0 +1,395 @@
+{
+  "A": [
+    {
+      "copy_id": "1eea9f3c-105d-4038-ae5e-0fea91150141",
+      "starts_at": "2026-07-05 13:00:00+00",
+      "title": "שיעור – שחר כהן",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": "7628ee3b-6791-491c-8662-40d76ad29e55",
+      "real_status": "confirmed",
+      "real_pay": "paid",
+      "student": "שחר כהן"
+    },
+    {
+      "copy_id": "adc89e60-7d57-43dc-bf1c-5e059026070b",
+      "starts_at": "2026-07-05 14:00:00+00",
+      "title": "שיעור – איידן",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": "df85a8af-35ef-49c7-a7e9-55f24d1e6a60",
+      "real_status": "confirmed",
+      "real_pay": "paid",
+      "student": "איידן"
+    },
+    {
+      "copy_id": "8487b616-a46f-4162-be72-c35fa9337b19",
+      "starts_at": "2026-07-07 13:30:00+00",
+      "title": "שיעור – איידן",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": "fe7368db-3d0f-4a19-a28b-95012676903a",
+      "real_status": "confirmed",
+      "real_pay": "paid",
+      "student": "איידן"
+    },
+    {
+      "copy_id": "5a04015e-6b0b-4e83-b094-d000674bcb0a",
+      "starts_at": "2026-07-08 13:00:00+00",
+      "title": "שיעור – עומריקה אבן חיים",
+      "copy_pay": "waived",
+      "copy_amt": 0,
+      "real_id": "8f55ae15-c283-4d2a-aae7-264bc6b4e94a",
+      "real_status": "confirmed",
+      "real_pay": "waived",
+      "student": "עומריקה אבן חיים"
+    },
+    {
+      "copy_id": "6fb33085-209a-4f73-b1e7-51fa399d2994",
+      "starts_at": "2026-07-12 13:00:00+00",
+      "title": "שיעור – שחר כהן",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": "36e0da15-36e4-4eda-8bd0-1d60fd86c385",
+      "real_status": "confirmed",
+      "real_pay": "paid",
+      "student": "שחר כהן"
+    },
+    {
+      "copy_id": "8dd6f738-68a9-4941-99f6-55697d9e8643",
+      "starts_at": "2026-07-14 13:30:00+00",
+      "title": "שיעור – איידן",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": "da9f1d7d-61fe-4b6e-81e3-756f4321649f",
+      "real_status": "confirmed",
+      "real_pay": "paid",
+      "student": "איידן"
+    },
+    {
+      "copy_id": "c76f4ea8-488e-40f4-889b-a54be2ce8a09",
+      "starts_at": "2026-07-15 13:00:00+00",
+      "title": "שיעור – עומריקה אבן חיים",
+      "copy_pay": "waived",
+      "copy_amt": 0,
+      "real_id": "aa7f72db-de4a-4326-8bda-19e7ad7971d7",
+      "real_status": "confirmed",
+      "real_pay": "waived",
+      "student": "עומריקה אבן חיים"
+    },
+    {
+      "copy_id": "5c3e888e-113d-4157-89b3-52f82c97042a",
+      "starts_at": "2026-07-22 13:00:00+00",
+      "title": "שיעור – עומריקה אבן חיים",
+      "copy_pay": "waived",
+      "copy_amt": 0,
+      "real_id": "617e911d-cd5b-470b-9856-830e3aaa69fc",
+      "real_status": "confirmed",
+      "real_pay": "waived",
+      "student": "עומריקה אבן חיים"
+    },
+    {
+      "copy_id": "aaefdbf4-d14c-4829-8af7-406953ad68d5",
+      "starts_at": "2026-07-29 13:00:00+00",
+      "title": "שיעור – עומריקה אבן חיים",
+      "copy_pay": "waived",
+      "copy_amt": 0,
+      "real_id": "33ec94ab-a2e3-4845-b30f-826b5e98fe26",
+      "real_status": "cancelled",
+      "real_pay": "waived",
+      "student": "עומריקה אבן חיים"
+    }
+  ],
+  "B": [
+    {
+      "copy_id": "4f4efee5-0c4e-4e26-be70-129ce2def305",
+      "starts_at": "2026-09-01 13:30:00+00",
+      "title": "שיעור – אוריאן רותי זגורי",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": "9641581c-2fa5-4e13-8176-d581ddb1e9fe",
+      "real_status": "cancelled",
+      "real_pay": null,
+      "student": "אוריאן רותי זגורי"
+    },
+    {
+      "copy_id": "57f4b980-fa10-4ffa-acc7-2d816301bdad",
+      "starts_at": "2026-09-06 11:30:00+00",
+      "title": "שיעור – מילנה",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": "abb833c1-af33-473e-841b-f1ae27094ddb",
+      "real_status": "confirmed",
+      "real_pay": "due",
+      "student": "מילנה"
+    },
+    {
+      "copy_id": "20442a22-fb4a-4ee9-94ff-39dbba90b15f",
+      "starts_at": "2026-09-08 13:30:00+00",
+      "title": "שיעור – אוריאן רותי זגורי",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": "b9b426c9-3ea8-4bac-a815-f632676b0037",
+      "real_status": "cancelled",
+      "real_pay": null,
+      "student": "אוריאן רותי זגורי"
+    },
+    {
+      "copy_id": "bf1ed628-7d45-4b0c-9ed4-9b5e14faba25",
+      "starts_at": "2026-09-09 05:30:00+00",
+      "title": "שיעור – אלמה שכטר",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": "00fa7e4f-70d8-4d09-b86c-563e3bd72c27",
+      "real_status": "confirmed",
+      "real_pay": "due",
+      "student": "אלמה שכטר"
+    },
+    {
+      "copy_id": "129ea57b-130b-4c5a-9d89-3f532e63e001",
+      "starts_at": "2026-09-13 11:30:00+00",
+      "title": "שיעור – מילנה",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": "e19f73ab-ab52-45ba-a018-71beaa2d1f71",
+      "real_status": "cancelled",
+      "real_pay": null,
+      "student": "מילנה"
+    }
+  ],
+  "C": [
+    {
+      "copy_id": "071f05b2-5736-43cb-b4a5-97fd4ac0295e",
+      "starts_at": "2026-07-05 13:00:00+00",
+      "title": "שיעור – שחר כהן",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": "215a53c7-bf47-4215-96f3-b1f38aad0ae5",
+      "real_status": "cancelled",
+      "real_pay": null,
+      "student": "שחר כהן"
+    },
+    {
+      "copy_id": "9d070f15-4e1d-4df1-af7d-ee2cf5c10c00",
+      "starts_at": "2026-07-12 13:00:00+00",
+      "title": "שיעור – שחר כהן",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": "614dc999-78cf-4797-aaa7-1eef3b332143",
+      "real_status": "cancelled",
+      "real_pay": null,
+      "student": "שחר כהן"
+    },
+    {
+      "copy_id": "bc271856-c325-4ba7-832c-ad6bb467a329",
+      "starts_at": "2026-07-12 14:00:00+00",
+      "title": "שיעור – איידן",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": "4ad0e31c-2f29-4d9f-9c93-13abdcfd14c3",
+      "real_status": "cancelled",
+      "real_pay": null,
+      "student": "איידן"
+    },
+    {
+      "copy_id": "6d328aa7-6df9-4fd4-bb50-05cd3e7a98ec",
+      "starts_at": "2026-09-08 12:30:00+00",
+      "title": "שיעור – רוני חסן",
+      "copy_pay": "paid",
+      "copy_amt": 1,
+      "real_id": "eafd91f3-2f3a-4d54-a563-a83b76f31c14",
+      "real_status": "confirmed",
+      "real_pay": "due",
+      "student": "רוני חסן"
+    }
+  ],
+  "D": [
+    {
+      "copy_id": "1639a7c6-2adf-4a81-a653-65ce58cf36b2",
+      "starts_at": "2026-06-04 13:50:00+00",
+      "title": "קבוצת מתמטיקה כיתות ז אומנויות",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "8cc50b9d-e31a-4b0c-a463-317b50d5edfd",
+      "starts_at": "2026-06-04 14:30:00+00",
+      "title": "רפאל כיתה ד",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "3b36fa0c-7c59-4499-a56a-95094de9043a",
+      "starts_at": "2026-06-07 11:00:00+00",
+      "title": "יהלי אדלר",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "64b0ef62-4173-496a-8b43-b23eb3b1a0f8",
+      "starts_at": "2026-06-11 13:50:00+00",
+      "title": "קבוצת מתמטיקה כיתות ז אומנויות",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "8b85ff7b-a69e-4068-b5f0-c4cdaf3c30a3",
+      "starts_at": "2026-06-18 13:50:00+00",
+      "title": "קבוצת מתמטיקה כיתות ז אומנויות",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "f5b210ff-24e6-4785-943f-940c7678b239",
+      "starts_at": "2026-06-23 06:00:00+00",
+      "title": "מתן אירנה",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "87458eeb-1d31-4e54-ad40-4117cfadd6de",
+      "starts_at": "2026-06-25 13:50:00+00",
+      "title": "קבוצת מתמטיקה כיתות ז אומנויות",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "9fa0be63-69dd-4289-94f6-2f33f2a398ec",
+      "starts_at": "2026-06-28 11:00:00+00",
+      "title": "יהלי אדלר",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "c3eeea6d-c5c1-4cd5-8e04-d5f5a6a7ce86",
+      "starts_at": "2026-06-28 12:00:00+00",
+      "title": "עמית וינגרטן כיתה ז׳ מקיף א",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "2694fa8a-0314-4ca8-8a79-f7eb929b0ced",
+      "starts_at": "2026-06-29 11:00:00+00",
+      "title": "מתן אירנה",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "9babea19-bd26-4002-90bb-ffef9c39ba69",
+      "starts_at": "2026-06-29 12:00:00+00",
+      "title": "אמילי אירנה אנגלית",
+      "copy_pay": "paid",
+      "copy_amt": 140,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "da1aa6f2-6aa1-488e-93c2-6605da6de4b5",
+      "starts_at": "2026-09-06 11:30:00+00",
+      "title": "פסנתר לביא",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "c4dda1cd-9d92-4ad2-8d68-f3ce9b9ab797",
+      "starts_at": "2026-09-06 12:00:00+00",
+      "title": "גאי כדורסל",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "24c5997a-7105-456a-860d-d2a06ae068ff",
+      "starts_at": "2026-09-06 14:15:00+00",
+      "title": "שיעור – איידן",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "4343139b-282a-44f0-ba64-275781bf8425",
+      "starts_at": "2026-09-06 15:00:00+00",
+      "title": "גאי שחמט",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "54107fb9-e923-4e5c-9b23-9da5e4e08bdf",
+      "starts_at": "2026-09-08 12:00:00+00",
+      "title": "גאי כדורסל",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    },
+    {
+      "copy_id": "6dc48f26-8ec5-4da7-b2d2-1a98ca92cc84",
+      "starts_at": "2026-09-13 12:00:00+00",
+      "title": "גאי כדורסל",
+      "copy_pay": null,
+      "copy_amt": null,
+      "real_id": null,
+      "real_status": null,
+      "real_pay": null,
+      "student": null
+    }
+  ]
+}

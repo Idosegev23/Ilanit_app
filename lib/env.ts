@@ -100,6 +100,32 @@ export function collectionEnabled(): boolean {
  * RECEIPTS_ENABLED=true; every receipt already issued stays in the client file
  * either way.
  */
+/**
+ * A window during which every SCHEDULED job stays silent — holidays, Shabbat,
+ * a week off.
+ *
+ * Set QUIET_UNTIL to an ISO instant; until it passes, the cron entry points do
+ * nothing at all. It expires by itself on purpose: switching the crons off
+ * would have to be switched back on by somebody remembering to, and the cost of
+ * forgetting is a system that has silently stopped reminding anyone.
+ *
+ * Deliberately scoped to the crons, not to notify(): a parent who books during
+ * the window still gets their confirmation, because that answers something they
+ * just did. It is the unprompted messages that should wait.
+ */
+export function quietUntil(): Date | null {
+  const raw = process.env.QUIET_UNTIL;
+  if (!raw) return null;
+  const at = new Date(raw);
+  return Number.isNaN(at.getTime()) ? null : at;
+}
+
+/** True while a quiet window is in force. */
+export function isQuietNow(now: Date = new Date()): boolean {
+  const until = quietUntil();
+  return until !== null && now < until;
+}
+
 export function receiptsEnabled(): boolean {
   return process.env.RECEIPTS_ENABLED === 'true';
 }

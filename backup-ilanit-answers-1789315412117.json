@@ -1,0 +1,44 @@
+[
+  {
+    "k": "student",
+    "id": "c6c90ea1-0bd9-4e5b-8f37-6e6ee650149c",
+    "name": "אלמה שכטר",
+    "phone": "+972503377724",
+    "default_price": null
+  },
+  {
+    "k": "student",
+    "id": "5392e822-e556-496b-bedd-fc6812fbb325",
+    "name": "ירדן רייניץ",
+    "phone": "+972802241534",
+    "default_price": null
+  },
+  {
+    "k": "student",
+    "id": "a91f9e54-23b0-48e5-9ab3-1ed7acf198ee",
+    "name": "אודל ז׳אן",
+    "phone": null,
+    "default_price": null
+  },
+  {
+    "k": "payment",
+    "id": "a194c0df-72c9-4529-b6f2-f7f5c1adf04e",
+    "name": "due",
+    "phone": null,
+    "default_price": "140"
+  },
+  {
+    "k": "payment",
+    "id": "d3b90638-e6ae-48ec-8b1d-4fa85c94fec8",
+    "name": "due",
+    "phone": null,
+    "default_price": "100"
+  },
+  {
+    "k": "payment",
+    "id": "07784ec0-3e12-40eb-8761-7939868f5df4",
+    "name": "due",
+    "phone": null,
+    "default_price": "140"
+  }
+]

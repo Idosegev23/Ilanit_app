@@ -1,6 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-vi.mock('@/lib/env', () => ({ env: () => ({ CRON_SECRET: 'super-secret-cron-value-1234' }) }));
+// Quiet window (holidays): off by default in these tests.
+const quiet = vi.hoisted(() => ({ value: false }));
+vi.mock('@/lib/env', () => ({ env: () => ({ CRON_SECRET: 'super-secret-cron-value-1234' }),
+  isQuietNow: () => quiet.value,
+  quietUntil: () => null,
+}));
 
 const runDayBeforeReminders = vi.fn((..._a: unknown[]) =>
   Promise.resolve({ studentReminders: 1, groupMemberReminders: 0, ilanitSummarySent: true }),
@@ -74,6 +79,28 @@ beforeEach(() => {
 });
 
 describe('GET /api/cron/tick', () => {
+  it('runs nothing at all during a quiet window', async () => {
+    /*
+      Yom Kippur. Every scheduled job stays silent — no reminders, no payment
+      requests, no debt note — and the window lapses by itself, so nobody has to
+      remember to switch the system back on.
+    */
+    quiet.value = true;
+    try {
+      const res = await GET(authedReq());
+      const body = await res.json();
+
+      expect(res.status).toBe(200);
+      expect(body.quiet).toBe(true);
+      expect(runCalendarScan).not.toHaveBeenCalled();
+      expect(runPaymentRequests).not.toHaveBeenCalled();
+      expect(runDayBeforeReminders).not.toHaveBeenCalled();
+      expect(runPaymentFollowup).not.toHaveBeenCalled();
+    } finally {
+      quiet.value = false;
+    }
+  });
+
   it('401s without a valid CRON_SECRET', async () => {
     const res = await GET(new Request('https://x/api/cron/tick'));
     expect(res.status).toBe(401);

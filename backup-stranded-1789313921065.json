@@ -1,0 +1,98 @@
+[
+  {
+    "id": "7628ee3b-6791-491c-8662-40d76ad29e55",
+    "starts_at": "2026-07-05 13:00:00+00",
+    "status": "confirmed",
+    "name": "שחר כהן",
+    "pay": "paid",
+    "amount": 140
+  },
+  {
+    "id": "df85a8af-35ef-49c7-a7e9-55f24d1e6a60",
+    "starts_at": "2026-07-05 14:00:00+00",
+    "status": "confirmed",
+    "name": "איידן",
+    "pay": "paid",
+    "amount": 140
+  },
+  {
+    "id": "fe7368db-3d0f-4a19-a28b-95012676903a",
+    "starts_at": "2026-07-07 13:30:00+00",
+    "status": "confirmed",
+    "name": "איידן",
+    "pay": "paid",
+    "amount": 140
+  },
+  {
+    "id": "8f55ae15-c283-4d2a-aae7-264bc6b4e94a",
+    "starts_at": "2026-07-08 13:00:00+00",
+    "status": "confirmed",
+    "name": "עומריקה אבן חיים",
+    "pay": "waived",
+    "amount": 0
+  },
+  {
+    "id": "36e0da15-36e4-4eda-8bd0-1d60fd86c385",
+    "starts_at": "2026-07-12 13:00:00+00",
+    "status": "confirmed",
+    "name": "שחר כהן",
+    "pay": "paid",
+    "amount": 140
+  },
+  {
+    "id": "da9f1d7d-61fe-4b6e-81e3-756f4321649f",
+    "starts_at": "2026-07-14 13:30:00+00",
+    "status": "confirmed",
+    "name": "איידן",
+    "pay": "paid",
+    "amount": 140
+  },
+  {
+    "id": "aa7f72db-de4a-4326-8bda-19e7ad7971d7",
+    "starts_at": "2026-07-15 13:00:00+00",
+    "status": "confirmed",
+    "name": "עומריקה אבן חיים",
+    "pay": "waived",
+    "amount": 0
+  },
+  {
+    "id": "c6c5a030-6f0a-4ae3-afba-d583455f6e8c",
+    "starts_at": "2026-07-22 07:00:00+00",
+    "status": "confirmed",
+    "name": "גילי ז׳אן",
+    "pay": "paid",
+    "amount": 140
+  },
+  {
+    "id": "617e911d-cd5b-470b-9856-830e3aaa69fc",
+    "starts_at": "2026-07-22 13:00:00+00",
+    "status": "confirmed",
+    "name": "עומריקה אבן חיים",
+    "pay": "waived",
+    "amount": 0
+  },
+  {
+    "id": "abb833c1-af33-473e-841b-f1ae27094ddb",
+    "starts_at": "2026-09-06 11:30:00+00",
+    "status": "confirmed",
+    "name": "מילנה",
+    "pay": "due",
+    "amount": 140
+  },
+  {
+    "id": "eafd91f3-2f3a-4d54-a563-a83b76f31c14",
+    "starts_at": "2026-09-08 12:30:00+00",
+    "status": "confirmed",
+    "name": "רוני חסן",
+    "pay": "due",
+    "amount": 100
+  },
+  {
+    "id": "00fa7e4f-70d8-4d09-b86c-563e3bd72c27",
+    "starts_at": "2026-09-09 05:30:00+00",
+    "status": "confirmed",
+    "name": "אלמה שכטר",
+    "pay": "due",
+    "amount": 140
+  }
+]
