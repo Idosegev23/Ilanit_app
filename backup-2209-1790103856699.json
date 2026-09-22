@@ -1,0 +1,34 @@
+{
+  "before": [
+    {
+      "id": "d213e2ab-cc2b-486c-a9b0-ce1ed3395487",
+      "lesson_id": "a7b8d0bb-8329-4813-bd3c-93c798d99a32",
+      "status": "due",
+      "amount": 140
+    },
+    {
+      "id": "2dfd86fb-4bcf-448b-a949-9d1f1770cb6f",
+      "lesson_id": "a9e6988a-9b4b-450b-b656-ed2e1b526793",
+      "status": "due",
+      "amount": 100
+    },
+    {
+      "id": "3c83975b-4cc8-4de7-b585-dc7f6f9e7ad7",
+      "lesson_id": "541b79aa-350b-42be-810a-83291c27d52b",
+      "status": "due",
+      "amount": 140
+    }
+  ],
+  "prepaid": [
+    {
+      "id": "8e70d75f-f77c-4bc6-9b46-3336f6e952c6",
+      "starts_at": "2026-09-29 12:30:00+00",
+      "price": 100
+    },
+    {
+      "id": "1c206b13-e527-4883-a6a9-8c2f0ae07ab8",
+      "starts_at": "2026-10-06 12:30:00+00",
+      "price": 100
+    }
+  ]
+}

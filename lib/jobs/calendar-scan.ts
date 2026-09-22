@@ -44,11 +44,53 @@ function actionBase(): string {
  *   - an all-day event / marker (graduation parties, errands, day-markers).
  * The Preply check is case-insensitive across summary/description/location.
  */
+/*
+  Ilanit's own family appear in the same calendar: "גאי כדורסל", "פסנתר לביא".
+  Every week the scan found them, could not attribute them to a student, and
+  asked her who they belonged to. They are her children, so the answer never
+  changes and the question is pure noise.
+
+  Names are configurable (PERSONAL_EVENT_NAMES) and matched as WHOLE WORDS, not
+  substrings: a filter that swallowed a real lesson would be a far worse fault
+  than the prompt it removes, and it would fail silently.
+*/
+const DEFAULT_PERSONAL_NAMES = ['לביא', 'גאי'];
+
+function personalNames(): string[] {
+  const raw = process.env.PERSONAL_EVENT_NAMES;
+  const list = raw ? raw.split(',') : DEFAULT_PERSONAL_NAMES;
+  return list.map((n) => n.trim()).filter(Boolean);
+}
+
+/**
+ * True when `name` appears in `text` as its own word.
+ *
+ * Hebrew has no \b, so a word edge is "not a Hebrew letter" — except that the
+ * one-letter prefixes ו/ב/ל/ה/מ/ש/כ attach directly to a word, so "ולביא" is
+ * still לביא. Allowing exactly one of those keeps "עידו ולביא" matching while
+ * "לביאה" stays a different name.
+ */
+function mentionsName(text: string, name: string): boolean {
+  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const notHebrew = '[^\\u0590-\\u05FF]';
+  const start = `(^|${notHebrew})[\\u05D5\\u05D1\\u05DC\\u05D4\\u05DE\\u05E9\\u05DB]?`;
+  return new RegExp(`${start}${escaped}($|${notHebrew})`).test(text);
+}
+
 export function isNonTeachingEvent(event: EndedEvent): boolean {
   if (event.allDay) return true;
   const haystack = `${event.summary ?? ''} ${event.description ?? ''} ${event.location ?? ''}`.toLowerCase();
   if (haystack.includes('preply')) return true;
-  return false;
+
+  /*
+    An event the app itself created carries its student in extendedPrivate, so
+    it is a lesson whatever it is called — checked first, so a family name in a
+    real lesson's title can never drop it.
+  */
+  if (event.studentId || event.groupId) return false;
+
+  const title = `${event.summary ?? ''} ${event.description ?? ''}`;
+  return personalNames().some((n) => mentionsName(title, n));
 }
 
 /**

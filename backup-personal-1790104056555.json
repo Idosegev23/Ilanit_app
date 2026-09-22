@@ -1,0 +1,20 @@
+[
+  {
+    "id": "256cafee-c619-4f49-add6-4c2c74fb1429",
+    "starts_at": "2026-09-13 15:00:00+00",
+    "booked_by_name": "גאי שחמט",
+    "pays": 0
+  },
+  {
+    "id": "bc24ee4f-7e2a-4091-b34e-a18ada7ff65d",
+    "starts_at": "2026-09-15 12:15:00+00",
+    "booked_by_name": "גאי כדורסל",
+    "pays": 0
+  },
+  {
+    "id": "0c180ec6-44c1-45f4-8a0b-7ec9b29179c4",
+    "starts_at": "2026-09-22 12:15:00+00",
+    "booked_by_name": "גאי כדורסל",
+    "pays": 0
+  }
+]
