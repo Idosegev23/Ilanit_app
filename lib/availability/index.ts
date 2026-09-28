@@ -110,6 +110,33 @@ function notEmptyGroupSession() {
   );
 }
 
+/*
+  Calendar entries that must NOT block scheduling.
+
+  "Preply lesson - …" are Ilanit's son's private English lessons, kept in the
+  same calendar. They are his commitments, not hers, so she can be booked over
+  them — and while they counted as busy, those hours were invisible to parents
+  booking through the public page too, not just to her own reschedules.
+
+  freeBusy reports blocks without titles, so they are identified from the event
+  list and subtracted afterwards, the same way a moved lesson's own block is.
+  An all-day marker still blocks: a day off is a real absence.
+*/
+function overlappableMarkers(): string[] {
+  const raw = process.env.OVERLAPPABLE_EVENT_MARKERS ?? 'preply';
+  return raw.split(',').map((m) => m.trim().toLowerCase()).filter(Boolean);
+}
+
+function isOverlappable(e: {
+  summary?: string;
+  description?: string;
+  allDay?: boolean;
+}): boolean {
+  if (e.allDay) return false;
+  const hay = `${e.summary ?? ''} ${e.description ?? ''}`.toLowerCase();
+  return overlappableMarkers().some((m) => hay.includes(m));
+}
+
 async function busyIntervals(
   dayStartMs: number,
   dayEndMs: number,
@@ -190,9 +217,27 @@ async function busyIntervals(
     console.error('[availability] freeBusy failed, using lessons only:', err);
   }
 
-  // Remove the excluded lesson's own calendar block, so it cannot collide with
-  // itself while being moved.
-  return ownEvent ? subtractIntervals(busy, [ownEvent]) : busy;
+  /*
+    Everything that should not hold a slot: the excluded lesson's own block, and
+    any entry that is somebody else's commitment rather than Ilanit's.
+  */
+  const freeable: Interval[] = ownEvent ? [ownEvent] : [];
+  try {
+    const events = await listEventsInRange(dayStart.toISOString(), dayEnd.toISOString());
+    for (const e of events) {
+      if (!e.startISO || !e.endISO || !isOverlappable(e)) continue;
+      freeable.push({
+        startMs: new Date(e.startISO).getTime(),
+        endMs: new Date(e.endISO).getTime(),
+      });
+    }
+  } catch (err) {
+    // Titles unavailable — fall back to treating every block as busy, which is
+    // the safe direction: it can only refuse a slot, never double-book one.
+    console.error('[availability] event list failed, keeping all blocks busy:', err);
+  }
+
+  return freeable.length ? subtractIntervals(busy, freeable) : busy;
 }
 
 /** Time-window exception intervals of a given kind for a date, as ms intervals. */

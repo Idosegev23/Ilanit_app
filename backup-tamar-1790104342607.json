@@ -1,0 +1,23 @@
+{
+  "before": [
+    {
+      "id": "6274d839-1f8a-4e93-aafe-8e52e282d37c",
+      "name": "תמר מסיקה",
+      "phone": "+972512515537",
+      "default_price": null
+    },
+    {
+      "id": "66e64221-c2fb-4476-8ae4-cc5a9f7a03eb",
+      "name": "תמר מסיקה",
+      "phone": "+972526210653",
+      "default_price": 140
+    }
+  ],
+  "lessons": [
+    {
+      "id": "2ce15008-4f1c-4f2f-9f57-2326fd21a830",
+      "starts_at": "2026-09-22 10:00:00+00",
+      "price": null
+    }
+  ]
+}

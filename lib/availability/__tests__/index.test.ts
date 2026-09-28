@@ -84,8 +84,20 @@ vi.mock('@/lib/settings', () => ({
 const freeBusyMock = vi.hoisted(() =>
   vi.fn(async () => [] as { start: string; end: string }[]),
 );
+// freeBusy reports blocks WITHOUT titles, so anything that must not hold a slot
+// is identified from the event list instead.
+const eventsMock = vi.hoisted(() =>
+  vi.fn(async () => [] as Array<{
+    id?: string;
+    summary?: string;
+    startISO?: string;
+    endISO?: string;
+    allDay?: boolean;
+  }>),
+);
 vi.mock('@/lib/google-calendar', () => ({
   freeBusy: (...args: unknown[]) => freeBusyMock(...(args as [])),
+  listEventsInRange: (...args: unknown[]) => eventsMock(...(args as [])),
 }));
 
 // Freeze the clock far in the past so lead-time never trims a 2026 date.
@@ -120,6 +132,8 @@ function resetData() {
   weekOpen.value = true;
   freeBusyMock.mockReset();
   freeBusyMock.mockResolvedValue([]);
+  eventsMock.mockReset();
+  eventsMock.mockResolvedValue([]);
 }
 
 describe('timeStrToMinutes', () => {
@@ -210,6 +224,72 @@ describe('availableSlots (adapter)', () => {
     ]);
     const slots = await availableSlots(DATE);
     expect(slots.map((s) => s.label)).toEqual(['10:00–11:00', '11:00–12:00']);
+  });
+
+  it('does not let a Preply lesson hold a slot', async () => {
+    /*
+      "Preply lesson - …" are Ilanit's son's private English lessons, kept in
+      the same calendar. They are his commitments, not hers, so she can be
+      booked over them — and while they counted as busy those hours were
+      invisible to parents on the public booking page too.
+    */
+    data.availability = [
+      { weekday, startTime: '09:00:00', endTime: '11:00:00', active: true },
+    ];
+    const start = parseILDateTime(DATE, '09:00').toISOString();
+    const end = parseILDateTime(DATE, '10:00').toISOString();
+    freeBusyMock.mockResolvedValue([{ start, end }]);
+    eventsMock.mockResolvedValue([
+      { id: 'e1', summary: 'Preply lesson - Alexa F.', startISO: start, endISO: end },
+    ]);
+
+    const slots = await availableSlots(DATE);
+    expect(slots.map((s) => s.label)).toEqual(['09:00–10:00', '10:00–11:00']);
+  });
+
+  it('still blocks an ordinary calendar entry', async () => {
+    data.availability = [
+      { weekday, startTime: '09:00:00', endTime: '11:00:00', active: true },
+    ];
+    const start = parseILDateTime(DATE, '09:00').toISOString();
+    const end = parseILDateTime(DATE, '10:00').toISOString();
+    freeBusyMock.mockResolvedValue([{ start, end }]);
+    eventsMock.mockResolvedValue([
+      { id: 'e1', summary: 'פגישה אצל רופא', startISO: start, endISO: end },
+    ]);
+
+    const slots = await availableSlots(DATE);
+    expect(slots.map((s) => s.label)).toEqual(['10:00–11:00']);
+  });
+
+  it('keeps an all-day marker blocking, whatever it is called', async () => {
+    // A day off is a real absence, not somebody else's appointment.
+    data.availability = [
+      { weekday, startTime: '09:00:00', endTime: '11:00:00', active: true },
+    ];
+    const start = parseILDateTime(DATE, '09:00').toISOString();
+    const end = parseILDateTime(DATE, '10:00').toISOString();
+    freeBusyMock.mockResolvedValue([{ start, end }]);
+    eventsMock.mockResolvedValue([
+      { id: 'e1', summary: 'preply', startISO: start, endISO: end, allDay: true },
+    ]);
+
+    const slots = await availableSlots(DATE);
+    expect(slots.map((s) => s.label)).toEqual(['10:00–11:00']);
+  });
+
+  it('keeps every block busy when the event list is unavailable', async () => {
+    // Failing closed: it can only refuse a slot, never double-book one.
+    data.availability = [
+      { weekday, startTime: '09:00:00', endTime: '11:00:00', active: true },
+    ];
+    const start = parseILDateTime(DATE, '09:00').toISOString();
+    const end = parseILDateTime(DATE, '10:00').toISOString();
+    freeBusyMock.mockResolvedValue([{ start, end }]);
+    eventsMock.mockRejectedValue(new Error('calendar down'));
+
+    const slots = await availableSlots(DATE);
+    expect(slots.map((s) => s.label)).toEqual(['10:00–11:00']);
   });
 
   it('degrades gracefully when freeBusy throws (lessons still respected)', async () => {

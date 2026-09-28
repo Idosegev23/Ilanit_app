@@ -1,0 +1,36 @@
+{
+  "lesson": {
+    "id": "fb27f802-c1f3-48ce-9b52-ba1a1b970d1a",
+    "type": "individual",
+    "source": "recurrence",
+    "studentId": "7fd3b420-77c0-48b1-9a31-9d368e93a13c",
+    "groupId": null,
+    "startsAt": "2026-09-28T13:00:00.000Z",
+    "endsAt": "2026-09-28T14:00:00.000Z",
+    "status": "completed",
+    "needsMatch": false,
+    "price": 140,
+    "location": "עתניאל 10/2, מאחורי בית הכנסת \"משכן ברנע\"",
+    "googleEventId": "fpcsk1d4od7u7caiml5qhe6hm0",
+    "recurrenceId": "ddc6ccb7-0627-4e2a-8146-678bb668b0cd",
+    "bookedByName": null,
+    "bookedByPhone": null,
+    "notes": null,
+    "createdAt": "2026-09-09T12:34:15.433Z",
+    "confirmedAt": "2026-09-09T12:34:15.426Z",
+    "cancelledAt": null,
+    "cancelReason": null
+  },
+  "pay": {
+    "id": "d16107ea-0c0b-4de0-aee5-70d38c07b485",
+    "lessonId": "fb27f802-c1f3-48ce-9b52-ba1a1b970d1a",
+    "status": "due",
+    "amount": 140,
+    "method": null,
+    "intent": null,
+    "intentAt": null,
+    "confirmAskedAt": null,
+    "paidAt": null,
+    "createdAt": "2026-09-28T13:00:25.486Z"
+  }
+}

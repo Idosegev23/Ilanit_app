@@ -1,0 +1,23 @@
+[
+  {
+    "pay": "40d1aa95-67e4-4359-bea5-36d0043dc117",
+    "amount": 140,
+    "lesson": "032aa8f4-6ef0-4799-a5e6-22a8a2a9600b",
+    "starts_at": "2026-08-12 06:00:00+00",
+    "notes": "חשבון"
+  },
+  {
+    "pay": "6741ac78-a928-41ea-84e0-e4bdb924297e",
+    "amount": 140,
+    "lesson": "e7009dcf-7d33-4c63-b862-62ad9a2d251b",
+    "starts_at": "2026-08-16 07:00:00+00",
+    "notes": null
+  },
+  {
+    "pay": "0aca8c89-4af8-4085-bb94-8444a9c91574",
+    "amount": 140,
+    "lesson": "41818a04-c22a-42a4-ab05-c162255311cd",
+    "starts_at": "2026-08-23 07:00:00+00",
+    "notes": null
+  }
+]
