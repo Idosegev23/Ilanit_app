@@ -1,0 +1,42 @@
+[
+  {
+    "pay": "7ebddc51-bae8-409a-922e-785373206fd9",
+    "lesson": "662d7524-b453-4ab5-ad80-d27ac5c04195",
+    "starts_at": "2026-07-07 12:00:00+00"
+  },
+  {
+    "pay": "73e09aed-600a-469b-8304-8e46ba6c6ca8",
+    "lesson": "54e215b2-17eb-4491-9099-53067a4d56df",
+    "starts_at": "2026-07-13 12:00:00+00"
+  },
+  {
+    "pay": "65b9d940-ddce-4761-a5cb-9ca509d231a4",
+    "lesson": "0fafb187-a7b9-44b9-86ec-82ef365bea70",
+    "starts_at": "2026-07-16 10:00:00+00"
+  },
+  {
+    "pay": "84f9a9e5-cd0d-4b4a-9405-b3dedb6899cb",
+    "lesson": "eb564320-c0ba-47c4-a9d2-f57ab905ca7a",
+    "starts_at": "2026-07-21 12:00:00+00"
+  },
+  {
+    "pay": "18f63fdb-0c3a-4a99-81b2-d6eccaec90e4",
+    "lesson": "41cb6376-b76b-410c-8040-8a887ca8576e",
+    "starts_at": "2026-07-23 10:00:00+00"
+  },
+  {
+    "pay": "586425fa-36f1-4b9e-bf82-e96d649018a8",
+    "lesson": "fa0b15ce-5754-4edd-93a9-c7712903b5de",
+    "starts_at": "2026-07-23 12:00:00+00"
+  },
+  {
+    "pay": "9c8442b0-29ec-42fe-9b91-2c59c4a4423a",
+    "lesson": "b180bc20-ddc0-40aa-8cf2-df4f1d56e2fd",
+    "starts_at": "2026-07-28 11:00:00+00"
+  },
+  {
+    "pay": "2b5f23dd-cb9f-45d6-a092-3c3e3f63679f",
+    "lesson": "3473a10a-c520-48c2-b4f1-b724b2c68f6c",
+    "starts_at": "2026-07-29 10:00:00+00"
+  }
+]

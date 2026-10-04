@@ -1,0 +1,40 @@
+{
+  "gili": {
+    "id": "ca657de3-68c4-421d-b687-f524d975235b",
+    "name": "גילי ז׳אן",
+    "phone": "+972547825186",
+    "email": "vikajan001@gmail.com",
+    "guardianName": "ויקה",
+    "guardianPhone": "+972547825186",
+    "receiptLabel": null,
+    "defaultPrice": 140,
+    "defaultDurationMin": 60,
+    "notes": null,
+    "avatarUrl": "https://pps.whatsapp.net/v/t61.24694-24/736216755_1341009504258551_3590013130163882971_n.jpg?ccb=11-4&oh=01_Q5Aa5AGk3Y8BZTnhUlSiriSex-mLfaiTz3zQy5EpUJlEiRMJBw&oe=6A6047EA&_nc_sid=5e03e0&_nc_cat=106",
+    "avatarFetchedAt": "2026-07-12T04:41:19.983Z",
+    "archived": false,
+    "autoCollect": false,
+    "collectFromDay": null,
+    "createdAt": "2026-07-11T08:04:12.560Z"
+  },
+  "rows": [
+    {
+      "pay": "40d1aa95-67e4-4359-bea5-36d0043dc117",
+      "lesson": "032aa8f4-6ef0-4799-a5e6-22a8a2a9600b",
+      "starts_at": "2026-08-12 06:00:00+00",
+      "amount": 120
+    },
+    {
+      "pay": "6741ac78-a928-41ea-84e0-e4bdb924297e",
+      "lesson": "e7009dcf-7d33-4c63-b862-62ad9a2d251b",
+      "starts_at": "2026-08-16 07:00:00+00",
+      "amount": 140
+    },
+    {
+      "pay": "0aca8c89-4af8-4085-bb94-8444a9c91574",
+      "lesson": "41818a04-c22a-42a4-ab05-c162255311cd",
+      "starts_at": "2026-08-23 07:00:00+00",
+      "amount": 140
+    }
+  ]
+}

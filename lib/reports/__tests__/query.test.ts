@@ -251,3 +251,31 @@ describe('per-student rollup', () => {
     expect(byStudent).toHaveLength(0);
   });
 });
+
+/*
+  The report has to carry the charge's own id. Totals are only as true as they
+  are easy to correct, and Ilanit reads the debts on this screen — so closing
+  one has to be possible from the row she is already looking at, rather than
+  from a separate student card per charge.
+*/
+describe('settling from the report', () => {
+  it('carries the payment id on every charged row', async () => {
+    state.lessonRows = [
+      lesson({ paymentStatus: 'due', amount: 140, paymentId: 'pay-1' }),
+      lesson({ paymentStatus: 'paid', amount: 140, paymentId: 'pay-2' }),
+    ];
+
+    const { rows } = await runReport({});
+
+    expect(rows.find((r) => r.paymentStatus === 'due')?.paymentId).toBe('pay-1');
+    expect(rows.find((r) => r.paymentStatus === 'paid')?.paymentId).toBe('pay-2');
+  });
+
+  it('leaves it null on a lesson that was never charged', async () => {
+    state.lessonRows = [lesson({ paymentStatus: null, paymentId: null })];
+
+    const { rows } = await runReport({});
+
+    expect(rows[0].paymentId).toBeNull();
+  });
+});

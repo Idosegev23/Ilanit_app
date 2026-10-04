@@ -56,6 +56,8 @@ export interface ReportRow {
   groupName: string | null;
   /** null when the lesson has never been billed. */
   paymentStatus: 'due' | 'paid' | 'waived' | null;
+  /** The charge itself, so an open one can be settled straight from the report. */
+  paymentId: string | null;
   amount: number | null;
   paidAt: Date | null;
   method: string | null;
@@ -146,6 +148,7 @@ export async function runReport(filters: ReportFilters): Promise<ReportResult> {
       bookedByName: lessons.bookedByName,
       groupName: groups.name,
       paymentStatus: payments.status,
+      paymentId: payments.id,
       amount: payments.amount,
       paidAt: payments.paidAt,
       method: payments.method,
@@ -180,6 +183,7 @@ export async function runReport(filters: ReportFilters): Promise<ReportResult> {
       studentName: r.studentName ?? r.bookedByName ?? null,
       groupName: r.groupName,
       paymentStatus: r.paymentStatus,
+      paymentId: r.paymentId,
       amount: r.amount,
       paidAt: r.paidAt,
       method: r.method,

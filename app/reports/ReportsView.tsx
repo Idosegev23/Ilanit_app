@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { useRouter } from 'next/navigation';
 import {
   CircleDollarSign,
   CalendarDays,
@@ -29,6 +30,7 @@ import {
 } from '@/components/ui/table';
 import { StudentPicker, type PickableStudent } from '@/components/ui/student-picker';
 import { runReportAction } from './actions';
+import { settlePaymentAction, waivePaymentAction } from '@/app/students/actions';
 import type { ReportFilters, ReportResult } from '@/lib/reports/query';
 import type { AnswerKey, Preset } from '@/lib/reports/presets';
 
@@ -94,6 +96,68 @@ function formatWhen(value: Date | string): string {
   July" — and Ilanit can see WHY a number is what it is, because the rows behind
   it are listed underneath.
 */
+/*
+  Settling a charge from the report itself.
+
+  The totals are only as true as they are easy to correct. Ilanit reads the
+  debts here, so this is where closing one has to happen: having to open a
+  separate student card for each is what let the numbers drift into fiction in
+  the first place.
+*/
+function SettleInline({ paymentId }: { paymentId: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = React.useState(false);
+  const [method, setMethod] = React.useState<'bit' | 'cash' | 'transfer' | 'other'>('bit');
+
+  async function run(fn: () => Promise<{ ok: boolean; error?: string }>) {
+    setBusy(true);
+    try {
+      const res = await fn();
+      if (res.ok) router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <span className="flex flex-wrap items-center gap-1.5">
+      <label className="sr-only" htmlFor={`rm-${paymentId}`}>
+        אמצעי תשלום
+      </label>
+      <Select
+        id={`rm-${paymentId}`}
+        value={method}
+        disabled={busy}
+        onChange={(e) => setMethod(e.target.value as typeof method)}
+        className="h-9 w-auto text-xs"
+      >
+        <option value="bit">ביט</option>
+        <option value="cash">מזומן</option>
+        <option value="transfer">העברה</option>
+        <option value="other">אחר</option>
+      </Select>
+      <Button
+        type="button"
+        variant="ink"
+        size="sm"
+        loading={busy}
+        onClick={() => run(() => settlePaymentAction(paymentId, method))}
+      >
+        שולם
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={busy}
+        onClick={() => run(() => waivePaymentAction(paymentId))}
+      >
+        ללא חיוב
+      </Button>
+    </span>
+  );
+}
+
 export function ReportsView({
   students,
   groups,
@@ -470,6 +534,7 @@ export function ReportsView({
                   <TableHead>שיעור</TableHead>
                   <TableHead>תשלום</TableHead>
                   <TableHead>סכום</TableHead>
+                  <TableHead>סגירה</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -507,6 +572,11 @@ export function ReportsView({
                       )}
                     </TableCell>
                     <TableNumCell>{r.amount == null ? '—' : shekels(r.amount)}</TableNumCell>
+                    <TableCell>
+                      {r.paymentStatus === 'due' && r.paymentId ? (
+                        <SettleInline paymentId={r.paymentId} />
+                      ) : null}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
