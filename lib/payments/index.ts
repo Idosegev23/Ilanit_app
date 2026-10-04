@@ -230,6 +230,7 @@ export async function declareIntent(
     } else {
       // Opened Bit to pay now — nothing to confirm yet, so this is only a
       // heads-up. runPaymentConfirms asks about it a day later.
+      const rawIntent = await createActionToken('payment', lessonId, PAY_TOKEN_TTL_MIN);
       await notify(
         'pay_intent_ilanit',
         env().ILANIT_PHONE,
@@ -238,6 +239,7 @@ export async function declareIntent(
           methodLabel: 'תשלום בביט',
           amount: pay.amount,
           context,
+          actionUrl: `${env().NEXT_PUBLIC_APP_URL.replace(/\/$/, '')}/p/${rawIntent}`,
         },
         `intent:${pay.id}`,
         lessonId,

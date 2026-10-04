@@ -21,7 +21,12 @@ import { nowIL, formatILDateTime } from '@/lib/time';
 // and we never create a second needs_match lesson for the same event).
 
 /** Token TTLs (minutes). */
-const PAYMENT_TOKEN_TTL_MIN = 60 * 24 * 14; // 14 days
+/*
+  Sixty days, matching every other payment link. At fourteen the "was it paid?"
+  prompt after a lesson quietly stopped working after a fortnight, and Ilanit
+  was left with a dead link and no way to record a payment she had received.
+*/
+const PAYMENT_TOKEN_TTL_MIN = 60 * 24 * 60;
 const ASSIGN_TOKEN_TTL_MIN = 60 * 24 * 14;
 
 export interface CalendarScanResult {

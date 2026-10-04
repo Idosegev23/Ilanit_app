@@ -184,10 +184,17 @@ const builders: Record<TemplateKey, (v: Vars) => string> = {
     `לתשלום ולעדכון: ${s(v, 'actionUrl')}`,
 
   /** Fires the moment a parent picks a method — Ilanit sees it as it happens. */
+  /*
+    A Bit declaration used to be a bare notice: Ilanit was told the parent had
+    chosen Bit and given nothing to click, with the confirmation arriving only a
+    day later. So she knew the money was coming and could not record it at the
+    moment it actually landed.
+  */
   pay_intent_ilanit: (v) =>
     `${s(v, 'studentName')} בחר/ה ${s(v, 'methodLabel')} 💳\n` +
     `סכום: ${money(v, 'amount')}\n` +
-    `${s(v, 'context')}`,
+    `${s(v, 'context')}\n` +
+    (s(v, 'actionUrl') ? `לאישור כשהכסף נכנס: ${s(v, 'actionUrl')}` : ''),
 
   /*
     The parent says it is already settled but not how. Ask Ilanit for the method

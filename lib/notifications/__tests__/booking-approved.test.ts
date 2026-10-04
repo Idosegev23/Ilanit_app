@@ -56,3 +56,31 @@ describe('booking_approved_student', () => {
     expect(body).toContain('משכן ברנע');
   });
 });
+
+/*
+  A Bit declaration used to reach Ilanit as a bare notice: "he chose Bit", with
+  nothing to click. The confirmation only came a day later, so she knew the
+  money was on its way and had no way to record it at the moment it landed.
+*/
+describe('pay_intent_ilanit', () => {
+  const base = { studentName: 'איידן', methodLabel: 'תשלום בביט', amount: 140, context: 'שיעור ב-04/10/2026 17:00' };
+
+  it('carries a link to confirm the moment the money arrives', () => {
+    const body = renderTemplate('pay_intent_ilanit', {
+      ...base,
+      actionUrl: 'https://app.test/p/tok',
+    });
+
+    expect(body).toContain('איידן');
+    expect(body).toContain('140');
+    expect(body).toContain('https://app.test/p/tok');
+  });
+
+  it('still reads cleanly when no link was passed', () => {
+    const body = renderTemplate('pay_intent_ilanit', base);
+
+    expect(body).toContain('איידן');
+    expect(body).not.toContain('לאישור');
+    expect(body.trimEnd()).toBe(body.trimEnd()); // no dangling blank line
+  });
+});
