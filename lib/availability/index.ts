@@ -25,6 +25,12 @@ import {
   type Interval,
 } from '@/lib/availability/engine';
 import { weekStartOf } from '@/lib/open-weeks';
+/*
+  Entries that must not hold a slot: the children's activities and their Preply
+  lessons. Shared with the calendar scan so that "do not import it" and "do not
+  let it block" can never drift apart.
+*/
+import { isOverlappable } from '@/lib/personal-events';
 
 // Availability engine: turns the weekly template (minus exceptions, existing
 // lessons, calendar freeBusy, lead-time and past) into concrete bookable slots,
@@ -108,33 +114,6 @@ function notEmptyGroupSession() {
         .where(and(eq(groupMembers.groupId, lessons.groupId), eq(groupMembers.active, true))),
     ),
   );
-}
-
-/*
-  Calendar entries that must NOT block scheduling.
-
-  "Preply lesson - …" are Ilanit's son's private English lessons, kept in the
-  same calendar. They are his commitments, not hers, so she can be booked over
-  them — and while they counted as busy, those hours were invisible to parents
-  booking through the public page too, not just to her own reschedules.
-
-  freeBusy reports blocks without titles, so they are identified from the event
-  list and subtracted afterwards, the same way a moved lesson's own block is.
-  An all-day marker still blocks: a day off is a real absence.
-*/
-function overlappableMarkers(): string[] {
-  const raw = process.env.OVERLAPPABLE_EVENT_MARKERS ?? 'preply';
-  return raw.split(',').map((m) => m.trim().toLowerCase()).filter(Boolean);
-}
-
-function isOverlappable(e: {
-  summary?: string;
-  description?: string;
-  allDay?: boolean;
-}): boolean {
-  if (e.allDay) return false;
-  const hay = `${e.summary ?? ''} ${e.description ?? ''}`.toLowerCase();
-  return overlappableMarkers().some((m) => hay.includes(m));
 }
 
 async function busyIntervals(
