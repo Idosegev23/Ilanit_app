@@ -1,0 +1,38 @@
+[
+  {
+    "name": "סופיה מטריק",
+    "lesson": "25dc7d88-32d9-4f19-9722-0438c57bf46c",
+    "starts_at": "2026-10-11 10:30:00+00",
+    "ls": "completed",
+    "pay": "a67314f6-e398-4266-86b9-a03e9a0f1566",
+    "ps": "due",
+    "amount": 140
+  },
+  {
+    "name": "אוריאן רותי זגורי",
+    "lesson": "46683c06-119d-4a17-8e6a-8b2eb3b945aa",
+    "starts_at": "2026-10-11 12:30:00+00",
+    "ls": "confirmed",
+    "pay": "5782da80-2155-49e1-9973-a895b2fc69ae",
+    "ps": "due",
+    "amount": 140
+  },
+  {
+    "name": "איידן",
+    "lesson": "d67701bc-5079-4917-ad28-4323ae297dbe",
+    "starts_at": "2026-10-11 14:00:00+00",
+    "ls": "confirmed",
+    "pay": "a816d3b9-41f7-4d4b-b6c1-ac24f89fbe9b",
+    "ps": "due",
+    "amount": 140
+  },
+  {
+    "name": "מילנה",
+    "lesson": "835a6469-29e0-470f-9724-d7813aea0e89",
+    "starts_at": "2026-10-11 11:30:00+00",
+    "ls": "completed",
+    "pay": "4bfb01a9-9f53-44ec-aea1-11d887689e15",
+    "ps": "due",
+    "amount": 140
+  }
+]

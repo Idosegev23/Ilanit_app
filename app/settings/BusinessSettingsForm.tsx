@@ -307,7 +307,8 @@ export function BusinessSettingsForm({ values, onChange }: BusinessSettingsFormP
               <p className="text-xs text-muted">
                 תלמיד שמתאם שיעור בשעה הזו או אחריה — לא משנה לאיזה מועד — לא ייקבע
                 אוטומטית. הבקשה תמתין לאישור שלך והמועד יישמר עבורו בינתיים.
-                השאירי ריק כדי לבטל.
+                <strong className="font-semibold text-ink"> 00:00 = כל הזמנה דורשת אישור.</strong>{' '}
+                השאירי ריק כדי שכל ההזמנות ייקבעו אוטומטית.
               </p>
             </div>
           </div>
