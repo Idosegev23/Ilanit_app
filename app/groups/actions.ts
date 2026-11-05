@@ -28,6 +28,17 @@ function intShekels(form: FormData, key: string): number {
   return Math.round(n);
 }
 
+/**
+ * The form's one price field, read as either a monthly fee or a per-session
+ * price depending on the unit chosen beside it.
+ */
+function priceOf(form: FormData): { monthlyPrice: number; pricePerSession: number | null } {
+  const price = intShekels(form, 'monthlyPrice');
+  return str(form, 'priceUnit') === 'session'
+    ? { monthlyPrice: 0, pricePerSession: price }
+    : { monthlyPrice: price, pricePerSession: null };
+}
+
 /** Parses maxMembers (capacity) — defaults to 6 when blank/invalid. */
 function maxMembersOf(form: FormData): number {
   const raw = str(form, 'maxMembers');
@@ -81,7 +92,7 @@ export async function createGroupAction(form: FormData): Promise<void> {
   const { group } = await createGroupWithSchedule(
     {
       name: str(form, 'name'),
-      monthlyPrice: intShekels(form, 'monthlyPrice'),
+      ...priceOf(form),
       location: str(form, 'location'),
       description: str(form, 'description') || undefined,
       maxMembers: maxMembersOf(form),
@@ -100,7 +111,7 @@ export async function updateGroupAction(form: FormData): Promise<void> {
   const id = str(form, 'id');
   await updateGroup(id, {
     name: str(form, 'name'),
-    monthlyPrice: intShekels(form, 'monthlyPrice'),
+    ...priceOf(form),
     location: str(form, 'location'),
     description: str(form, 'description') || null,
     maxMembers: maxMembersOf(form),

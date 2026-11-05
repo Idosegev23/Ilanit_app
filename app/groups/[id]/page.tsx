@@ -16,12 +16,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { PriceField } from '@/app/groups/PriceField';
+import { groupPriceLabel, isPerSession } from '@/lib/groups/pricing';
 import { EmptyState } from '@/components/ui/empty-state';
 import {
   getGroup,
   listMembers,
   listGroupSchedule,
   countGroupSessions,
+  billableSessions,
 } from '@/lib/groups';
 import { GroupCreatedBanner } from '@/app/groups/GroupCreatedBanner';
 import { listStudents } from '@/lib/students';
@@ -62,7 +65,12 @@ export default async function GroupDetailPage({
   const activeMembers = members.filter((m) => m.active);
 
   const currentMonth = toILDateStr(new Date()).slice(0, 7); // yyyy-MM
-  const projectedMonthly = activeMembers.length * group.monthlyPrice;
+  // A per-session group's month is its price times this month's sessions.
+  const perMember = isPerSession(group)
+    ? group.pricePerSession! *
+      (await billableSessions(id, `${currentMonth}-01`, new Date(0))).length
+    : group.monthlyPrice;
+  const projectedMonthly = activeMembers.length * perMember;
   // Capacity (active members vs. cap). At/over cap we warn before enrolling, but
   // never hard-block — enrolment past the cap is allowed (override).
   const atCapacity = activeMembers.length >= group.maxMembers;
@@ -73,7 +81,7 @@ export default async function GroupDetailPage({
         <div className="rise">
           <GroupCreatedBanner
             name={group.name}
-            monthlyPrice={group.monthlyPrice}
+            priceLabel={groupPriceLabel(group)}
             location={group.location}
             maxMembers={group.maxMembers}
             slots={createdSlots}
@@ -140,9 +148,9 @@ export default async function GroupDetailPage({
                   <span className="flex items-center gap-1.5">
                     <Banknote className="size-4 shrink-0" aria-hidden="true" />
                     <span className="font-semibold tabular-nums text-ink">
-                      {formatShekels(group.monthlyPrice)}
+                      {groupPriceLabel(group)}
                     </span>
-                    <span>לחבר / חודש</span>
+                    <span>לחבר</span>
                   </span>
                 </div>
               </div>
@@ -188,39 +196,10 @@ export default async function GroupDetailPage({
                 <Input id="name" name="name" required defaultValue={group.name} />
               </div>
 
-              {/* Prominent pricing field — money per member, integer shekels. */}
-              <div className="space-y-2 rounded-2xl border border-primary-200 bg-gradient-tint p-4 shadow-soft">
-                <Label
-                  htmlFor="monthlyPrice"
-                  required
-                  className="flex items-center gap-1.5"
-                >
-                  <Banknote className="size-4 text-primary-700" aria-hidden="true" />
-                  מחיר חודשי לחבר (₪)
-                </Label>
-                <div className="relative">
-                  <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-y-0 end-3.5 flex items-center text-base font-medium text-muted"
-                  >
-                    ₪
-                  </span>
-                  <Input
-                    id="monthlyPrice"
-                    name="monthlyPrice"
-                    type="number"
-                    inputMode="numeric"
-                    min="0"
-                    step="1"
-                    required
-                    defaultValue={group.monthlyPrice}
-                    className="pe-9 text-lg font-semibold tabular-nums"
-                  />
-                </div>
-                <p className="text-xs text-muted">
-                  כל חברה תחויב בסכום זה ב-1 לחודש. שקלים שלמים בלבד.
-                </p>
-              </div>
+              <PriceField
+                defaultPrice={group.pricePerSession ?? group.monthlyPrice}
+                defaultUnit={isPerSession(group) ? 'session' : 'month'}
+              />
 
               <div className="space-y-1.5">
                 <Label htmlFor="location" required>
@@ -370,7 +349,7 @@ export default async function GroupDetailPage({
               groupId={group.id}
               activeCount={activeMembers.length}
               maxMembers={group.maxMembers}
-              monthlyPriceLabel={formatShekels(group.monthlyPrice)}
+              monthlyPriceLabel={groupPriceLabel(group)}
               addableStudents={addableStudents.map((s) => ({
                 id: s.id,
                 name: s.name,

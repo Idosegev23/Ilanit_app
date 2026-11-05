@@ -5,7 +5,6 @@ import {
   MapPin,
   Plus,
   UsersRound,
-  Banknote,
   Layers,
   ArrowLeft,
   Wallet,
@@ -23,6 +22,8 @@ import { listGroups } from '@/lib/groups';
 import { formatShekels } from '@/lib/utils';
 import { createGroupAction } from '@/app/groups/actions';
 import { WeeklySlotsField } from '@/app/groups/WeeklySlotsField';
+import { PriceField } from '@/app/groups/PriceField';
+import { groupPriceLabel, isPerSession } from '@/lib/groups/pricing';
 
 // Groups overview: list of learning groups + a form to create a new one.
 export const dynamic = 'force-dynamic';
@@ -33,8 +34,10 @@ export default async function GroupsPage() {
   const activeGroups = groups.filter((g) => g.active);
   const totalMembers = groups.reduce((sum, g) => sum + g.memberCount, 0);
   // Projected monthly recurring revenue: active members × their group price.
+  // A per-session group's month depends on how many times it meets, so it is
+  // left out rather than guessed at.
   const projectedMonthly = activeGroups.reduce(
-    (sum, g) => sum + g.memberCount * g.monthlyPrice,
+    (sum, g) => sum + (isPerSession(g) ? 0 : g.memberCount * g.monthlyPrice),
     0,
   );
 
@@ -191,9 +194,9 @@ export default async function GroupsPage() {
                             </p>
                           </div>
                           <div className="text-end">
-                            <p className="text-xs font-medium text-muted">מחיר לחבר / חודש</p>
+                            <p className="text-xs font-medium text-muted">מחיר לחבר</p>
                             <p className="mt-1 text-lg font-extrabold tracking-tight tabular-nums text-primary-700">
-                              {formatShekels(g.monthlyPrice)}
+                              {groupPriceLabel(g)}
                             </p>
                           </div>
                         </div>
@@ -247,42 +250,7 @@ export default async function GroupsPage() {
                   />
                 </div>
 
-                {/* Prominent pricing field — money per member, integer shekels. */}
-                <div className="space-y-2 rounded-2xl border border-primary-200 bg-gradient-tint p-4 shadow-soft">
-                  <Label
-                    htmlFor="monthlyPrice"
-                    required
-                    className="flex items-center gap-1.5"
-                  >
-                    <Banknote
-                      className="size-4 text-primary-700"
-                      aria-hidden="true"
-                    />
-                    מחיר חודשי לחבר (₪)
-                  </Label>
-                  <div className="relative">
-                    <span
-                      aria-hidden="true"
-                      className="pointer-events-none absolute inset-y-0 end-3.5 flex items-center text-base font-medium text-muted"
-                    >
-                      ₪
-                    </span>
-                    <Input
-                      id="monthlyPrice"
-                      name="monthlyPrice"
-                      type="number"
-                      inputMode="numeric"
-                      min="0"
-                      step="1"
-                      required
-                      placeholder="300"
-                      className="pe-9 text-lg font-semibold tabular-nums"
-                    />
-                  </div>
-                  <p className="text-xs text-muted">
-                    כל חברה תחויב בסכום זה ב-1 לחודש. שקלים שלמים בלבד.
-                  </p>
-                </div>
+                <PriceField />
 
                 <div className="space-y-1.5">
                   <Label htmlFor="location" required>

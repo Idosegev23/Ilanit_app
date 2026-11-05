@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { groupPriceLabel } from '@/lib/groups/pricing';
 import { notFound } from 'next/navigation';
 import {
   ChevronRight,
@@ -94,7 +95,7 @@ export default async function GroupBillingRosterPage({
         <PageHeader
           eyebrow="רוסטר חיוב"
           title={`חיוב חודשי — ${monthLabel}`}
-          subtitle={`${group.name} · ${formatShekels(group.monthlyPrice)} לחבר`}
+          subtitle={`${group.name} · ${groupPriceLabel(group)} לחבר`}
         />
       </div>
 

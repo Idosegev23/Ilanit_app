@@ -127,6 +127,13 @@
       "when": 1788365034370,
       "tag": "0017_add_collect_from_day",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793900000000,
+      "tag": "0018_add_price_per_session",
+      "breakpoints": true
     }
   ]
 }

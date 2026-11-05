@@ -12,7 +12,7 @@ import {
   type GroupMember,
   type GroupBilling,
 } from '@/db/schema';
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, lt, notInArray, sql } from 'drizzle-orm';
 import { getSettings } from '@/lib/settings';
 import {
   getStudent,
@@ -29,6 +29,7 @@ import { env, collectionEnabled, receiptsEnabled } from '@/lib/env';
 import { toILMonthStr } from '@/lib/groups/month';
 import { mayAskToday } from '@/lib/payments/collect-window';
 import { createSeries } from '@/lib/recurrence';
+import { ilWeekday, nowIL, parseILDateTime, startOfDayIL, toILDateStr } from '@/lib/time';
 
 /** Default receipt description for a group payment: "חוג {group name}". */
 export function groupReceiptLabel(groupName: string): string {
@@ -131,10 +132,21 @@ export function capacityOf(count: number, max: number): GroupCapacity {
 export interface CreateGroupInput {
   name: string;
   monthlyPrice: number; // ₪ integer
+  /** Set for a group paid per meeting; monthlyPrice is then ignored and stored as 0. */
+  pricePerSession?: number | null;
   location: string;
   description?: string;
   /** Max active members allowed (capacity). Defaults to 6 when omitted. */
   maxMembers?: number;
+}
+
+/** A per-session price as integer shekels, or null for a flat monthly fee. */
+function normalizePerSession(v: number | null | undefined): number | null {
+  if (v == null) return null;
+  if (!Number.isFinite(v) || v < 0) {
+    throw new Error('pricePerSession must be a non-negative integer (shekels)');
+  }
+  return Math.round(v);
 }
 
 /** Creates a group. Monthly price is normalized to integer shekels. */
@@ -148,9 +160,11 @@ export async function createGroup(input: CreateGroupInput): Promise<Group> {
   }
   const maxMembers = normalizeMaxMembers(input.maxMembers);
 
+  const perSession = normalizePerSession(input.pricePerSession);
   const values: NewGroup = {
     name,
-    monthlyPrice: Math.round(input.monthlyPrice),
+    monthlyPrice: perSession == null ? Math.round(input.monthlyPrice) : 0,
+    pricePerSession: perSession,
     location,
     description: input.description?.trim() || null,
     maxMembers,
@@ -218,6 +232,7 @@ export async function createGroupWithSchedule(
 export type UpdateGroupPatch = Partial<{
   name: string;
   monthlyPrice: number;
+  pricePerSession: number | null;
   location: string;
   description: string | null;
   maxMembers: number;
@@ -242,6 +257,10 @@ export async function updateGroup(id: string, patch: UpdateGroupPatch): Promise<
       throw new Error('monthlyPrice must be a non-negative integer (shekels)');
     }
     set.monthlyPrice = Math.round(patch.monthlyPrice);
+  }
+  if (patch.pricePerSession !== undefined) {
+    set.pricePerSession = normalizePerSession(patch.pricePerSession);
+    if (set.pricePerSession != null) set.monthlyPrice = 0;
   }
   if (patch.description !== undefined) {
     set.description = patch.description?.trim() || null;
@@ -466,6 +485,82 @@ export async function countGroupSessions(groupId: string): Promise<number> {
   return rows[0]?.n ?? 0;
 }
 
+/** First-of-month `yyyy-MM-dd` for the month after `month` (itself yyyy-MM-01). */
+function nextMonthOf(month: string): string {
+  const [y, m] = month.split('-').map(Number);
+  return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+}
+
+/**
+ * The sessions a per-session group is charged for: those in `month` from `from`
+ * onward that are still going ahead.
+ *
+ * Counted from the diary, not from the calendar. A Friday group does not meet
+ * five times just because the month has five Fridays — a session Ilanit has
+ * already called off is not one anybody pays for.
+ *
+ * `from` is what makes a late start fair: a group opened, or a member added,
+ * halfway through the month pays for the sessions still ahead, not for ones
+ * that happened before they were there.
+ *
+ * The weekly schedule counts as well as the diary. A series is written to the
+ * diary only so many days ahead and nothing extends it, so a month past that
+ * edge would hold no rows — and a count of the rows alone would bill ₪0, or
+ * not at all, for a group that is meeting every week.
+ */
+export async function billableSessions(
+  groupId: string,
+  month: string,
+  from: Date,
+): Promise<Date[]> {
+  const monthStart = parseILDateTime(month, '00:00');
+  const monthEnd = parseILDateTime(nextMonthOf(month), '00:00');
+  const lower = from > monthStart ? from : monthStart;
+
+  const rows = await db
+    .select({ startsAt: lessons.startsAt, status: lessons.status })
+    .from(lessons)
+    .where(
+      and(
+        eq(lessons.groupId, groupId),
+        eq(lessons.type, 'group_session'),
+        gte(lessons.startsAt, lower),
+        lt(lessons.startsAt, monthEnd),
+      ),
+    );
+  const slots = await db
+    .select({ weekday: recurrences.weekday, startTime: recurrences.startTime })
+    .from(recurrences)
+    .where(and(eq(recurrences.groupId, groupId), eq(recurrences.active, true)));
+
+  const calledOff = new Set(
+    rows
+      .filter((r) => r.status === 'cancelled' || r.status === 'rejected')
+      .map((r) => r.startsAt.getTime()),
+  );
+  const sessions = new Map<number, Date>();
+  for (const r of rows) {
+    if (!calledOff.has(r.startsAt.getTime())) sessions.set(r.startsAt.getTime(), r.startsAt);
+  }
+  // Every date of the month, as an IL calendar day; noon keeps DST out of it.
+  for (let day = parseILDateTime(month, '12:00'); day < monthEnd; day = new Date(day.getTime() + 86_400_000)) {
+    const date = toILDateStr(day);
+    for (const slot of slots) {
+      if (ilWeekday(day) !== slot.weekday) continue;
+      const at = parseILDateTime(date, slot.startTime.slice(0, 5));
+      if (at < lower || calledOff.has(at.getTime())) continue;
+      sessions.set(at.getTime(), at);
+    }
+  }
+  return [...sessions.values()].sort((a, b) => a.getTime() - b.getTime());
+}
+
+/** "6/11" — day and month, Israel time. */
+function dayMonthIL(d: Date): string {
+  const [, m, day] = toILDateStr(d).split('-').map(Number);
+  return `${day}/${m}`;
+}
+
 /**
  * Creates a month's charges for active groups and asks each member to pay.
  *
@@ -500,6 +595,22 @@ export async function generateMonthlyBilling(
 
   let created = 0;
   for (const group of activeGroups) {
+    /*
+      A per-session group's charge is its price times the sessions still ahead
+      this month, worked out at the moment of billing. The parent is shown the
+      dates, because "₪400" alone does not say why it is not ₪500 next month.
+    */
+    let amount = group.monthlyPrice;
+    let details: string | undefined;
+    if (group.pricePerSession != null) {
+      const sessions = await billableSessions(group.id, month, startOfDayIL(nowIL()));
+      if (sessions.length === 0) continue;
+      amount = group.pricePerSession * sessions.length;
+      details =
+        `${sessions.length} מפגשים (${sessions.map(dayMonthIL).join(', ')}) ` +
+        `× ${group.pricePerSession} ₪`;
+    }
+
     const members = await db
       .select({
         studentId: students.id,
@@ -533,7 +644,7 @@ export async function generateMonthlyBilling(
           groupId: group.id,
           studentId: member.studentId,
           month,
-          amount: group.monthlyPrice,
+          amount,
           status: 'due',
         })
         .returning();
@@ -563,7 +674,8 @@ export async function generateMonthlyBilling(
           studentName: member.name,
           groupName: group.name,
           month: monthLabel,
-          amount: group.monthlyPrice,
+          amount,
+          ...(details ? { details } : {}),
           actionUrl: `${appUrl}/pay/${payToken}`,
         },
         `group_billing:${billing.id}`,

@@ -142,3 +142,40 @@ describe('runGroupBillingOnFirstSession', () => {
     expect(state.statusFilters).toContainEqual(['cancelled', 'rejected']);
   });
 });
+
+/*
+  A group paid per session is paid in advance: it is billed from the morning
+  of the 1st, without waiting for a session to happen, and re-offered every run
+  so a member who joins mid-month is still asked.
+*/
+describe('runGroupBillingOnFirstSession — a per-session group', () => {
+  beforeEach(() => {
+    state.groups = [{ id: 'g-fri', name: 'שישי בבוקר', pricePerSession: 100 }];
+  });
+
+  it('bills on the morning of the 1st, before any session', async () => {
+    state.now = new Date('2026-11-01T07:00:00Z'); // 09:00 IL, Sun 1 Nov
+    state.firstSession = []; // nothing has met yet
+
+    await runGroupBillingOnFirstSession();
+
+    expect(generateMonthlyBilling).toHaveBeenCalledWith('2026-11-01', ['g-fri']);
+  });
+
+  it('does not bill in the small hours', async () => {
+    state.now = new Date('2026-10-31T23:30:00Z'); // 01:30 IL, 1 Nov
+
+    await runGroupBillingOnFirstSession();
+
+    expect(generateMonthlyBilling).not.toHaveBeenCalled();
+  });
+
+  it('is offered again even once the month has charges, for a late joiner', async () => {
+    state.now = new Date('2026-11-12T10:00:00Z');
+    state.billing = [{ id: 'existing' }];
+
+    await runGroupBillingOnFirstSession();
+
+    expect(generateMonthlyBilling).toHaveBeenCalledWith('2026-11-01', ['g-fri']);
+  });
+});

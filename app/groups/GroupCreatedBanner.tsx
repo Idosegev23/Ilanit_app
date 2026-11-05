@@ -21,14 +21,14 @@ export interface CreatedSlot {
 
 export function GroupCreatedBanner({
   name,
-  monthlyPrice,
+  priceLabel,
   location,
   maxMembers,
   slots,
   sessionCount,
 }: {
   name: string;
-  monthlyPrice: number;
+  priceLabel: string;
   location: string;
   maxMembers: number;
   slots: CreatedSlot[];
@@ -72,8 +72,8 @@ export function GroupCreatedBanner({
               </span>
             )}
           </Row>
-          <Row icon={Wallet} label="מחיר לחבר / חודש">
-            <span className="tabular-nums">{monthlyPrice}₪</span>
+          <Row icon={Wallet} label="מחיר לחבר">
+            <span className="tabular-nums">{priceLabel}</span>
           </Row>
           <Row icon={MapPin} label="מיקום">
             {location || <span className="text-muted">לא הוגדר</span>}

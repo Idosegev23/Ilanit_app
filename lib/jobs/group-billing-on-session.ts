@@ -2,7 +2,7 @@ import { db } from '@/lib/db';
 import { groups, lessons, groupBilling } from '@/db/schema';
 import { and, asc, eq, gte, lt, notInArray } from 'drizzle-orm';
 import { generateMonthlyBilling } from '@/lib/groups';
-import { nowIL, toILDateStr, parseILDateTime } from '@/lib/time';
+import { ilHour, nowIL, toILDateStr, parseILDateTime } from '@/lib/time';
 
 /*
   Group billing, triggered by the group's OWN first session of the month.
@@ -48,6 +48,27 @@ export async function runGroupBillingOnFirstSession(): Promise<GroupBillingOnSes
   const result: GroupBillingOnSessionResult = { billed: [], created: 0 };
 
   for (const group of active) {
+    /*
+      A group paid per meeting is paid IN ADVANCE, so it does not wait for its
+      first session: it is billed from the morning of the 1st, for that month's
+      sessions.
+
+      It is also offered to billing on every run, not once. generateMonthlyBilling
+      skips any member already charged this month, so a run costs nothing for
+      them — and it is what lets a member added mid-month be asked for the
+      sessions still ahead instead of never being billed at all, which is the
+      fate of a late joiner under the once-a-month rule below.
+    */
+    if (group.pricePerSession != null) {
+      if (ilHour(now) < 9) continue;
+      const { created } = await generateMonthlyBilling(month, [group.id]);
+      if (created > 0) {
+        result.billed.push(group.name);
+        result.created += created;
+      }
+      continue;
+    }
+
     // Already billed for this month — nothing to do, and no message to resend.
     const existing = await db
       .select({ id: groupBilling.id })

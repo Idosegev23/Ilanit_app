@@ -181,6 +181,8 @@ const builders: Record<TemplateKey, (v: Vars) => string> = {
   pay_request_group: (v) =>
     `שלום ${s(v, 'studentName')} 🙏\n` +
     `התשלום החודשי לקבוצת "${s(v, 'groupName')}" עבור ${s(v, 'month')}: ${money(v, 'amount')}.\n` +
+    // A group paid per meeting says what the sum is made of.
+    (v.details ? `${s(v, 'details')}\n` : '') +
     `לתשלום ולעדכון: ${s(v, 'actionUrl')}`,
 
   /** Fires the moment a parent picks a method — Ilanit sees it as it happens. */

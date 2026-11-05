@@ -69,6 +69,9 @@ export const groups = pgTable('groups', {
   id: uuid('id').primaryKey().defaultRandom(),
   name: text('name').notNull(),
   monthlyPrice: integer('monthly_price').notNull(), // ₪
+  // Set for a group paid per meeting: the month's charge is this × the month's
+  // sessions, and monthlyPrice is 0. Null for the usual flat monthly fee.
+  pricePerSession: integer('price_per_session'), // ₪
   location: text('location').notNull(),
   description: text('description'),
   // Capacity cap on active members; UI warns (and allows override) past this.
